@@ -109,9 +109,6 @@ jobs:
           # Hängt am Abo des Inhabers. Anlegen mit `claude setup-token`,
           # dann unter Settings → Secrets and variables → Actions.
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-<<<<<<< HEAD
-          show_full_output: 'true'
-=======
           # NOTSCHALTER FÜR DIE FEHLERSUCHE, standardmäßig aus.
           #
           # Scheitert der Lauf mit `is_error:true` nach zwei Sekunden, nennt
@@ -124,6 +121,5 @@ jobs:
           # dann für jeden lesbar, auch Dateiinhalte, die Claude liest.
           # Deshalb nur anlassbezogen einschalten, nicht dauerhaft.
           show_full_output: ${{ vars.CLAUDE_DEBUG == 'true' }}
->>>>>>> a9628e9 (Workflows und Automatisierungsdoku vom Kit übernehmen)
           # Kein --model: Für das Umsetzen darf das stärkere Modell ran.
           # Die Festlegung auf Sonnet gilt nur den Prüf-Agents.
