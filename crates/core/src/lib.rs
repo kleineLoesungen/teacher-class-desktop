@@ -15,19 +15,22 @@
 //! # Einstieg
 //!
 //! ```no_run
-//! use starter_core::{App, Paths, note::{self, NoteInput, Order}};
+//! use starter_core::{App, Paths, class::{self, ClassInput}, student};
 //!
 //! let app = App::open(Paths::resolve()?)?;
-//! let created = note::create(app.conn(), NoteInput::new("Titel", "Text"))?;
-//! let all = note::list(app.conn(), Order::Recent)?;
+//! let created = class::create(app.conn(), ClassInput::new("7a", 2025))?;
+//! student::add_many(app.conn(), created.id, "Muster, Max\nBeispiel, Eva")?;
+//! let all = class::list(app.conn())?;
 //! # Ok::<(), starter_core::Error>(())
 //! ```
 
+pub mod class;
 pub mod config;
 pub mod db;
 pub mod error;
-pub mod note;
+pub mod ids;
 pub mod paths;
+pub mod student;
 pub mod timestamp;
 
 pub use config::{Config, Theme};
