@@ -15,6 +15,8 @@ tappen), aus Rust erzeugte TypeScript-Typen, fertige Rezepte, ein strenges
 Das Gegenstück ohne Webview, in reinem Rust mit egui:
 [vibe-starter-desktop](https://github.com/kleineLoesungen/vibe-starter-desktop).
 
+Die Einrichtung mit dem Claude OAuth Token ist abgeschlossen.
+
 ---
 
 ## In fünf Minuten laufen
