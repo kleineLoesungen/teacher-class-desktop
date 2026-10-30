@@ -79,6 +79,63 @@ jobs:
       # lassen kann, BEVOR es einen PR öffnet. Ohne das schriebe es blind
       # und der Fehler käme erst eine Runde später zurück — teuer, wenn
       # man am Telefon sitzt.
+      # Reicht das Kontingent überhaupt? Ohne diese Frage startet unten die
+      # ganze Werkzeugkette, um nach zwei Sekunden an einem 429 zu scheitern
+      # — und die Action nennt den Grund nicht. Wer am Telefon sitzt, sähe
+      # nur einen roten Haken.
+      #
+      # Die Prüfung kostet einen Aufruf ohne Modellverbrauch. Scheitert sie
+      # selbst (Netz, Zeitüberschreitung), wird NICHT blockiert: Lieber ein
+      # unnötiger Lauf als ein Auftrag, der wegen einer wackligen Leitung
+      # liegen bleibt.
+      - name: Kontingent prüfen
+        if: env.TOKEN_DA == 'true'
+        env:
+          TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          kopf=$(curl -s -m 20 -D- -o /dev/null https://api.anthropic.com/v1/messages \
+            -H "authorization: Bearer $TOKEN" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "anthropic-beta: oauth-2025-04-20" \
+            -H "content-type: application/json" \
+            -d '{"model":"claude-sonnet-5","max_tokens":1,
+                 "system":"You are Claude Code, Anthropic'"'"'s official CLI for Claude.",
+                 "messages":[{"role":"user","content":"ok"}]}') || {
+            echo "::warning title=Kontingent nicht prüfbar::Der Aufruf schlug fehl. Der Lauf geht trotzdem weiter."
+            exit 0
+          }
+
+          status=$(printf '%s' "$kopf" | head -1)
+          case "$status" in
+            *" 429"*) ;;
+            *) echo "Kontingent in Ordnung."
+               printf '%s' "$kopf" | grep -iE '^anthropic-ratelimit-unified-(5h|7d)-utilization' || true
+               exit 0 ;;
+          esac
+
+          # Erschöpft. Den Grund dorthin schreiben, wo gelesen wird: ins Issue.
+          frei=$(printf '%s' "$kopf" | grep -i '^anthropic-ratelimit-unified-5h-reset' \
+                 | tr -d '\r' | cut -d' ' -f2)
+          wann="unbekannt"
+          if [ -n "$frei" ]; then
+            wann=$(date -u -d "@$frei" '+%d.%m. %H:%M UTC' 2>/dev/null || echo "unbekannt")
+          fi
+
+          echo "::error title=Kontingent erschöpft::Das Abo-Kontingent ist aufgebraucht. Frei ab etwa $wann."
+          if [ -n "$ISSUE" ]; then
+            gh issue comment "$ISSUE" --repo "$REPO" --body \
+              "⏳ **Kontingent erschöpft** — ich konnte nicht anfangen.
+
+          Das Abo-Kontingent ist aufgebraucht. Frei wieder ab etwa **$wann**.
+          Danach genügt ein neuer Kommentar mit \`@claude\`.
+
+          *(Ein neuer Token hilft hier nicht — das Kontingent hängt am Abo, nicht am Token. Mehr in \`docs/AUTOMATION.md\`.)*" || true
+          fi
+          exit 1
+
       - name: Systembibliotheken
         if: env.TOKEN_DA == 'true'
         run: |

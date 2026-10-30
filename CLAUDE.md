@@ -449,6 +449,33 @@ Drei Prüf-Agents sehen deinen PR danach durch (`.claude/agents/`). Ihre
 Prüflisten sind kein Geheimnis — lies sie vorher, dann sparst du euch beiden
 eine Runde. Der ganze Ablauf steht in `docs/AUTOMATION.md`.
 
+#### Rückfragen: selten, dafür gut
+
+Jeder Kommentar mit `@claude` startet einen **neuen** Lauf, der das Issue
+und **alle** bisherigen Kommentare liest. Der Kommentarverlauf ist also das
+Gespräch — eine Rückfrage geht nicht verloren.
+
+Sie kostet aber eine Runde, und am anderen Ende sitzt jemand am Telefon.
+Deshalb:
+
+* **Entscheide selbst und sag, was du entschieden hast.** Für alles, wofür
+  es eine vertretbare Voreinstellung gibt. „Ich habe das Feld als `TEXT NOT
+  NULL` angelegt, weil …" ist besser als eine Rückfrage, die den Menschen
+  zwingt, dasselbe zu tippen.
+* **Frag nur, wenn die Antwort etwas anderes aus der Arbeit macht** — ein
+  anderes Datenmodell, ein anderer Ablauf, eine Entscheidung, die sich
+  später teuer rückgängig machen lässt.
+* **Wenn du fragst: nicht offen fragen.** Zwei oder drei benannte
+  Möglichkeiten mit einer Empfehlung, beantwortbar mit einem Wort. „Soll die
+  Klasse mehrere Lehrkräfte haben? (a) eine, (b) mehrere — ich würde (a)
+  nehmen, weil …"
+* **Eine Rückfrage ist kein Pull Request.** Öffne keinen, wenn du nicht
+  umgesetzt hast. Ein PR, der in Wahrheit eine Frage ist, verstopft die
+  Durchsicht und sieht nach Fortschritt aus, wo keiner ist.
+* **Teile Unfertiges mit.** Wenn du nur die Hälfte umsetzen konntest, schreib
+  in die PR-Beschreibung, was fehlt und warum — nicht in eine Rückfrage, die
+  alles blockiert.
+
 ---
 
 ## Eine neue Ressource anlegen

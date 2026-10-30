@@ -101,10 +101,41 @@ Projekte mit demselben Namen teilen sich unbemerkt eine Datenbank.
 git remote add kit https://github.com/kleineLoesungen/vibe-starter-tauri
 git fetch kit
 git log --oneline kit/main
+```
+
+Dann je nachdem, **was** du holst — und der Unterschied ist wichtiger, als er
+aussieht:
+
+**Infrastruktur — Workflows, `docs/`, `scripts/`, `deny.toml`, `biome.json`:**
+
+```bash
+git checkout kit/main -- .github/workflows docs/AUTOMATION.md
+git commit -m "Workflows vom Kit übernehmen"
+```
+
+Diese Dateien enthalten **keine projektspezifischen Stellen** (geprüft: kein
+Projektname in `.github/workflows/`). Es gibt also nichts zusammenzuführen —
+die Fassung aus dem Kit ist die richtige, Punkt. `git checkout` nimmt sie am
+Stück und kann nicht in einen Konflikt laufen.
+
+**Code — alles unter `crates/` und `ui/src/`:**
+
+```bash
 git cherry-pick <sha>
 ```
 
-Ein `merge` wäre der falsche Griff — er zöge die ganze Kit-Geschichte herein.
+Hier hast du eigene Änderungen, hier ist Zusammenführen richtig.
+
+> **Warum die Unterscheidung:** Ein `cherry-pick` auf eine Infrastrukturdatei,
+> die du einmal von Hand angefasst hast, endet im Konflikt. Bleiben die Marker
+> versehentlich in einer Workflow-Datei stehen, ist das YAML ungültig — und
+> GitHub führt den Workflow dann **stillschweigend gar nicht mehr aus**. Der
+> Auslöser scheint kaputt, dabei ist es die Datei. Unter *Actions* erscheint
+> dann ein roter Lauf namens `.github/workflows/…`; das ist das Erkennungs-
+> zeichen.
+
+Ein `merge` wäre in beiden Fällen der falsche Griff — er zöge die ganze
+Kit-Geschichte herein.
 
 ---
 
