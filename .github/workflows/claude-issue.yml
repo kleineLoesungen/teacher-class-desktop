@@ -94,5 +94,6 @@ jobs:
           # Hängt am Abo des Inhabers. Anlegen mit `claude setup-token`,
           # dann unter Settings → Secrets and variables → Actions.
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          show_full_output: 'true'
           # Kein --model: Für das Umsetzen darf das stärkere Modell ran.
           # Die Festlegung auf Sonnet gilt nur den Prüf-Agents.
