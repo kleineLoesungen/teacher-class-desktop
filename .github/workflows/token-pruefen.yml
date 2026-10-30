@@ -1,0 +1,102 @@
+# Prüft den hinterlegten Token — so, wie die Action ihn sieht.
+#
+# Von Hand zu starten: Actions → „token prüfen" → Run workflow.
+#
+# Warum es das gibt: Wird der Token abgelehnt, bricht claude-code-action
+# nach rund zwei Sekunden mit `is_error:true` ab und nennt den Grund NICHT
+# (offene Ausgabe anthropics/claude-code-action#1614). Dahinter stecken
+# Fälle, die gegensätzliche Maßnahmen verlangen — ein ungültiger Token will
+# erneuert werden, ein erschöpftes Kontingent nicht. Dieser Lauf sagt, was
+# davon vorliegt.
+#
+# Der Token selbst wird nie ausgegeben, nur seine Länge und die Antwort des
+# Dienstes.
+#
+# Zwei Aufgaben, die zusammen eine binäre Frage beantworten:
+#
+#   token   — Trägt das Secret auf der Ebene der Programmierschnittstelle?
+#   action  — Kommt der Token auch bei der Claude-CLI im Runner an?
+#
+# „token grün, action rot" heißt: Der Token ist gut, aber die Action reicht
+# ihn nicht durch (`Not logged in · Please run /login`). Dann liegt es nicht
+# an der Einrichtung dieses Projekts.
+name: token prüfen
+
+on:
+  workflow_dispatch:
+
+jobs:
+  pruefen:
+    if: github.event.sender.login == github.repository_owner
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Secret prüfen
+        env:
+          TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error title=Kein Token::CLAUDE_CODE_OAUTH_TOKEN ist nicht gesetzt. Siehe docs/AUTOMATION.md, Schritt 3."
+            exit 1
+          fi
+          echo "Länge: ${#TOKEN} Zeichen"
+
+          if [ "$TOKEN" != "$(printf '%s' "$TOKEN" | tr -d '[:space:]')" ]; then
+            echo "::error title=Token beschädigt::Enthält Leerzeichen oder Zeilenumbrüche — beim Einfügen passiert und im Secret-Feld unsichtbar. Neu einfügen."
+            exit 1
+          fi
+          echo "Keine Leerzeichen enthalten."
+
+          # Die system-Zeile ist nicht schmückend: Ohne sie weist der Dienst
+          # Abo-Token ab, und man misst den falschen Fehler.
+          antwort=$(curl -s -D- -o /dev/null https://api.anthropic.com/v1/messages \
+            -H "authorization: Bearer $TOKEN" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "anthropic-beta: oauth-2025-04-20" \
+            -H "content-type: application/json" \
+            -d '{"model":"claude-sonnet-5","max_tokens":16,
+                 "system":"You are Claude Code, Anthropic'"'"'s official CLI for Claude.",
+                 "messages":[{"role":"user","content":"say OK"}]}')
+
+          echo "--- Antwort des Dienstes ---"
+          printf '%s\n' "$antwort" | grep -iE '^HTTP/|^anthropic-ratelimit-unified-(5h|7d)-(status|utilization)' || true
+          echo "----------------------------"
+
+          status=$(printf '%s' "$antwort" | head -1)
+          case "$status" in
+            *" 200"*)
+              echo "::notice title=Token in Ordnung::Der Token im Secret funktioniert. Scheitert claude trotzdem, liegt es nicht am Token."
+              ;;
+            *" 401"*)
+              echo "::error title=Token abgelehnt::401 — ungültig, abgelaufen oder zurückgezogen. Neu mit 'claude setup-token', Secret ersetzen."
+              exit 1
+              ;;
+            *" 429"*)
+              echo "::error title=Kontingent erschöpft::429 — ein NEUER Token ändert daran nichts. Warten, oder auf anthropic_api_key umstellen."
+              exit 1
+              ;;
+            *)
+              echo "::error title=Unerwartete Antwort::$status"
+              exit 1
+              ;;
+          esac
+
+  # Derselbe Aufruf wie in claude-issue.yml, aber OHNE alles Drumherum:
+  # keine Werkzeugkette, kein Cache, kein Job-env. Läuft das hier und der
+  # große Workflow nicht, liegt es an einem der weggelassenen Schritte.
+  # Scheitert auch dies, liegt es an der Action oder am Konto.
+  action:
+    if: github.event.sender.login == github.repository_owner
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: "Antworte mit genau einem Wort: OK"
+          # Hier dauerhaft an: Der Lauf erzeugt nichts als dieses eine Wort,
+          # es gibt also nichts zu verraten — und ohne den Schalter nennt
+          # die Action den Grund eines Fehlschlags nicht.
+          show_full_output: "true"

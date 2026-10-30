@@ -54,6 +54,21 @@ jobs:
         run: |
           echo "::notice title=Claude übersprungen::Kein CLAUDE_CODE_OAUTH_TOKEN hinterlegt. Einrichtung: docs/AUTOMATION.md"
 
+      # Ein Leerzeichen oder Zeilenumbruch im Secret — beim Einfügen leicht
+      # passiert und im Eingabefeld unsichtbar — lässt den Dienst mit 401
+      # ablehnen. Die Action macht daraus ein nichtssagendes
+      # `is_error:true` nach zwei Sekunden, ohne Grund zu nennen. Lieber
+      # hier eine Zeile Klartext als eine halbe Stunde Suche.
+      - name: Token auf Leerzeichen prüfen
+        if: env.TOKEN_DA == 'true'
+        env:
+          TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          if [ "$TOKEN" != "$(printf '%s' "$TOKEN" | tr -d '[:space:]')" ]; then
+            echo "::error title=Token beschädigt::CLAUDE_CODE_OAUTH_TOKEN enthält Leerzeichen oder Zeilenumbrüche. Secret neu einfügen — siehe docs/AUTOMATION.md."
+            exit 1
+          fi
+
       - uses: actions/checkout@v5
         if: env.TOKEN_DA == 'true'
         with:
@@ -94,6 +109,21 @@ jobs:
           # Hängt am Abo des Inhabers. Anlegen mit `claude setup-token`,
           # dann unter Settings → Secrets and variables → Actions.
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+<<<<<<< HEAD
           show_full_output: 'true'
+=======
+          # NOTSCHALTER FÜR DIE FEHLERSUCHE, standardmäßig aus.
+          #
+          # Scheitert der Lauf mit `is_error:true` nach zwei Sekunden, nennt
+          # die Action den Grund NICHT — er wird erst hiermit sichtbar
+          # (anthropics/claude-code-action#1614). Zünden über die Variable
+          # CLAUDE_DEBUG=true unter Settings → Secrets and variables →
+          # Actions → Variables; danach wieder auf false.
+          #
+          # ACHTUNG in einem öffentlichen Repository: Die volle Ausgabe ist
+          # dann für jeden lesbar, auch Dateiinhalte, die Claude liest.
+          # Deshalb nur anlassbezogen einschalten, nicht dauerhaft.
+          show_full_output: ${{ vars.CLAUDE_DEBUG == 'true' }}
+>>>>>>> a9628e9 (Workflows und Automatisierungsdoku vom Kit übernehmen)
           # Kein --model: Für das Umsetzen darf das stärkere Modell ran.
           # Die Festlegung auf Sonnet gilt nur den Prüf-Agents.
