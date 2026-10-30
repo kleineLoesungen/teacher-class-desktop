@@ -1,0 +1,7 @@
+---
+source: crates/cli/tests/cli.rs
+expression: text
+---
+ID        TITEL    GEÄNDERT
+[id]  Bauplan  [datum]
+[id]  Einkauf  [datum]

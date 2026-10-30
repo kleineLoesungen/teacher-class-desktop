@@ -1,0 +1,84 @@
+# Derselbe Torwächter wie `just check` — auf allen drei Zielsystemen.
+#
+# Das ist das Sicherheitsnetz für Windows und Linux: Entwickelt wird auf
+# macOS, und ein Unterschied, der nur dort nicht auffällt, fiele sonst
+# niemandem auf. Deshalb läuft die Matrix bei jeder Änderung, nicht erst
+# beim Release.
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Ein neuer Push macht den laufenden Durchgang überflüssig.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      # Ohne diese Pakete bricht der Bau unter Linux mit Meldungen über
+      # fehlende .pc-Dateien ab, nicht mit einem Rust-Fehler.
+      - name: Systembibliotheken (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libxdo-dev libssl-dev \
+            libayatana-appindicator3-dev librsvg2-dev
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      # Die Fassung steht in rust-toolchain.toml; rustup liest sie selbst.
+      - run: rustup show
+      - uses: Swatinem/rust-cache@v2
+
+      # Vorgebaute Binärdatei statt `cargo install` — spart Minuten.
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+
+      - run: npm ci
+
+      # Genau die Rezepte, die auch lokal `just check` ausmachen — aber
+      # einzeln, damit in der Übersicht schon am Namen steht, was gestolpert
+      # ist. Auf dem Telefon spart das Aufklappen eines Protokolls.
+      # `deny` fehlt hier mit Absicht — siehe den Job darunter.
+      - name: Formatierung
+        run: just fmt-check
+      - name: Clippy, Biome, tsc
+        run: just lint
+      - name: Tests
+        run: just test
+
+  # Lizenzen und bekannte Lücken hängen nicht am Betriebssystem. Einmal
+  # genügt; dreimal wäre nur dreimal dieselbe Antwort.
+  deny:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just,cargo-deny
+      - run: npm ci
+      - run: just deny

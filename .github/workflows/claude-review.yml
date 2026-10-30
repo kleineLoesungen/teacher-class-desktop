@@ -1,0 +1,78 @@
+# Die drei Prüf-Agents aus .claude/agents/ sehen jeden PR durch.
+#
+# Drei Jobs statt einem: Jeder schreibt einen eigenen, beschrifteten
+# Kommentar — auf dem Telefon getrennt lesbar — und sie laufen nebeneinander.
+#
+# WANN DAS HIER ANLÄUFT: Einen PR, den Claude mit dem GITHUB_TOKEN öffnet,
+# stellt GitHub auf „approval-required". Jemand mit Schreibrecht tippt im PR
+# auf „Approve workflows to run". Das ist der Fingertipp, mit dem der Mensch
+# bewusst zustimmt, dass Prüfung und Bau auf KI-geschriebenem Code loslaufen.
+name: durchsicht
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pruefen:
+    # Entwürfe sind noch nicht fertig. Forks haben keinen Zugriff auf die
+    # Secrets — dort scheiterte der Lauf nur verwirrend.
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        agent: [architektur, dokumentation, sicherheit]
+    # Das Kit selbst hat keinen Token — der gehört in das abgeleitete
+    # Projekt, nicht in ein Template. Ohne ihn wird übersprungen statt rot.
+    env:
+      TOKEN_DA: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+    steps:
+      - name: Ohne Token übersprungen
+        if: env.TOKEN_DA != 'true'
+        run: |
+          echo "::notice title=Durchsicht übersprungen::Kein CLAUDE_CODE_OAUTH_TOKEN hinterlegt. Einrichtung: docs/AUTOMATION.md"
+
+      - uses: actions/checkout@v5
+        if: env.TOKEN_DA == 'true'
+        with:
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@v1
+        if: env.TOKEN_DA == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Nur lesen und einen Kommentar schreiben. Kein Bearbeiten, kein
+          # Schreiben ins Verwaltungssystem — eine Durchsicht ändert nichts.
+          claude_args: >-
+            --model sonnet
+            --allowedTools "Read,Glob,Grep,Bash(git diff:*),Bash(git log:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*)"
+          prompt: |
+            Lies `.claude/agents/${{ matrix.agent }}.md` und arbeite genau nach
+            den Anweisungen darin. Die Prüfliste dort ist verbindlich; alles,
+            was sie ausdrücklich ausnimmt, meldest du nicht.
+
+            Den zu prüfenden Diff holst du mit:
+              gh pr diff ${{ github.event.pull_request.number }}
+
+            Lies `CLAUDE.md`, bevor du urteilst — sie ist der Maßstab.
+
+            Schreibe dein Ergebnis als GENAU EINEN Kommentar an den Pull Request:
+              gh pr comment ${{ github.event.pull_request.number }} --body "..."
+
+            Halte dich an die Überschrift und die drei möglichen Urteile aus
+            der Agent-Datei. Wenn nichts zu beanstanden ist, ist „in Ordnung"
+            mit einem Satz die richtige und erwünschte Antwort — erfinde
+            nichts dazu.

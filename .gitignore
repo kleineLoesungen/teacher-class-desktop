@@ -1,0 +1,10 @@
+/target
+/dist
+/.local
+node_modules/
+/ui/dist
+# Von tauri-build bei jedem Bau neu erzeugt.
+/crates/desktop/gen/schemas
+*.profraw
+*.tsbuildinfo
+.DS_Store

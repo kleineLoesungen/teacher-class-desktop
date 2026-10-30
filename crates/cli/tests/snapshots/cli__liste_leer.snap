@@ -1,0 +1,5 @@
+---
+source: crates/cli/tests/cli.rs
+expression: text
+---
+Keine Notizen. Anlegen mit:  starter note add "Titel"

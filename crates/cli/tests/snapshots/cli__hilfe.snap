@@ -1,0 +1,40 @@
+---
+source: crates/cli/tests/cli.rs
+expression: text
+---
+Verwaltet Notizen. Dieselbe Fachlogik bedient die Oberfläche `starter-desktop`.
+
+Usage: starter [OPTIONS] <COMMAND>
+
+Commands:
+  note         Notizen verwalten
+  config       Einstellungen anzeigen und ändern
+  paths        Zeigt, wo die Anwendung ihre Dateien ablegt
+  completions  Vervollständigung für die Shell ausgeben
+  man          Handbuchseiten nach VERZEICHNIS schreiben
+  help         Print this message or the help of the given subcommand(s)
+
+Options:
+      --json
+          Ausgabe als JSON statt für Menschen.
+          
+          Gilt auch für Fehler: dann steht auf stderr ein JSON-Objekt mit `error.code`, `error.message` und gegebenenfalls `error.fields`.
+
+  -v, --verbose...
+          Mehr Protokoll auf stderr. Zweimal für noch mehr
+
+      --data-dir <VERZEICHNIS>
+          Datenverzeichnis überschreiben (sonst der Ort der Plattform)
+          
+          [env: STARTER_DATA_DIR=]
+
+      --config-dir <VERZEICHNIS>
+          Konfigurationsverzeichnis überschreiben
+          
+          [env: STARTER_CONFIG_DIR=]
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version

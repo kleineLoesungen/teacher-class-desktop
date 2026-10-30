@@ -1,0 +1,16 @@
+---
+source: crates/cli/tests/cli.rs
+expression: text
+---
+{
+  "error": {
+    "code": "validation_failed",
+    "fields": [
+      {
+        "field": "title",
+        "message": "darf nicht leer sein"
+      }
+    ],
+    "message": "title: darf nicht leer sein"
+  }
+}

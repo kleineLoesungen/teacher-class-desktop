@@ -1,0 +1,41 @@
+[package]
+name = "starter-desktop"
+description = "Desktop-Schale mit Tauri. Dünn — nimmt IPC-Befehle an, ruft core, gibt JSON zurück."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+# Die Bibliothek trägt die ganze Schale, main.rs ruft nur `run()`. So können
+# die Tests in tests/ denselben Builder mit der Attrappe von Tauri benutzen.
+[lib]
+name = "starter_desktop"
+path = "src/lib.rs"
+
+[[bin]]
+name = "starter-desktop"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[build-dependencies]
+tauri-build.workspace = true
+
+[dependencies]
+starter-core = { path = "../core" }
+serde.workspace = true
+serde_json.workspace = true
+tauri.workspace = true
+tauri-plugin-opener.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+ts-rs.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+# `test` bringt tauri::test mit: eine Laufzeit ohne Fenster, gegen die sich
+# IPC-Aufrufe genauso absetzen lassen wie aus dem Webview.
+tauri = { workspace = true, features = ["test"] }
+tempfile.workspace = true

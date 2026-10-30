@@ -1,0 +1,98 @@
+# Entwicklung über Issues: Issue schreiben, Claude setzt um, PR kommt zurück.
+#
+# Gedacht für die Bedienung vom Telefon. Der ganze Ablauf steht in
+# docs/AUTOMATION.md.
+#
+# ╭─────────────────────────────────────────────────────────────────────╮
+# │ ZWEI SCHLÖSSER, BEIDE MÜSSEN AUFGEHEN                               │
+# │                                                                     │
+# │ 1. Der Kommentar kommt vom Repo-Inhaber (die `if`-Bedingung unten)  │
+# │ 2. Er enthält @claude (das Auslösewort der Action)                  │
+# │                                                                     │
+# │ Dazu kommt die Voreinstellung der Action selbst: Sie verlangt       │
+# │ Schreibrecht am Repository. `allowed_non_write_users` wird hier      │
+# │ NICHT gesetzt — in einem öffentlichen Repo könnte sonst jeder       │
+# │ Fremde Claude mit selbst geschriebenem Auftrag starten, auf Kosten  │
+# │ des Abos des Inhabers.                                              │
+# ╰─────────────────────────────────────────────────────────────────────╯
+name: claude
+
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+
+jobs:
+  claude:
+    # `github.event.comment.body` ist bei einem neu geöffneten Issue leer;
+    # dann greift `github.event.issue.body`.
+    #
+    # ACHTUNG bei einem Repository unter einer ORGANISATION: Dort ist
+    # `github.repository_owner` der Name der Organisation, `sender.login`
+    # aber der einer Person — die Bedingung ginge nie auf. Dann hier den
+    # eigenen Benutzernamen eintragen, etwa:
+    #   github.event.sender.login == 'deinname' &&
+    if: >-
+      github.event.sender.login == github.repository_owner &&
+      contains(github.event.comment.body || github.event.issue.body, '@claude')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      # Die Action braucht das auch mit eigenem Token.
+      id-token: write
+    # Das Kit selbst hat keinen Token — der gehört in das abgeleitete
+    # Projekt, nicht in ein Template. Ohne ihn sagt der Lauf, was fehlt,
+    # statt die halbe Werkzeugkette für nichts zu installieren.
+    env:
+      TOKEN_DA: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+    steps:
+      - name: Ohne Token übersprungen
+        if: env.TOKEN_DA != 'true'
+        run: |
+          echo "::notice title=Claude übersprungen::Kein CLAUDE_CODE_OAUTH_TOKEN hinterlegt. Einrichtung: docs/AUTOMATION.md"
+
+      - uses: actions/checkout@v5
+        if: env.TOKEN_DA == 'true'
+        with:
+          # Volle Historie, damit Claude Vorgeschichte lesen kann.
+          fetch-depth: 0
+
+      # Die Werkzeugkette kommt mit, damit Claude `just check` laufen
+      # lassen kann, BEVOR es einen PR öffnet. Ohne das schriebe es blind
+      # und der Fehler käme erst eine Runde später zurück — teuer, wenn
+      # man am Telefon sitzt.
+      - name: Systembibliotheken
+        if: env.TOKEN_DA == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libxdo-dev libssl-dev \
+            libayatana-appindicator3-dev librsvg2-dev
+
+      - uses: actions/setup-node@v5
+        if: env.TOKEN_DA == 'true'
+        with:
+          node-version: 22
+          cache: npm
+      - run: rustup show
+        if: env.TOKEN_DA == 'true'
+      - uses: Swatinem/rust-cache@v2
+        if: env.TOKEN_DA == 'true'
+      - uses: taiki-e/install-action@v2
+        if: env.TOKEN_DA == 'true'
+        with:
+          tool: just,cargo-deny
+      - run: npm ci
+        if: env.TOKEN_DA == 'true'
+
+      - uses: anthropics/claude-code-action@v1
+        if: env.TOKEN_DA == 'true'
+        with:
+          # Hängt am Abo des Inhabers. Anlegen mit `claude setup-token`,
+          # dann unter Settings → Secrets and variables → Actions.
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Kein --model: Für das Umsetzen darf das stärkere Modell ran.
+          # Die Festlegung auf Sonnet gilt nur den Prüf-Agents.

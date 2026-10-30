@@ -1,0 +1,484 @@
+/*
+ * Aufbau und Abstände. KEINE Farben — nur var(--…) aus theme.css.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  /* Eine Desktop-Anwendung, keine Webseite: kein Gummiband-Scrollen am Rand. */
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Oberflächentexte sind nicht markierbar, Inhalte schon. */
+.sidebar,
+.editor-head,
+button {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+code,
+pre,
+textarea.body-input {
+  font-family: var(--font-mono);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+/* --- Bedienelemente ------------------------------------------------------ */
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: var(--space-1) var(--space-3);
+  cursor: default;
+}
+
+button:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+button:disabled {
+  opacity: 0.5;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+button.primary:hover:not(:disabled) {
+  background: var(--accent);
+  filter: brightness(1.08);
+}
+
+button.ghost {
+  border-color: transparent;
+  background: transparent;
+}
+
+button.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--surface);
+}
+
+input,
+select,
+textarea {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: var(--space-1) var(--space-2);
+}
+
+input[type="color"] {
+  padding: 0;
+  width: 36px;
+  height: 30px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.field-message {
+  color: var(--danger);
+  margin: var(--space-1) 0 0;
+  font-size: 12px;
+}
+
+/* --- Rahmen ---------------------------------------------------------------- */
+
+.app {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  height: 100%;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.brand {
+  font-weight: 600;
+  padding: var(--space-3) var(--space-4) 0;
+}
+
+.note-nav {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.sidebar-head {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+
+.sidebar-head select {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-empty {
+  padding: 0 var(--space-4);
+}
+
+.settings-button {
+  margin: var(--space-2);
+  text-align: left;
+}
+
+.note-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 var(--space-2);
+  overflow-y: auto;
+  flex: 1;
+}
+
+.note-item {
+  display: grid;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: 2px;
+}
+
+.note-item[aria-current="true"] {
+  background: var(--surface-2);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.note-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-excerpt,
+.note-date {
+  color: var(--muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-bottom: 1px solid var(--border);
+}
+
+.empty {
+  margin: auto;
+  max-width: 460px;
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+}
+
+.empty .actions {
+  justify-content: center;
+}
+
+/* --- Editor ---------------------------------------------------------------- */
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.editor-head {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.title-input {
+  width: 100%;
+  font-size: 18px;
+  font-weight: 600;
+  border-color: transparent;
+  background: transparent;
+}
+
+.segmented {
+  display: flex;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.segmented button {
+  border-radius: 0;
+  margin-left: -1px;
+}
+
+.segmented button:first-of-type {
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.segmented button:last-of-type {
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.segmented button[aria-pressed="true"] {
+  background: var(--surface-2);
+  font-weight: 600;
+}
+
+.editor-body {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+}
+
+.editor-body.mode-split {
+  grid-template-columns: 1fr 1fr;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.body-input {
+  flex: 1;
+  resize: none;
+  border: none;
+  border-radius: 0;
+  padding: var(--space-4);
+  background: var(--surface);
+  line-height: 1.6;
+}
+
+.mode-split .body-input {
+  border-right: 1px solid var(--border);
+}
+
+.preview {
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-6);
+}
+
+/* --- Markdown ------------------------------------------------------------- */
+
+.markdown {
+  max-width: 760px;
+  user-select: text;
+}
+
+.markdown :is(h1, h2, h3) {
+  line-height: 1.25;
+  margin: 1.2em 0 0.5em;
+}
+
+.markdown > :first-child {
+  margin-top: 0;
+}
+
+.markdown code {
+  background: var(--code-bg);
+  border-radius: 4px;
+  padding: 0.1em 0.3em;
+  font-size: 0.92em;
+}
+
+.markdown pre {
+  background: var(--code-bg);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  overflow-x: auto;
+}
+
+.markdown pre code {
+  background: none;
+  padding: 0;
+}
+
+.markdown a {
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.markdown blockquote {
+  margin-left: 0;
+  padding-left: var(--space-3);
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+}
+
+.markdown table {
+  border-collapse: collapse;
+}
+
+.markdown :is(th, td) {
+  border: 1px solid var(--border);
+  padding: var(--space-1) var(--space-2);
+}
+
+.markdown img {
+  max-width: 100%;
+}
+
+.diagram {
+  margin: var(--space-4) 0;
+  text-align: center;
+}
+
+.diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.diagram-error {
+  text-align: left;
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* --- Dialoge --------------------------------------------------------------- */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--bg) 60%, transparent);
+}
+
+.dialog {
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: var(--space-6);
+}
+
+.dialog h2 {
+  margin: 0 0 var(--space-4);
+  font-size: 16px;
+}
+
+.form {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.form label {
+  display: grid;
+  gap: var(--space-1);
+  font-weight: 500;
+}
+
+.info {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-4) 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.info dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  user-select: text;
+}

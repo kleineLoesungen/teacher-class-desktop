@@ -1,0 +1,52 @@
+# Prüft die Abhängigkeiten auf bekannte Sicherheitslücken und auf Lizenzen,
+# die wir nicht weitergeben dürfen. Läuft in `just check`.
+
+[advisories]
+# Eine Kiste ohne Betreuer ist kein Grund, den Bau abzubrechen — aber einer,
+# es zu wissen.
+unmaintained = "workspace"
+# Unsoundness in den EIGENEN Abhängigkeiten bricht den Bau. Tiefer im Baum
+# bewusst nicht: Dort stecken heute zwei (glib über Tauris GTK-Stack unter
+# Linux, tokio über AsyncFd), die sich von hier aus nicht auflösen lassen.
+# Auf "all" zu stellen hieße, zwei dauerhafte Ausnahmen einzutragen, die
+# niemand je wieder ansieht — das erzieht zum gedankenlosen Ignorieren.
+#
+# Beides sind Unsoundness-Meldungen, keine ausnutzbaren Lücken. Echte
+# Sicherheitslücken brechen den Bau IMMER, auch transitiv.
+unsound = "workspace"
+yanked = "deny"
+
+[licenses]
+# Erlaubt ist, was sich ohne Auflagen weitergeben lässt. Wer eine Abhängigkeit
+# mit einer anderen Lizenz braucht, trägt sie hier bewusst ein — und schreibt
+# dazu, warum.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "MPL-2.0",
+    "Unlicense",
+    "BSL-1.0",
+    "OFL-1.1",
+    "Ubuntu-font-1.0",
+]
+confidence-threshold = 0.9
+
+[bans]
+# Zwei Fassungen derselben Kiste im Baum sind bei egui/winit normal und kein
+# Grund, den Bau anzuhalten. Wenn es weh tut, zeigt `just dupes`, wo.
+multiple-versions = "allow"
+# Eine Abhängigkeit ohne Fassungsangabe ist ein Fehler — außer bei den
+# Pfadabhängigkeiten innerhalb dieses Arbeitsbereichs. Die haben keine eigene
+# Fassung, weil sie nie veröffentlicht werden.
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

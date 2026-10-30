@@ -1,0 +1,78 @@
+/*
+ * Gestaltungsmarken — die EINZIGE Datei mit Farben.
+ *
+ * crates/core/tests/layering.rs schlägt an, sobald anderswo in ui/src eine
+ * Hexfarbe oder rgb() steht. Wer eine neue Farbe braucht, legt hier eine
+ * Variable an — für hell UND dunkel.
+ *
+ * Umgeschaltet wird über Attribute am <html>, gesetzt in lib/theme.ts:
+ *   data-theme="system|light|dark"   aus config.toml
+ *   data-accent-light="true|false"   ob die Akzentfarbe dunkle Schrift braucht
+ *   --accent                         die Akzentfarbe selbst
+ */
+
+:root {
+  /* Voreinstellung, bis die Einstellungen aus Rust da sind. Dieselbe Farbe
+     wie Config::default() und assets/icon.svg. */
+  --accent: #3b6ea5;
+  --on-accent: #ffffff;
+
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Ubuntu, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, "DejaVu Sans Mono", monospace;
+
+  --radius: 6px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+
+  color-scheme: light;
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --surface-2: #f0f1f3;
+  --border: #dcdfe4;
+  --text: #1d1f23;
+  --muted: #6a6f78;
+  --danger: #b3261e;
+  --danger-bg: #fdecea;
+  --code-bg: #f3f4f6;
+  --shadow: 0 8px 30px #0000002e;
+}
+
+/* Hell ist die Grundfassung. Dunkel entweder ausdrücklich … */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #17181b;
+  --surface: #1f2024;
+  --surface-2: #2a2c31;
+  --border: #383b42;
+  --text: #e6e7ea;
+  --muted: #9a9fa8;
+  --danger: #f2b8b5;
+  --danger-bg: #3a1d1b;
+  --code-bg: #2a2c31;
+  --shadow: 0 8px 30px #00000080;
+}
+
+/* … oder weil das System dunkel ist und die Einstellung "system" lautet. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #17181b;
+    --surface: #1f2024;
+    --surface-2: #2a2c31;
+    --border: #383b42;
+    --text: #e6e7ea;
+    --muted: #9a9fa8;
+    --danger: #f2b8b5;
+    --danger-bg: #3a1d1b;
+    --code-bg: #2a2c31;
+    --shadow: 0 8px 30px #00000080;
+  }
+}
+
+/* Schrift auf der Akzentfarbe: berechnet, nicht festgelegt. */
+:root[data-accent-light="true"] {
+  --on-accent: #111111;
+}

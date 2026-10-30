@@ -1,0 +1,5 @@
+---
+source: crates/cli/tests/cli.rs
+expression: text
+---
+Fehler: title: darf nicht leer sein

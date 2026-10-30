@@ -1,0 +1,81 @@
+# Arbeitsbereich mit drei Kisten und einer Weboberfläche. Die Schichtregel
+# steht in CLAUDE.md:
+#
+#   core     →  Fachlogik. Kennt WEDER clap NOCH tauri NOCH stdout.
+#   cli      →  dünn. Argumente parsen, core rufen, Ausgabe formatieren.
+#   desktop  →  dünn. Tauri-Befehle annehmen, core rufen, Ergebnis als JSON.
+#   ui/      →  TypeScript im Webview. Zeichnet, fragt über IPC.
+#
+# Bewacht wird sie von crates/core/tests/layering.rs.
+
+[workspace]
+resolver = "3"
+members = ["crates/core", "crates/cli", "crates/desktop"]
+
+[workspace.package]
+version = "0.1.1"
+# Dieses Kit wird nicht auf crates.io veröffentlicht. Der Eintrag ist nicht nur
+# Vorsicht: ohne ihn hält `cargo deny` die Pfadabhängigkeiten im Arbeitsbereich
+# für Abhängigkeiten ohne Fassungsangabe und bricht ab.
+publish = false
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/kleineLoesungen/vibe-starter-tauri"
+
+# Alle Versionen stehen hier, nur hier. Begründungen in CLAUDE.md.
+#
+# Die Kisten dieses Arbeitsbereichs stehen NICHT hier: `cargo deny` kann eine
+# geerbte Pfadabhängigkeit nicht auflösen und hält sie für eine Abhängigkeit
+# ohne Fassungsangabe. Sie stehen deshalb direkt in crates/*/Cargo.toml.
+[workspace.dependencies]
+anyhow = "1.0.104"
+thiserror = "2.0.20"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+toml = "1.1.6"
+directories = "6.0.0"
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+rusqlite_migration = "2.6.0"
+uuid = { version = "1", features = ["v7", "serde"] }
+time = { version = "0.3", features = ["formatting", "parsing", "macros", "local-offset"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+
+# TypeScript-Typen aus den Rust-Typen. Siehe CLAUDE.md, „Die IPC-Grenze".
+ts-rs = { version = "12.0.1", features = ["uuid-impl", "no-serde-warnings"] }
+
+clap = { version = "4.6.7", features = ["derive", "env", "string"] }
+clap_complete = "4.6.10"
+clap_mangen = "0.3.3"
+
+tauri = { version = "2.12.5", features = [] }
+tauri-build = { version = "2.7.4", features = [] }
+tauri-plugin-opener = "2.7.2"
+
+# Nur für Tests.
+assert_cmd = "2.2.2"
+insta = { version = "1.48.0", features = ["json", "filters"] }
+predicates = "3"
+tempfile = "3"
+
+# Regeln, die für alle Kisten gelten. `just check` macht Warnungen zu Fehlern,
+# damit sie nicht liegen bleiben.
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused_qualifications = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+# dbg! ist zum Wegwerfen. Eingecheckt gehört es nie.
+dbg_macro = "deny"
+todo = "warn"
+unimplemented = "warn"
+
+# Ein Release-Binary soll klein und schnell sein. Debug-Symbole fliegen raus,
+# ein einzelner Codegen-Block erlaubt dem Compiler mehr Optimierung.
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+panic = "abort"

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+  Das Windows-Anwendungsmanifest. Inhaltlich dasselbe, das tauri-build sonst
+  selbst einbettet — hier liegt es als eigene Datei, damit build.rs es an
+  JEDES Ziel hängen kann und nicht nur an das Programm. Warum das nötig ist,
+  steht in crates/desktop/build.rs.
+
+  Ohne den Eintrag lädt Windows Common Controls in Fassung 5. Die kennt
+  TaskDialogIndirect nicht, das die Dialoge von Tauri brauchen — der Prozess
+  stirbt beim Laden, bevor eine Zeile Code läuft.
+-->
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity
+        type="win32"
+        name="Microsoft.Windows.Common-Controls"
+        version="6.0.0.0"
+        processorArchitecture="*"
+        publicKeyToken="6595b64144ccf1df"
+        language="*"
+      />
+    </dependentAssembly>
+  </dependency>
+</assembly>

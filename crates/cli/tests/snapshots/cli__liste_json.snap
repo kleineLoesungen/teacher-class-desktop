@@ -1,0 +1,20 @@
+---
+source: crates/cli/tests/cli.rs
+expression: text
+---
+[
+  {
+    "id": "[uuid]",
+    "title": "Bauplan",
+    "body": "Regal",
+    "created_at": "[zeit]",
+    "updated_at": "[zeit]"
+  },
+  {
+    "id": "[uuid]",
+    "title": "Einkauf",
+    "body": "Milch, Brot",
+    "created_at": "[zeit]",
+    "updated_at": "[zeit]"
+  }
+]

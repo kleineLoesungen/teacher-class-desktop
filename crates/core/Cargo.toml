@@ -1,0 +1,27 @@
+[package]
+name = "starter-core"
+description = "Fachlogik des Kits. Kennt weder Kommandozeile noch Oberfläche."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+thiserror.workspace = true
+serde.workspace = true
+toml.workspace = true
+directories.workspace = true
+rusqlite.workspace = true
+rusqlite_migration.workspace = true
+uuid.workspace = true
+time.workspace = true
+tracing.workspace = true
+ts-rs.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+tempfile.workspace = true

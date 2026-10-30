@@ -1,0 +1,88 @@
+# Baut die Auslieferungsdateien, sobald ein Tag v* geschoben wird.
+#
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# Gebaut wird immer AUF dem Zielsystem — WiX (.msi) läuft nur auf Windows,
+# ein .dmg nur auf macOS. Deshalb drei Runner und keine Kreuzübersetzung.
+#
+# Das Ergebnis ist ein RELEASE-ENTWURF. Veröffentlicht wird von Hand, nach
+# einem Blick auf die Dateien. Zum Signieren siehe docs/RELEASE.md.
+#
+# Hier läuft BEWUSST `just`, nicht `tauri-action`: Genau die Rezepte, die
+# auch auf dem eigenen Rechner laufen. Die Zwischenschicht hatte beim ersten
+# Versuch ein zweites `--` in den Aufruf gesetzt; damit ging
+# `--target universal-apple-darwin` an cargo statt an Tauri, das das
+# Pseudoziel als einziges kennt. Ein Fehler, den man lokal nie sieht.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  bundle:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            recipe: bundle-macos-universal
+          # Älteste unterstützte glibc: ein Binary von einer neueren
+          # Distribution startet auf einer älteren nicht.
+          - os: ubuntu-22.04
+            recipe: bundle
+          - os: windows-2022
+            recipe: bundle
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Systembibliotheken (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libxdo-dev libssl-dev \
+            libayatana-appindicator3-dev librsvg2-dev
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: rustup show
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - run: npm ci
+
+      # Ohne Finder-Zugriff hängt bundle_dmg.sh beim Gestalten des Fensters.
+      # Auf Runnern ist CI ohnehin gesetzt; hier steht es, damit der Grund
+      # dokumentiert ist.
+      - name: Bündeln
+        run: just ${{ matrix.recipe }}
+        env:
+          CI: true
+
+      # Die Kommandozeile kommt nicht ins Desktop-Bündel (Tauri verlangte
+      # dafür einen „Sidecar" mit Zielplattform im Namen) — deshalb daneben
+      # als eigener Tarball, je System einer.
+      - name: Kommandozeile packen
+        run: node scripts/package-cli.mjs
+
+      # Jedes System trifft nur seine eigenen Muster; die übrigen bleiben
+      # leer und werden stillschweigend übergangen.
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          draft: true
+          files: |
+            target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            target/release/bundle/deb/*.deb
+            target/release/bundle/appimage/*.AppImage
+            target/release/bundle/msi/*.msi
+            target/release/bundle/nsis/*-setup.exe
+            dist/*.tar.gz

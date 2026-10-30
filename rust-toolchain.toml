@@ -1,0 +1,10 @@
+# Festgenagelt, damit alle Beteiligten — Mensch und KI — denselben Compiler
+# benutzen. Ein Upgrade ist eine bewusste Entscheidung, kein Nebeneffekt.
+#
+# Hier stehen bewusst KEINE `targets`. Ein Eintrag dort gilt für jeden
+# Rechner: Ein Linux- oder Windows-Rechner lüde dann zwei Apple-Bibliotheken
+# herunter, die er nie benutzt. Das Universal-Bündel für macOS holt sich seine
+# Ziele selbst — siehe `bundle-macos-universal` im Justfile.
+[toolchain]
+channel = "1.98.1"
+components = ["rustfmt", "clippy"]
