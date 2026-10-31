@@ -1,0 +1,20 @@
+---
+source: crates/cli/tests/cli.rs
+expression: text
+---
+[
+  {
+    "id": "[uuid]",
+    "name": "7a",
+    "year": 2025,
+    "student_count": 3,
+    "created_at": "[zeit]"
+  },
+  {
+    "id": "[uuid]",
+    "name": "8b",
+    "year": 2024,
+    "student_count": 0,
+    "created_at": "[zeit]"
+  }
+]

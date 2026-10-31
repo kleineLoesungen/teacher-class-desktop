@@ -1,0 +1,7 @@
+---
+source: crates/cli/tests/cli.rs
+expression: text
+---
+ID        KLASSE     SCHÜLER
+[id]  7a (2025)  3
+[id]  8b (2024)  0

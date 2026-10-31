@@ -1,0 +1,5 @@
+---
+source: crates/cli/tests/cli.rs
+expression: text
+---
+Fehler: name: darf nur Buchstaben und Zahlen enthalten

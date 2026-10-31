@@ -4,5 +4,7 @@
 //! Ergebnis an [`crate::output::Out`] geben. **Keine fachliche Regel.** Eine
 //! Prüfung, die hier steht, fehlt der Oberfläche.
 
+pub mod class;
 pub mod config;
-pub mod note;
+pub mod confirm;
+pub mod student;

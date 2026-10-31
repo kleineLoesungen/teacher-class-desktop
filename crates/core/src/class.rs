@@ -24,6 +24,7 @@ pub struct Class {
     pub name: String,
     pub year: i32,
     /// Wie viele Schüler in der Klasse sind.
+    #[ts(type = "number")]
     pub student_count: i64,
     #[serde(with = "crate::timestamp::serde_rfc3339")]
     #[ts(type = "string")]
