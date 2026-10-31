@@ -17,7 +17,7 @@
 use serde::Serialize;
 use tauri::State;
 use teacher_class_core::class::{self, Class, ClassInput};
-use teacher_class_core::exam::{self, Exam, ExamInput};
+use teacher_class_core::exam::{self, Exam, ExamInput, Preview};
 use teacher_class_core::export;
 use teacher_class_core::grading::{self, ScoreInput, StudentResult};
 use teacher_class_core::student::{self, Student, StudentInput};
@@ -110,6 +110,13 @@ pub async fn exam_update(
     input: ExamInput,
 ) -> ApiResult<Exam> {
     state.with(|app| exam::update(app.conn(), id, input))
+}
+
+/// Rechnet einen ungespeicherten Entwurf durch (Gruppensummen, Gesamtpunkte,
+/// „bis“ der Noten). Prüft nichts und schreibt nichts.
+#[tauri::command]
+pub async fn exam_preview(input: ExamInput) -> ApiResult<Preview> {
+    Ok(exam::preview(&input))
 }
 
 #[tauri::command]

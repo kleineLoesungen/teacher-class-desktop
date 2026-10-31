@@ -288,3 +288,62 @@ fn die_liste_zeigt_die_neueste_zuerst() {
     let ids: Vec<_> = exam::list(&conn).unwrap().iter().map(|e| e.id).collect();
     assert_eq!(ids, [second.id, first.id]);
 }
+
+// --- Vorschau: rechnen, ohne zu prüfen oder zu speichern -------------------
+
+#[test]
+fn die_vorschau_rechnet_summen_und_bis_wie_das_speichern() {
+    let conn = db::open_in_memory().unwrap();
+    let c = klasse(&conn, "7a");
+    let input = beispiel(vec![c]);
+    let preview = exam::preview(&input);
+    let gespeichert = exam::create(&conn, input).unwrap();
+
+    assert_eq!(preview.max_points, gespeichert.max_points);
+    assert_eq!(
+        preview.group_max_points,
+        gespeichert
+            .groups
+            .iter()
+            .map(|g| g.max_points)
+            .collect::<Vec<_>>()
+    );
+    // Gespeichert ist aufsteigend (6, 3, 1), die Vorschau bleibt in Eingabereihenfolge (1, 3, 6).
+    assert_eq!(
+        preview.grade_to_points,
+        vec![Some(20.0), Some(16.5), Some(9.5)]
+    );
+}
+
+#[test]
+fn die_vorschau_funktioniert_mit_halbfertigem_entwurf() {
+    let input = ExamInput {
+        groups: vec![GroupInput {
+            name: String::new(),
+            // -1 ist, was die Oberfläche für Unlesbares schickt.
+            items: vec![item("a", 4.0), item("b", -1.0), item("c", 2.5)],
+        }],
+        grades: vec![grade("1", 5.0), grade("6", 0.0), grade("2", -1.0)],
+        ..Default::default()
+    };
+    let preview = exam::preview(&input);
+    assert_eq!(preview.group_max_points, vec![6.5]);
+    assert_eq!(preview.max_points, 6.5);
+    assert_eq!(preview.grade_to_points, vec![Some(6.5), Some(4.5), None]);
+}
+
+#[test]
+fn die_vorschau_laesst_doppelte_ab_werte_offen() {
+    let input = ExamInput {
+        groups: vec![GroupInput {
+            name: "A".into(),
+            items: vec![item("a", 10.0)],
+        }],
+        grades: vec![grade("1", 5.0), grade("2", 5.0), grade("6", 0.0)],
+        ..Default::default()
+    };
+    assert_eq!(
+        exam::preview(&input).grade_to_points,
+        vec![None, None, Some(4.5)]
+    );
+}

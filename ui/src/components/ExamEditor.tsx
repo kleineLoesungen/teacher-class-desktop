@@ -2,19 +2,19 @@
 //
 // Zeichnet nur. Der Entwurf gehört App.tsx. Ob etwas gültig ist, entscheidet
 // Rust — die Meldungen kommen von dort. Das gilt auch für die berechneten
-// Werte: Höchstpunktzahlen und das „bis“ der Noten rechnet Rust, sie werden
-// aus dem gespeicherten Stand angezeigt (`exam`) und erst nach dem Speichern
-// aktualisiert. Solange der Entwurf geändert ist, steht dort ein Strich.
+// Werte: Höchstpunktzahlen und das „bis“ der Noten rechnet Rust. Sie kommen
+// als Vorschau (`preview`) zum Entwurf und ziehen beim Tippen nach, ohne dass
+// gespeichert werden muss. Fehlt ein Wert (noch nicht gerechnet), steht ein Strich.
 
-import type { Class, Exam } from "../bindings";
+import type { Class, Preview } from "../bindings";
 import { type ExamDraft, emptyItemDraft, formatPoints } from "../lib/exam";
 import { classLabel } from "../lib/format";
 import { FieldMessage } from "./FieldMessage";
 
 type Props = {
   draft: ExamDraft;
-  /** Der gespeicherte Stand; `null` bei einer neuen Prüfung. */
-  exam: Exam | null;
+  /** Von Rust berechnete Werte des Entwurfs; `null`, solange keine da sind. */
+  preview: Preview | null;
   classes: Class[];
   isNew: boolean;
   dirty: boolean;
@@ -41,9 +41,7 @@ function Messages({ id, messages }: { id: string; messages: string[] }) {
 }
 
 export function ExamEditor(props: Props) {
-  const { draft, exam, classes, isNew, dirty, saving, fieldMessages, onChange } = props;
-  // Berechnete Werte gelten nur, solange der Entwurf dem Gespeicherten entspricht.
-  const computed = exam !== null && !dirty ? exam : null;
+  const { draft, preview, classes, isNew, dirty, saving, fieldMessages, onChange } = props;
   const dash = "–";
 
   const nameError = fieldMessages("name")[0];
@@ -122,7 +120,7 @@ export function ExamEditor(props: Props) {
         </p>
         {draft.groups.map((group, gi) => {
           const g = gi + 1;
-          const saved = computed?.groups[gi];
+          const sum = preview?.group_max_points[gi];
           return (
             // biome-ignore lint/suspicious/noArrayIndexKey: Gruppen haben keine Kennung, nur eine Stelle
             <div key={gi} className="group-card">
@@ -135,7 +133,7 @@ export function ExamEditor(props: Props) {
                   onChange={(e) => setGroup(gi, { ...group, name: e.target.value })}
                 />
                 <span className="muted points-sum">
-                  max. {saved ? formatPoints(saved.max_points) : dash}
+                  max. {sum !== undefined ? formatPoints(sum) : dash}
                 </span>
                 <button
                   type="button"
@@ -235,7 +233,7 @@ export function ExamEditor(props: Props) {
             Gruppe hinzufügen
           </button>
           <span className="muted">
-            Gesamtpunkte: {computed ? formatPoints(computed.max_points) : dash}
+            Gesamtpunkte: {preview ? formatPoints(preview.max_points) : dash}
           </span>
         </div>
         <Messages id="groups-error" messages={fieldMessages("groups")} />
@@ -272,8 +270,7 @@ export function ExamEditor(props: Props) {
           <tbody>
             {draft.grades.map((grade, ni) => {
               const n = ni + 1;
-              // Nur ohne Änderungen am Entwurf — dann liegen beide in Rusts Reihenfolge.
-              const saved = computed?.grades[ni];
+              const to = preview?.grade_to_points[ni];
               return (
                 // biome-ignore lint/suspicious/noArrayIndexKey: Noten haben keine Kennung, nur eine Stelle
                 <tr key={ni}>
@@ -293,7 +290,7 @@ export function ExamEditor(props: Props) {
                       onChange={(e) => setGrade(ni, { ...grade, from: e.target.value })}
                     />
                   </td>
-                  <td className="muted">{saved ? formatPoints(saved.to_points) : dash}</td>
+                  <td className="muted">{to != null ? formatPoints(to) : dash}</td>
                   <td>
                     <button
                       type="button"

@@ -29,8 +29,11 @@ Regeln, die sich bewährt haben:
   `row_col_to_cell`. Sonst verschiebt eine neue Spalte stillschweigend alle
   Formeln dahinter.
 * **Kacheln drucken:** Seitenumbrüche vor jeder Kachel (`set_page_breaks`) und
-  ein fester Druckmaßstab (`set_print_scale`). Mit „auf Seiten anpassen“
-  ignoriert Excel manuelle Umbrüche.
+  ein fester Druckmaßstab (`set_print_scale`), dazu der Druckbereich
+  (`set_print_area`). Mit „auf Seiten anpassen“ ignoriert Excel manuelle
+  Umbrüche. Die Höhe der Zeilen schätzt `lines_needed` aus der Textlänge;
+  ist die höchste Kachel höher als eine Seite, sinkt der Maßstab für das
+  ganze Blatt (`TILE_MIN_SCALE`).
 * **Ein neues Blatt** in `build` anlegen und mit `push_worksheet` in der
   gewünschten Reihenfolge anhängen.
 * **Test in `crates/core/tests/export.rs`**: Die erzeugte `.xlsx` ist ein ZIP;
