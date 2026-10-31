@@ -16,7 +16,8 @@
 
 use serde::Serialize;
 use tauri::State;
-use teacher_class_core::note::{self, Note, NoteInput, Order};
+use teacher_class_core::class::{self, Class, ClassInput};
+use teacher_class_core::student::{self, Student, StudentInput};
 use teacher_class_core::{Config, Paths};
 use ts_rs::TS;
 use uuid::Uuid;
@@ -24,35 +25,64 @@ use uuid::Uuid;
 use crate::error::ApiResult;
 use crate::state::AppState;
 
-// --- Notizen ---------------------------------------------------------------
+// --- Klassen ---------------------------------------------------------------
 
 #[tauri::command]
-pub async fn note_list(state: State<'_, AppState>, order: Order) -> ApiResult<Vec<Note>> {
-    state.with(|app| note::list(app.conn(), order))
+pub async fn class_list(state: State<'_, AppState>) -> ApiResult<Vec<Class>> {
+    state.with(|app| class::list(app.conn()))
 }
 
 #[tauri::command]
-pub async fn note_get(state: State<'_, AppState>, id: Uuid) -> ApiResult<Note> {
-    state.with(|app| note::get(app.conn(), id))
+pub async fn class_create(state: State<'_, AppState>, input: ClassInput) -> ApiResult<Class> {
+    state.with(|app| class::create(app.conn(), input))
 }
 
 #[tauri::command]
-pub async fn note_create(state: State<'_, AppState>, input: NoteInput) -> ApiResult<Note> {
-    state.with(|app| note::create(app.conn(), input))
-}
-
-#[tauri::command]
-pub async fn note_update(
+pub async fn class_update(
     state: State<'_, AppState>,
     id: Uuid,
-    input: NoteInput,
-) -> ApiResult<Note> {
-    state.with(|app| note::update(app.conn(), id, input))
+    input: ClassInput,
+) -> ApiResult<Class> {
+    state.with(|app| class::update(app.conn(), id, input))
+}
+
+/// Löscht die Klasse samt ihren Schülern.
+#[tauri::command]
+pub async fn class_delete(state: State<'_, AppState>, id: Uuid) -> ApiResult<()> {
+    state.with(|app| class::delete(app.conn(), id))
+}
+
+// --- Schüler ---------------------------------------------------------------
+
+/// Die Schüler der Klasse `id`.
+#[tauri::command]
+pub async fn student_list(state: State<'_, AppState>, id: Uuid) -> ApiResult<Vec<Student>> {
+    state.with(|app| student::list(app.conn(), id))
+}
+
+/// Legt Schüler in der Klasse `id` an: eine Zeile `Nachname, Vorname` je
+/// Schüler. Entweder alle oder keine; Fehler tragen `fields` für `students`.
+#[tauri::command]
+pub async fn student_add(
+    state: State<'_, AppState>,
+    id: Uuid,
+    text: String,
+) -> ApiResult<Vec<Student>> {
+    state.with(|app| student::add_many(app.conn(), id, &text))
 }
 
 #[tauri::command]
-pub async fn note_delete(state: State<'_, AppState>, id: Uuid) -> ApiResult<()> {
-    state.with(|app| note::delete(app.conn(), id))
+pub async fn student_update(
+    state: State<'_, AppState>,
+    id: Uuid,
+    input: StudentInput,
+) -> ApiResult<Student> {
+    state.with(|app| student::update(app.conn(), id, input))
+}
+
+#[tauri::command]
+pub async fn student_delete(state: State<'_, AppState>, id: Uuid) -> ApiResult<()> {
+    state.with(|app| student::delete(app.conn(), id))
 }
 
 // --- Einstellungen ---------------------------------------------------------

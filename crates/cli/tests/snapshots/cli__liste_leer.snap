@@ -1,0 +1,5 @@
+---
+source: crates/cli/tests/cli.rs
+expression: text
+---
+Keine Klassen. Anlegen mit:  teacher-class class add 7a 2025

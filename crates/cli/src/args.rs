@@ -9,15 +9,15 @@
 
 use std::path::PathBuf;
 
-use clap::{Args as ClapArgs, Parser, Subcommand, ValueEnum};
+use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
 #[command(
     name = "teacher-class",
     version,
-    about = "Beispielanwendung des Teacher Class-Kits",
-    long_about = "Verwaltet Notizen. Dieselbe Fachlogik bedient die Oberfläche \
-                  `teacher-class-desktop`.",
+    about = "Klassen, Schüler und Prüfungen für Lehrkräfte",
+    long_about = "Verwaltet Klassen und Schüler. Dieselbe Fachlogik bedient die \
+                  Oberfläche `teacher-class-desktop`.",
     propagate_version = true
 )]
 pub struct Cli {
@@ -56,9 +56,13 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    /// Notizen verwalten.
+    /// Klassen verwalten.
     #[command(subcommand)]
-    Note(NoteCommand),
+    Class(ClassCommand),
+
+    /// Schüler einer Klasse verwalten.
+    #[command(subcommand)]
+    Student(StudentCommand),
 
     /// Einstellungen anzeigen und ändern.
     #[command(subcommand)]
@@ -83,40 +87,36 @@ pub enum Command {
 }
 
 #[derive(Debug, Subcommand)]
-pub enum NoteCommand {
-    /// Neue Notiz anlegen.
-    Add(NoteFields),
+pub enum ClassCommand {
+    /// Neue Klasse anlegen, z. B. `class add 7a 2025`.
+    Add {
+        /// Name: nur Buchstaben und Zahlen.
+        name: String,
 
-    /// Alle Notizen auflisten.
+        /// Vierstelliges Jahr.
+        year: i32,
+    },
+
+    /// Alle Klassen auflisten.
     #[command(alias = "ls")]
-    List {
-        /// Sortierung.
-        #[arg(long, value_enum, default_value_t = Order::Recent)]
-        order: Order,
-    },
+    List,
 
-    /// Eine Notiz vollständig anzeigen.
-    Show {
-        /// Kennung oder ein eindeutiger Anfang davon.
-        id: String,
-    },
-
-    /// Eine Notiz ändern. Nicht angegebene Felder bleiben, wie sie sind.
+    /// Name oder Jahr einer Klasse ändern.
     Edit {
-        /// Kennung oder ein eindeutiger Anfang davon.
+        /// Kennung oder ein eindeutiges Ende davon.
         id: String,
 
         #[arg(long)]
-        title: Option<String>,
+        name: Option<String>,
 
         #[arg(long)]
-        body: Option<String>,
+        year: Option<i32>,
     },
 
-    /// Eine Notiz löschen.
+    /// Eine Klasse samt ihren Schülern löschen.
     #[command(alias = "delete")]
     Rm {
-        /// Kennung oder ein eindeutiger Anfang davon.
+        /// Kennung oder ein eindeutiges Ende davon.
         id: String,
 
         /// Nicht nachfragen.
@@ -125,14 +125,34 @@ pub enum NoteCommand {
     },
 }
 
-#[derive(Debug, ClapArgs)]
-pub struct NoteFields {
-    /// Titel der Notiz.
-    pub title: String,
+#[derive(Debug, Subcommand)]
+pub enum StudentCommand {
+    /// Schüler anlegen: eine Zeile `Nachname, Vorname` je Schüler.
+    Add {
+        /// Kennung der Klasse oder ein eindeutiges Ende davon.
+        class: String,
 
-    /// Text der Notiz. `-` liest von stdin.
-    #[arg(long, default_value = "")]
-    pub body: String,
+        /// Die Namen, getrennt durch Zeilenumbrüche. `-` liest von stdin.
+        text: String,
+    },
+
+    /// Die Schüler einer Klasse auflisten.
+    #[command(alias = "ls")]
+    List {
+        /// Kennung der Klasse oder ein eindeutiges Ende davon.
+        class: String,
+    },
+
+    /// Einen Schüler löschen.
+    #[command(alias = "delete")]
+    Rm {
+        /// Kennung oder ein eindeutiges Ende davon.
+        id: String,
+
+        /// Nicht nachfragen.
+        #[arg(short = 'y', long)]
+        yes: bool,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -147,23 +167,6 @@ pub enum ConfigCommand {
 
     /// Einstellungen auf die Voreinstellung zurücksetzen.
     Reset,
-}
-
-#[derive(Debug, Clone, Copy, ValueEnum)]
-pub enum Order {
-    /// Zuletzt geändert zuerst.
-    Recent,
-    /// Alphabetisch nach Titel.
-    Title,
-}
-
-impl From<Order> for teacher_class_core::note::Order {
-    fn from(o: Order) -> Self {
-        match o {
-            Order::Recent => teacher_class_core::note::Order::Recent,
-            Order::Title => teacher_class_core::note::Order::Title,
-        }
-    }
 }
 
 pub use clap_complete::Shell;

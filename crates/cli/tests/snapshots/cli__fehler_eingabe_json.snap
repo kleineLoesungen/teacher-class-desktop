@@ -1,0 +1,20 @@
+---
+source: crates/cli/tests/cli.rs
+expression: text
+---
+{
+  "error": {
+    "code": "validation_failed",
+    "fields": [
+      {
+        "field": "name",
+        "message": "darf nur Buchstaben und Zahlen enthalten"
+      },
+      {
+        "field": "year",
+        "message": "muss ein vierstelliges Jahr sein"
+      }
+    ],
+    "message": "name: darf nur Buchstaben und Zahlen enthalten; year: muss ein vierstelliges Jahr sein"
+  }
+}

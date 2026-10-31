@@ -9,6 +9,17 @@ export type ApiError = { code: ErrorCode, message: string, fields?: Array<FieldE
  */
 export type AppInfo = { version: string, data_dir: string, config_file: string, db_file: string, log_file: string, };
 
+export type Class = { id: string, name: string, year: number, 
+/**
+ * Wie viele Schüler in der Klasse sind.
+ */
+student_count: number, created_at: string, };
+
+/**
+ * Was von außen hereinkommt — ungeprüft.
+ */
+export type ClassInput = { name: string, year: number, };
+
 export type Config = { 
 /**
  * Fenstertitel und Name in der Oberfläche.
@@ -40,21 +51,11 @@ export type ErrorCode = "not_found" | "validation_failed" | "ambiguous_id" | "co
  */
 export type FieldError = { field: string, message: string, };
 
-export type Note = { id: string, title: string, body: string, created_at: string, updated_at: string, };
+export type Student = { id: string, class_id: string, last_name: string, first_name: string, };
 
 /**
- * Was von außen hereinkommt — ungeprüft.
- *
- * Der Typ ist absichtlich ein anderer als [`Note`]: so lässt sich nichts
- * speichern, ohne vorher durch [`NoteInput::clean`] gegangen zu sein.
- *
- * `Deserialize`, weil die Oberfläche genau diesen Typ über IPC schickt.
+ * Ein Schüler, ungeprüft.
  */
-export type NoteInput = { title: string, body: string, };
-
-/**
- * Wonach die Liste sortiert wird.
- */
-export type Order = "recent" | "title";
+export type StudentInput = { last_name: string, first_name: string, };
 
 export type Theme = "system" | "light" | "dark";

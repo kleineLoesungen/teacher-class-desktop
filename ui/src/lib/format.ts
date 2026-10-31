@@ -26,3 +26,13 @@ export function excerpt(body: string, max = 80): string {
       .find((l) => l.length > 0) ?? "";
   return line.length > max ? `${line.slice(0, max - 1)}…` : line;
 }
+
+/** `{ name: "7a", year: 2025 }` → `7a (2025)` — wie `Class::label` in Rust. */
+export function classLabel(c: { name: string; year: number }): string {
+  return `${c.name} (${c.year})`;
+}
+
+/** `0` → `Keine Schüler`, `1` → `1 Schüler`, `24` → `24 Schüler`. */
+export function studentCountLabel(count: number): string {
+  return count === 0 ? "Keine Schüler" : `${count} Schüler`;
+}

@@ -82,18 +82,25 @@ impl Ctx {
         }
     }
 
-    /// Legt Beispieldaten an und gibt das Endstück der Kennung zurück.
+    /// Legt Beispieldaten an und gibt die Kurzkennung der Klasse `7a (2025)`
+    /// zurück.
     fn seed(&self) -> String {
-        self.run(&["note", "add", "Einkauf", "--body", "Milch, Brot"])
-            .ok();
-        let out = self
-            .run(&["note", "add", "Bauplan", "--body", "Regal"])
-            .ok();
-        out.stdout
+        self.run(&["class", "add", "8b", "2024"]).ok();
+        let out = self.run(&["class", "add", "7a", "2025"]).ok();
+        let id = out
+            .stdout
             .split_whitespace()
             .nth(1)
             .expect("Kurzkennung in der Rückmeldung")
-            .to_string()
+            .to_string();
+        self.run(&[
+            "student",
+            "add",
+            &id,
+            "Muster, Max\nBeispiel, Eva\nAbel, Zoe",
+        ])
+        .ok();
+        id
     }
 }
 
@@ -116,6 +123,13 @@ impl Output {
 }
 
 fn snapshot(name: &str, text: &str) {
+    // Leerzeichen am Zeilenende (clap setzt sie in Hilfetexten) trägt kein
+    // Editor und kein Formatierer zuverlässig mit — sie zählen nicht.
+    let text = text
+        .lines()
+        .map(str::trim_end)
+        .collect::<Vec<_>>()
+        .join("\n");
     insta::with_settings!({filters => FILTERS.to_vec()}, {
         insta::assert_snapshot!(name, text);
     });
@@ -132,31 +146,31 @@ fn hilfe_nennt_alle_befehle() {
 #[test]
 fn leere_sammlung_sagt_wie_es_weitergeht() {
     let ctx = Ctx::new();
-    snapshot("liste_leer", &ctx.run(&["note", "list"]).ok().stdout);
+    snapshot("liste_leer", &ctx.run(&["class", "list"]).ok().stdout);
 }
 
 #[test]
-fn liste_ist_eine_tabelle() {
+fn klassenliste_ist_eine_tabelle() {
     let ctx = Ctx::new();
     ctx.seed();
-    snapshot("liste", &ctx.run(&["note", "list"]).ok().stdout);
+    snapshot("liste", &ctx.run(&["class", "list"]).ok().stdout);
 }
 
 #[test]
-fn liste_als_json_ist_ein_array() {
+fn klassenliste_als_json_ist_ein_array() {
     let ctx = Ctx::new();
     ctx.seed();
-    let out = ctx.run(&["note", "list", "--json"]).ok().stdout;
-    // Ein Array, damit `jq '.[].title'` ohne Umweg funktioniert.
+    let out = ctx.run(&["class", "list", "--json"]).ok().stdout;
+    // Ein Array, damit `jq '.[].name'` ohne Umweg funktioniert.
     assert!(out.trim_start().starts_with('['), "kein Array:\n{out}");
     snapshot("liste_json", &out);
 }
 
 #[test]
-fn einzelansicht_zeigt_die_volle_kennung() {
+fn schuelerliste_ist_alphabetisch() {
     let ctx = Ctx::new();
     let id = ctx.seed();
-    snapshot("show", &ctx.run(&["note", "show", &id]).ok().stdout);
+    snapshot("schueler", &ctx.run(&["student", "list", &id]).ok().stdout);
 }
 
 // --- Rückgabewerte ---------------------------------------------------------
@@ -164,7 +178,7 @@ fn einzelansicht_zeigt_die_volle_kennung() {
 #[test]
 fn ungueltige_eingabe_ergibt_vier() {
     let ctx = Ctx::new();
-    let out = ctx.run(&["note", "add", ""]);
+    let out = ctx.run(&["class", "add", "7 a", "2025"]);
     assert_eq!(out.code, 4);
     assert!(out.stdout.is_empty(), "Fehler gehören nach stderr");
     snapshot("fehler_eingabe", &out.stderr);
@@ -173,15 +187,27 @@ fn ungueltige_eingabe_ergibt_vier() {
 #[test]
 fn eingabefehler_als_json_nennt_das_feld() {
     let ctx = Ctx::new();
-    let out = ctx.run(&["note", "add", "", "--json"]);
+    let out = ctx.run(&["class", "add", "7 a", "99", "--json"]);
     assert_eq!(out.code, 4);
     snapshot("fehler_eingabe_json", &out.stderr);
 }
 
 #[test]
+fn schuelerfehler_nennt_die_zeilennummer() {
+    let ctx = Ctx::new();
+    let id = ctx.seed();
+    let out = ctx.run(&["student", "add", &id, "Gut, Gerd\nohne Komma"]);
+    assert_eq!(out.code, 4);
+    assert!(out.stderr.contains("Zeile 2"), "{}", out.stderr);
+    // Alles oder nichts: auch die gültige Zeile 1 wurde nicht gespeichert.
+    let list = ctx.run(&["student", "list", &id, "--json"]).ok().stdout;
+    assert!(!list.contains("Gerd"), "{list}");
+}
+
+#[test]
 fn unbekannte_kennung_ergibt_drei() {
     let ctx = Ctx::new();
-    assert_eq!(ctx.run(&["note", "show", "ffffffff"]).code, 3);
+    assert_eq!(ctx.run(&["student", "list", "ffffffff"]).code, 3);
 }
 
 #[test]
@@ -189,26 +215,26 @@ fn falscher_aufruf_ergibt_zwei() {
     // Den Rückgabewert 2 vergibt clap selbst. Der Test hält fest, dass wir ihn
     // nicht versehentlich überschreiben.
     let ctx = Ctx::new();
-    assert_eq!(ctx.run(&["note", "gibtsnicht"]).code, 2);
+    assert_eq!(ctx.run(&["class", "gibtsnicht"]).code, 2);
 }
 
 #[test]
 fn mehrdeutige_kennung_ergibt_fuenf_und_zeigt_die_treffer() {
     let ctx = Ctx::new();
 
-    // Ein Hexzeichen hat 16 mögliche Werte. Bei 17 Notizen müssen sich nach
+    // Ein Hexzeichen hat 16 mögliche Werte. Bei 17 Klassen müssen sich nach
     // dem Schubfachprinzip zwei das letzte Zeichen teilen — damit ist der
     // mehrdeutige Fall garantiert und der Test nicht vom Zufall abhängig.
     for i in 0..17 {
-        ctx.run(&["note", "add", &format!("Notiz {i}")]).ok();
+        ctx.run(&["class", "add", &format!("K{i}"), "2025"]).ok();
     }
 
     let list: serde_json::Value =
-        serde_json::from_str(&ctx.run(&["note", "list", "--json"]).ok().stdout).unwrap();
+        serde_json::from_str(&ctx.run(&["class", "list", "--json"]).ok().stdout).unwrap();
 
     let mut nach_endzeichen: std::collections::HashMap<char, usize> = Default::default();
-    for note in list.as_array().unwrap() {
-        let last = note["id"].as_str().unwrap().chars().next_back().unwrap();
+    for class in list.as_array().unwrap() {
+        let last = class["id"].as_str().unwrap().chars().next_back().unwrap();
         *nach_endzeichen.entry(last).or_default() += 1;
     }
     let (zeichen, _) = nach_endzeichen
@@ -216,7 +242,7 @@ fn mehrdeutige_kennung_ergibt_fuenf_und_zeigt_die_treffer() {
         .find(|(_, n)| **n > 1)
         .expect("Schubfachprinzip garantiert eine Dopplung");
 
-    let out = ctx.run(&["note", "show", &zeichen.to_string()]);
+    let out = ctx.run(&["student", "list", &zeichen.to_string()]);
     assert_eq!(out.code, 5, "{}", out.stderr);
     assert!(
         out.stderr.contains("mehr Zeichen angeben"),
@@ -231,10 +257,10 @@ fn loeschen_ohne_terminal_verlangt_ausdrueckliche_bestaetigung() {
     // Voreinstellung.
     let ctx = Ctx::new();
     let id = ctx.seed();
-    let out = ctx.run(&["note", "rm", &id]);
+    let out = ctx.run(&["class", "rm", &id]);
     assert_ne!(out.code, 0);
     assert!(out.stderr.contains("--yes"), "{}", out.stderr);
-    ctx.run(&["note", "show", &id]).ok();
+    ctx.run(&["student", "list", &id]).ok();
 }
 
 // --- Verhalten -------------------------------------------------------------
@@ -243,13 +269,26 @@ fn loeschen_ohne_terminal_verlangt_ausdrueckliche_bestaetigung() {
 fn edit_laesst_nicht_genannte_felder_stehen() {
     let ctx = Ctx::new();
     let id = ctx.seed();
-    ctx.run(&["note", "edit", &id, "--title", "Anderer Titel"])
-        .ok();
+    ctx.run(&["class", "edit", &id, "--name", "7c"]).ok();
 
-    let out = ctx.run(&["note", "show", &id, "--json"]).ok().stdout;
-    let note: serde_json::Value = serde_json::from_str(&out).unwrap();
-    assert_eq!(note["title"], "Anderer Titel");
-    assert_eq!(note["body"], "Regal", "Text blieb unverändert");
+    let out = ctx.run(&["class", "list", "--json"]).ok().stdout;
+    let list: serde_json::Value = serde_json::from_str(&out).unwrap();
+    let class = list
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["name"] == "7c")
+        .expect("umbenannte Klasse");
+    assert_eq!(class["year"], 2025, "Jahr blieb unverändert");
+    assert_eq!(class["student_count"], 3);
+}
+
+#[test]
+fn eine_klasse_zu_loeschen_nimmt_die_schueler_mit() {
+    let ctx = Ctx::new();
+    let id = ctx.seed();
+    ctx.run(&["class", "rm", &id, "--yes"]).ok();
+    assert_eq!(ctx.run(&["student", "list", &id]).code, 3);
 }
 
 #[test]
@@ -276,11 +315,12 @@ fn eine_kaputte_einstellung_wird_nicht_uebernommen() {
 }
 
 #[test]
-fn text_kommt_auch_von_stdin() {
+fn schuelernamen_kommen_auch_von_stdin() {
     use std::io::Write;
     let ctx = Ctx::new();
+    let id = ctx.seed();
     let mut child = Command::new(env!("CARGO_BIN_EXE_teacher-class"))
-        .args(["note", "add", "Aus der Pipe", "--body", "-", "--json"])
+        .args(["student", "add", &id, "-", "--json"])
         .arg("--data-dir")
         .arg(&ctx.data)
         .arg("--config-dir")
@@ -293,13 +333,14 @@ fn text_kommt_auch_von_stdin() {
         .stdin
         .take()
         .unwrap()
-        .write_all(b"Inhalt aus der Pipe")
+        .write_all(b"Pipe, Paula\n")
         .unwrap();
     let out = child.wait_with_output().unwrap();
     assert!(out.status.success());
 
-    let note: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
-    assert_eq!(note["body"], "Inhalt aus der Pipe");
+    let created: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(created[0]["last_name"], "Pipe");
+    assert_eq!(created[0]["first_name"], "Paula");
 }
 
 #[test]
