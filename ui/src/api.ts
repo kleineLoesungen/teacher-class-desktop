@@ -10,7 +10,7 @@
 //   3. hier                               call<…>("name", { … })
 // crates/desktop/tests/ipc_contract.rs prüft, dass keine fehlt.
 //
-// Argumentnamen: Tauri macht aus einem Rust-Argument `note_id` in JavaScript
+// Argumentnamen: Tauri macht aus einem Rust-Argument `class_id` in JavaScript
 // `noteId`. Die Befehle hier haben deshalb nur einwortige Argumente.
 
 import { invoke } from "@tauri-apps/api/core";
@@ -19,12 +19,13 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import type {
   ApiError as ApiErrorData,
   AppInfo,
+  Class,
+  ClassInput,
   Config,
   ErrorCode,
   FieldError,
-  Note,
-  NoteInput,
-  Order,
+  Student,
+  StudentInput,
 } from "./bindings";
 
 /** Ein abgelehnter Befehl. Dieselbe Form wie `error` im JSON der CLI. */
@@ -73,12 +74,20 @@ async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> 
 }
 
 export const api = {
-  notes: {
-    list: (order: Order) => call<Note[]>("note_list", { order }),
-    get: (id: string) => call<Note>("note_get", { id }),
-    create: (input: NoteInput) => call<Note>("note_create", { input }),
-    update: (id: string, input: NoteInput) => call<Note>("note_update", { id, input }),
-    remove: (id: string) => call<null>("note_delete", { id }),
+  classes: {
+    list: () => call<Class[]>("class_list"),
+    create: (input: ClassInput) => call<Class>("class_create", { input }),
+    update: (id: string, input: ClassInput) => call<Class>("class_update", { id, input }),
+    remove: (id: string) => call<null>("class_delete", { id }),
+  },
+
+  students: {
+    /** Die Schüler der Klasse `classId`. */
+    list: (classId: string) => call<Student[]>("student_list", { id: classId }),
+    /** Eine Zeile `Nachname, Vorname` je Schüler. Alle oder keine. */
+    add: (classId: string, text: string) => call<Student[]>("student_add", { id: classId, text }),
+    update: (id: string, input: StudentInput) => call<Student>("student_update", { id, input }),
+    remove: (id: string) => call<null>("student_delete", { id }),
   },
 
   config: {

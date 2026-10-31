@@ -1,79 +1,53 @@
 // Die einzige Komponente, die api.ts benutzt.
 //
 // Hier liegt der Zustand der Oberfläche, und hier wird aus einem Wunsch einer
-// Komponente ein Befehl an Rust. Das Gegenstück zu app.rs im egui-Kit:
+// Komponente ein Befehl an Rust:
 //
-//   Komponente  ──onSave()──▶  App.tsx  ──api.notes.update()──▶  Rust
+//   Komponente  ──onSave()──▶  App.tsx  ──api.classes.update()──▶  Rust
 //
-// Fachliche Regeln stehen hier nicht. Ob ein Titel leer sein darf, entscheidet
-// crates/core — hier wird nur angezeigt, was von dort zurückkommt.
+// Fachliche Regeln stehen hier nicht. Ob ein Klassenname gültig ist oder eine
+// Schülerzeile das Format `Nachname, Vorname` hat, entscheidet crates/core —
+// hier wird nur angezeigt, was von dort zurückkommt.
 
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, api } from "./api";
-import type { AppInfo, Config, Note, NoteInput, Order } from "./bindings";
+import type { AppInfo, Class, ClassInput, Config, Student } from "./bindings";
+import { ClassEditor } from "./components/ClassEditor";
+import { ClassList } from "./components/ClassList";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { EmptyState } from "./components/EmptyState";
-import { type EditorMode, NoteEditor } from "./components/NoteEditor";
-import { NoteList } from "./components/NoteList";
 import { SettingsDialog } from "./components/SettingsDialog";
-import { applyTheme, useIsDark } from "./lib/theme";
+import { classLabel } from "./lib/format";
+import { applyTheme } from "./lib/theme";
 
-type Selection = { kind: "none" } | { kind: "new" } | { kind: "note"; id: string };
+type Selection = { kind: "none" } | { kind: "new" } | { kind: "class"; id: string };
 
-const EMPTY: NoteInput = { title: "", body: "" };
+type Dialog = "settings" | "delete-class" | { student: Student } | null;
 
-export const EXAMPLE_NOTE: NoteInput = {
-  title: "Beispiel: Ablauf",
-  body: `# Wie eine Änderung gespeichert wird
+/** Eine neue Klasse beginnt im laufenden Jahr; das Jahr ist nur ein Vorschlag. */
+function emptyDraft(): ClassInput {
+  return { name: "", year: new Date().getFullYear() };
+}
 
-Jeder Knopfdruck geht **denselben Weg** — ob aus der Oberfläche oder von der Kommandozeile.
-
-\`\`\`mermaid
-flowchart TD
-    UI[Komponente] -->|Rückruf| App[App.tsx]
-    App -->|api.ts| IPC{{Tauri IPC}}
-    IPC --> Cmd[commands.rs]
-    CLI[teacher-class CLI] --> Core
-    Cmd --> Core[(teacher-class-core)]
-\`\`\`
-
-\`\`\`mermaid
-sequenceDiagram
-    participant W as Webview
-    participant R as Rust
-    W->>R: note_update { id, input }
-    R-->>W: Note oder ApiError
-\`\`\`
-
-Mehr über Mermaid: [mermaid.js.org](https://mermaid.js.org)
-`,
-};
-
-type Props = {
-  /** Wartezeit der Vorschau. Tests setzen 0. */
-  previewDelayMs?: number;
-};
-
-export function App({ previewDelayMs }: Props) {
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [order, setOrder] = useState<Order>("recent");
+export function App() {
+  const [classes, setClasses] = useState<Class[]>([]);
   const [selection, setSelection] = useState<Selection>({ kind: "none" });
-  const [draft, setDraft] = useState<NoteInput>(EMPTY);
-  const [saved, setSaved] = useState<NoteInput>(EMPTY);
-  const [mode, setMode] = useState<EditorMode>("split");
+  const [draft, setDraft] = useState<ClassInput>(emptyDraft);
+  const [saved, setSaved] = useState<ClassInput>(emptyDraft);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [studentText, setStudentText] = useState("");
   const [saving, setSaving] = useState(false);
 
   const [config, setConfig] = useState<Config | null>(null);
   const [info, setInfo] = useState<AppInfo | null>(null);
-  const [dialog, setDialog] = useState<"settings" | "delete" | null>(null);
+  const [dialog, setDialog] = useState<Dialog>(null);
 
   // Zwei Sorten Fehler, wie überall im Kit: mit Feldern an die Felder,
   // ohne Felder als Meldung oben.
   const [fieldError, setFieldError] = useState<ApiError | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
 
-  const dark = useIsDark(config?.theme ?? "system");
-  const dirty = draft.title !== saved.title || draft.body !== saved.body;
+  const dirty = draft.name !== saved.name || draft.year !== saved.year;
 
   /** Ein fehlgeschlagener Befehl: ans Feld oder nach oben. */
   const fail = useCallback((raw: unknown) => {
@@ -85,16 +59,13 @@ export function App({ previewDelayMs }: Props) {
     }
   }, []);
 
-  const reload = useCallback(
-    async (nextOrder: Order = order) => {
-      try {
-        setNotes(await api.notes.list(nextOrder));
-      } catch (raw) {
-        fail(raw);
-      }
-    },
-    [order, fail],
-  );
+  const reload = useCallback(async () => {
+    try {
+      setClasses(await api.classes.list());
+    } catch (raw) {
+      fail(raw);
+    }
+  }, [fail]);
 
   // --- Start ---------------------------------------------------------------
   // biome-ignore lint/correctness/useExhaustiveDependencies: nur einmal beim Start
@@ -120,24 +91,31 @@ export function App({ previewDelayMs }: Props) {
     });
   }, [config]);
 
-  // --- Notizen -------------------------------------------------------------
+  // --- Klassen -------------------------------------------------------------
 
-  function open(next: Selection, input: NoteInput) {
+  function open(next: Selection, input: ClassInput, nextStudents: Student[] = []) {
     setSelection(next);
     setDraft(input);
     setSaved(input);
+    setStudents(nextStudents);
+    setStudentText("");
     setFieldError(null);
   }
 
   async function save(): Promise<boolean> {
     setSaving(true);
     try {
-      const note =
-        selection.kind === "note"
-          ? await api.notes.update(selection.id, draft)
-          : await api.notes.create(draft);
+      const input = { name: draft.name, year: draft.year };
+      const cls =
+        selection.kind === "class"
+          ? await api.classes.update(selection.id, input)
+          : await api.classes.create(input);
       // Rust hat aufgeräumt (Leerzeichen am Rand) — das Ergebnis übernehmen.
-      open({ kind: "note", id: note.id }, { title: note.title, body: note.body });
+      const list =
+        selection.kind === "class" && selection.id === cls.id
+          ? students
+          : await api.students.list(cls.id);
+      open({ kind: "class", id: cls.id }, { name: cls.name, year: cls.year }, list);
       await reload();
       return true;
     } catch (raw) {
@@ -148,18 +126,19 @@ export function App({ previewDelayMs }: Props) {
     }
   }
 
-  /** Wechseln speichert. Scheitert das Speichern, bleibt die Notiz offen. */
+  /** Wechseln speichert. Scheitert das Speichern, bleibt die Klasse offen. */
   async function leaveCurrent(): Promise<boolean> {
     if (selection.kind === "none" || !dirty) return true;
     return save();
   }
 
   async function select(id: string) {
-    if (selection.kind === "note" && selection.id === id) return;
+    if (selection.kind === "class" && selection.id === id) return;
     if (!(await leaveCurrent())) return;
+    const cls = classes.find((c) => c.id === id);
+    if (!cls) return;
     try {
-      const note = await api.notes.get(id);
-      open({ kind: "note", id }, { title: note.title, body: note.body });
+      open({ kind: "class", id }, { name: cls.name, year: cls.year }, await api.students.list(id));
     } catch (raw) {
       fail(raw);
     }
@@ -167,37 +146,49 @@ export function App({ previewDelayMs }: Props) {
 
   async function createNew() {
     if (!(await leaveCurrent())) return;
-    open({ kind: "new" }, EMPTY);
-    setMode("split");
+    open({ kind: "new" }, emptyDraft());
   }
 
-  async function createExample() {
-    try {
-      const note = await api.notes.create(EXAMPLE_NOTE);
-      open({ kind: "note", id: note.id }, { title: note.title, body: note.body });
-      setMode("split");
-      await reload();
-    } catch (raw) {
-      fail(raw);
-    }
-  }
-
-  async function remove() {
+  async function removeClass() {
     setDialog(null);
-    if (selection.kind !== "note") return;
+    if (selection.kind !== "class") return;
     try {
-      await api.notes.remove(selection.id);
-      open({ kind: "none" }, EMPTY);
+      await api.classes.remove(selection.id);
+      open({ kind: "none" }, emptyDraft());
       await reload();
     } catch (raw) {
       fail(raw);
     }
   }
 
-  async function changeOrder(next: Order) {
-    setOrder(next);
-    await reload(next);
+  // --- Schüler -------------------------------------------------------------
+
+  async function addStudents() {
+    if (selection.kind !== "class") return;
+    try {
+      await api.students.add(selection.id, studentText);
+      setStudents(await api.students.list(selection.id));
+      setStudentText("");
+      setFieldError(null);
+      await reload();
+    } catch (raw) {
+      fail(raw);
+    }
   }
+
+  async function removeStudent(student: Student) {
+    setDialog(null);
+    if (selection.kind !== "class") return;
+    try {
+      await api.students.remove(student.id);
+      setStudents(await api.students.list(selection.id));
+      await reload();
+    } catch (raw) {
+      fail(raw);
+    }
+  }
+
+  // --- Einstellungen -------------------------------------------------------
 
   async function saveConfig(next: Config) {
     try {
@@ -207,10 +198,6 @@ export function App({ previewDelayMs }: Props) {
     } catch (raw) {
       fail(raw);
     }
-  }
-
-  function openLink(url: string) {
-    api.openExternal(url).catch(fail);
   }
 
   // --- Tastatur ------------------------------------------------------------
@@ -233,18 +220,17 @@ export function App({ previewDelayMs }: Props) {
   // --- Zeichnen ------------------------------------------------------------
 
   const fieldMessage = (field: string) => fieldError?.fieldMessage(field);
+  const selected = selection.kind === "class" ? classes.find((c) => c.id === selection.id) : null;
 
   return (
     <div className="app">
       <aside className="sidebar">
         <div className="brand">{config?.app_name ?? " "}</div>
-        <NoteList
-          notes={notes}
-          selectedId={selection.kind === "note" ? selection.id : null}
-          order={order}
+        <ClassList
+          classes={classes}
+          selectedId={selection.kind === "class" ? selection.id : null}
           onSelect={(id) => void select(id)}
           onCreate={() => void createNew()}
-          onOrderChange={(next) => void changeOrder(next)}
         />
         <button
           type="button"
@@ -270,26 +256,22 @@ export function App({ previewDelayMs }: Props) {
         )}
 
         {selection.kind === "none" ? (
-          <EmptyState
-            hasNotes={notes.length > 0}
-            onCreate={() => void createNew()}
-            onCreateExample={() => void createExample()}
-          />
+          <EmptyState hasClasses={classes.length > 0} onCreate={() => void createNew()} />
         ) : (
-          <NoteEditor
+          <ClassEditor
             draft={draft}
             isNew={selection.kind === "new"}
             dirty={dirty}
             saving={saving}
-            mode={mode}
-            dark={dark}
+            students={students}
+            studentText={studentText}
             fieldMessage={dialog ? () => undefined : fieldMessage}
             onChange={setDraft}
-            onModeChange={setMode}
             onSave={() => void save()}
-            onDelete={() => setDialog("delete")}
-            onOpenLink={openLink}
-            {...(previewDelayMs !== undefined && { previewDelayMs })}
+            onDelete={() => setDialog("delete-class")}
+            onStudentTextChange={setStudentText}
+            onAddStudents={() => void addStudents()}
+            onDeleteStudent={(student) => setDialog({ student })}
           />
         )}
       </main>
@@ -307,12 +289,22 @@ export function App({ previewDelayMs }: Props) {
         />
       )}
 
-      {dialog === "delete" && (
+      {dialog === "delete-class" && (
         <ConfirmDialog
-          title="Notiz löschen"
-          message={`„${saved.title}" wird endgültig gelöscht.`}
+          title="Klasse löschen"
+          message={`„${classLabel(saved)}" wird mit ${selected?.student_count ?? 0} Schülern endgültig gelöscht.`}
           confirmLabel="Endgültig löschen"
-          onConfirm={() => void remove()}
+          onConfirm={() => void removeClass()}
+          onCancel={() => setDialog(null)}
+        />
+      )}
+
+      {dialog !== null && typeof dialog === "object" && (
+        <ConfirmDialog
+          title="Schüler entfernen"
+          message={`„${dialog.student.last_name}, ${dialog.student.first_name}" wird endgültig entfernt.`}
+          confirmLabel="Endgültig entfernen"
+          onConfirm={() => void removeStudent(dialog.student)}
           onCancel={() => setDialog(null)}
         />
       )}
