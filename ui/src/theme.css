@@ -20,7 +20,11 @@
   --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Ubuntu, "Noto Sans", sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, "DejaVu Sans Mono", monospace;
 
-  --radius: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --text-lg: 18px;
+  --ease: 120ms ease;
+  --anim: 160ms;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -38,6 +42,16 @@
   --danger-bg: #fdecea;
   --code-bg: #f3f4f6;
   --shadow: 0 8px 30px #0000002e;
+  --shadow-sm: 0 1px 2px #0000000f;
+  --scrim: #0f172a;
+}
+
+/* Wer Bewegung abgeschaltet hat, bekommt keine: alle Zeiten auf 0. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ease: 0ms linear;
+    --anim: 0ms;
+  }
 }
 
 /* Hell ist die Grundfassung. Dunkel entweder ausdrücklich … */
@@ -53,6 +67,8 @@
   --danger-bg: #3a1d1b;
   --code-bg: #2a2c31;
   --shadow: 0 8px 30px #00000080;
+  --shadow-sm: 0 1px 2px #00000066;
+  --scrim: #000000;
 }
 
 /* … oder weil das System dunkel ist und die Einstellung "system" lautet. */
@@ -69,6 +85,8 @@
     --danger-bg: #3a1d1b;
     --code-bg: #2a2c31;
     --shadow: 0 8px 30px #00000080;
+    --shadow-sm: 0 1px 2px #00000066;
+    --scrim: #000000;
   }
 }
 
