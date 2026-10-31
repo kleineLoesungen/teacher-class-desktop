@@ -12,16 +12,16 @@
 //! 3. **Die Sicherheitsrichtlinie** in `tauri.conf.json` — so eng wie möglich,
 //!    so weit wie Mermaid es braucht.
 //!
-//! Die fachlichen Regeln stehen in den Tests von `starter-core`. Hier geht es
+//! Die fachlichen Regeln stehen in den Tests von `teacher-class-core`. Hier geht es
 //! nur ums Durchreichen.
 
 use serde_json::{Value, json};
-use starter_core::{App, Paths};
-use starter_desktop::{AppState, configure};
 use tauri::ipc::{CallbackFn, InvokeBody};
 use tauri::test::{INVOKE_KEY, MockRuntime, mock_builder, mock_context, noop_assets};
 use tauri::webview::InvokeRequest;
 use tauri::{WebviewWindow, WebviewWindowBuilder};
+use teacher_class_core::{App, Paths};
+use teacher_class_desktop::{AppState, configure};
 
 struct Ctx {
     _dir: tempfile::TempDir,
@@ -81,31 +81,147 @@ fn legt_an_listet_aendert_und_loescht() {
 
     let created = ctx
         .invoke(
-            "note_create",
-            json!({ "input": { "title": "Einkauf", "body": "Milch" } }),
+            "class_create",
+            json!({ "input": { "name": "7a", "year": 2025 } }),
         )
         .unwrap();
-    assert_eq!(created["title"], "Einkauf");
+    assert_eq!(created["name"], "7a");
     let id = created["id"].as_str().unwrap().to_string();
 
-    let list = ctx
-        .invoke("note_list", json!({ "order": "recent" }))
+    let students = ctx
+        .invoke(
+            "student_add",
+            json!({ "id": id, "text": "Muster, Max\nBeispiel, Eva" }),
+        )
         .unwrap();
-    assert_eq!(list.as_array().unwrap().len(), 1);
+    assert_eq!(students.as_array().unwrap().len(), 2);
+    let student_id = students[0]["id"].as_str().unwrap().to_string();
+
+    let list = ctx.invoke("student_list", json!({ "id": id })).unwrap();
+    assert_eq!(list[0]["last_name"], "Beispiel", "alphabetisch sortiert");
+
+    let renamed = ctx
+        .invoke(
+            "student_update",
+            json!({ "id": student_id, "input": { "last_name": "Muster", "first_name": "Moritz" } }),
+        )
+        .unwrap();
+    assert_eq!(renamed["first_name"], "Moritz");
+    ctx.invoke("student_delete", json!({ "id": student_id }))
+        .unwrap();
 
     let updated = ctx
         .invoke(
-            "note_update",
-            json!({ "id": id, "input": { "title": "Großeinkauf", "body": "" } }),
+            "class_update",
+            json!({ "id": id, "input": { "name": "7b", "year": 2025 } }),
         )
         .unwrap();
-    assert_eq!(updated["title"], "Großeinkauf");
+    assert_eq!(updated["name"], "7b");
+    assert_eq!(updated["student_count"], 1);
 
-    ctx.invoke("note_delete", json!({ "id": id })).unwrap();
-    let list = ctx
-        .invoke("note_list", json!({ "order": "title" }))
-        .unwrap();
+    ctx.invoke("class_delete", json!({ "id": id })).unwrap();
+    let list = ctx.invoke("class_list", json!({})).unwrap();
     assert!(list.as_array().unwrap().is_empty());
+}
+
+fn pruefung_json(class_id: &Value) -> Value {
+    json!({
+        "name": "Klassenarbeit",
+        "class_ids": [class_id],
+        "groups": [{ "name": "Aufgabe 1", "items": [
+            { "name": "a", "max_points": 4.0 }, { "name": "b", "max_points": 2.5 }
+        ]}],
+        "grades": [
+            { "name": "1", "from_points": 5.0 },
+            { "name": "6", "from_points": 0.0 }
+        ]
+    })
+}
+
+#[test]
+fn pruefungen_anlegen_aendern_exportieren_loeschen() {
+    let ctx = Ctx::new();
+    let class = ctx
+        .invoke(
+            "class_create",
+            json!({ "input": { "name": "7a", "year": 2025 } }),
+        )
+        .unwrap();
+    ctx.invoke(
+        "student_add",
+        json!({ "id": class["id"], "text": "Muster, Max" }),
+    )
+    .unwrap();
+
+    let created = ctx
+        .invoke(
+            "exam_create",
+            json!({ "input": pruefung_json(&class["id"]) }),
+        )
+        .unwrap();
+    assert_eq!(created["max_points"], 6.5);
+    // „bis“ wird in Rust berechnet und kommt fertig an.
+    assert_eq!(created["grades"][0]["name"], "6");
+    assert_eq!(created["grades"][0]["to_points"], 4.5);
+    let id = created["id"].as_str().unwrap().to_string();
+
+    let mut changed = pruefung_json(&class["id"]);
+    changed["name"] = json!("Test");
+    let updated = ctx
+        .invoke("exam_update", json!({ "id": id, "input": changed }))
+        .unwrap();
+    assert_eq!(updated["name"], "Test");
+    assert_eq!(
+        ctx.invoke("exam_list", json!({}))
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("pruefung.xlsx");
+    ctx.invoke(
+        "exam_export",
+        json!({ "id": id, "path": path.to_str().unwrap() }),
+    )
+    .unwrap();
+    assert_eq!(&std::fs::read(&path).unwrap()[..2], b"PK");
+
+    let err = ctx
+        .invoke(
+            "exam_export",
+            json!({ "id": id, "path": dir.path().join("x.txt").to_str().unwrap() }),
+        )
+        .unwrap_err();
+    assert_eq!(err["fields"][0]["field"], "path");
+
+    ctx.invoke("exam_delete", json!({ "id": id })).unwrap();
+    assert!(
+        ctx.invoke("exam_list", json!({}))
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[test]
+fn pruefungsfehler_kommen_am_feld_an() {
+    let ctx = Ctx::new();
+    let class = ctx
+        .invoke(
+            "class_create",
+            json!({ "input": { "name": "7a", "year": 2025 } }),
+        )
+        .unwrap();
+    let mut input = pruefung_json(&class["id"]);
+    input["grades"] = json!([{ "name": "1", "from_points": 2.0 }]);
+    let err = ctx
+        .invoke("exam_create", json!({ "input": input }))
+        .unwrap_err();
+    assert_eq!(err["fields"][0]["field"], "grades");
 }
 
 #[test]
@@ -113,20 +229,45 @@ fn eingabefehler_kommen_mit_feldern_an() {
     let ctx = Ctx::new();
     let err = ctx
         .invoke(
-            "note_create",
-            json!({ "input": { "title": "  ", "body": "" } }),
+            "class_create",
+            json!({ "input": { "name": "7 a", "year": 25 } }),
         )
         .unwrap_err();
 
     assert_eq!(err["code"], "validation_failed");
-    assert_eq!(err["fields"][0]["field"], "title");
+    assert_eq!(err["fields"][0]["field"], "name");
+    assert_eq!(err["fields"][1]["field"], "year");
+}
+
+#[test]
+fn schuelerfehler_tragen_die_zeilennummer_am_feld_students() {
+    let ctx = Ctx::new();
+    let class = ctx
+        .invoke(
+            "class_create",
+            json!({ "input": { "name": "7a", "year": 2025 } }),
+        )
+        .unwrap();
+    let err = ctx
+        .invoke(
+            "student_add",
+            json!({ "id": class["id"], "text": "Gut, Gerd\nohne Komma" }),
+        )
+        .unwrap_err();
+    assert_eq!(err["fields"][0]["field"], "students");
+    assert!(
+        err["fields"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("Zeile 2")
+    );
 }
 
 #[test]
 fn unbekannte_kennung_ist_not_found() {
     let ctx = Ctx::new();
     let err = ctx
-        .invoke("note_get", json!({ "id": uuid::Uuid::now_v7() }))
+        .invoke("student_list", json!({ "id": uuid::Uuid::now_v7() }))
         .unwrap_err();
     assert_eq!(err["code"], "not_found");
     assert!(err.get("fields").is_none(), "kein Eingabefehler");
@@ -152,12 +293,10 @@ fn ein_fehler_beim_start_erreicht_jeden_befehl() {
     // Die Anwendung ließ sich nicht öffnen — das Fenster soll trotzdem eine
     // Meldung zeigen können, statt kommentarlos zu verschwinden.
     let dir = tempfile::tempdir().unwrap();
-    let state = AppState::failed(starter_desktop::ApiError::internal("kaputt"));
+    let state = AppState::failed(teacher_class_desktop::ApiError::internal("kaputt"));
     let ctx = Ctx::with_state(dir, state);
 
-    let err = ctx
-        .invoke("note_list", json!({ "order": "recent" }))
-        .unwrap_err();
+    let err = ctx.invoke("class_list", json!({})).unwrap_err();
     assert_eq!(err["message"], "kaputt");
 }
 
@@ -168,8 +307,8 @@ fn falscher_argumentname_wird_abgelehnt() {
     let ctx = Ctx::new();
     let err = ctx
         .invoke(
-            "note_create",
-            json!({ "note": { "title": "x", "body": "" } }),
+            "class_create",
+            json!({ "class": { "name": "7a", "year": 2025 } }),
         )
         .unwrap_err();
     assert!(

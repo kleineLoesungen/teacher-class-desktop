@@ -16,9 +16,9 @@ dunklen Aussehen falsch ist. `crates/core/tests/layering.rs`
 Über die Einstellungen, in der Oberfläche oder auf der Kommandozeile:
 
 ```bash
-starter config set app_name "Notizbuch"
-starter config set theme dark          # system | light | dark
-starter config set accent "#aa3344"
+teacher-class config set app_name "Klassenbuch"
+teacher-class config set theme dark          # system | light | dark
+teacher-class config set accent "#aa3344"
 ```
 
 Die Desktop-Anwendung liest die Einstellungen beim Start; nach einer Änderung
@@ -111,7 +111,7 @@ ein Bau auf einem System, das die anderen Formate nicht erzeugen kann, braucht
 sie trotzdem.
 
 `tauri icon` legt daneben noch Symbole für Android, iOS und den Microsoft Store
-an. Die wirft `scripts/tasks.mjs` wieder weg; dieses Kit liefert nichts davon
+an. Die wirft `scripts/tasks.mjs` wieder weg; die App liefert nichts davon
 aus. Die Farbe im Symbol ist dieselbe wie die Voreinstellung von `accent`.
 
 ## Bedienelemente brauchen Namen
@@ -137,7 +137,7 @@ mehrdeutig. Deshalb heißt die Schaltfläche in der Löschrückfrage
 In `crates/desktop/tauri.conf.json`:
 
 ```json
-"windows": [{ "title": "Starter", "width": 1100, "height": 720,
+"windows": [{ "title": "Teacher Class", "width": 1100, "height": 720,
               "minWidth": 640, "minHeight": 420 }]
 ```
 

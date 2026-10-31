@@ -8,7 +8,7 @@
 # `VAR=x befehl`, kein `&&`. Der Grund steht eine Zeile tiefer: Auf Windows
 # läuft hier `cmd.exe`, auf macOS und Linux `sh`. Alles, was mehr braucht als
 # einen Programmaufruf, steht in scripts/tasks.mjs — eine Datei, die überall
-# dieselbe ist. Node ist in diesem Kit ohnehin Pflicht.
+# dieselbe ist. Node ist in diesem Projekt ohnehin Pflicht.
 set windows-shell := ["cmd.exe", "/c"]
 
 _default:
@@ -23,7 +23,7 @@ setup:
     cargo install --locked cargo-deny cargo-insta
     npm run build:ui
     cargo build
-    @echo "Fertig. Weiter mit:  just dev   oder   just cli note list"
+    @echo "Fertig. Weiter mit:  just dev   oder   just cli class list"
 
 # --- Entwicklung -----------------------------------------------------------
 
@@ -36,9 +36,9 @@ dev:
 dev-sandbox:
     node scripts/tasks.mjs dev-sandbox
 
-# Die Kommandozeile aufrufen:  just cli note add "Titel"
+# Die Kommandozeile aufrufen:  just cli class add 7a 2025
 cli *ARGS:
-    cargo run -q -p starter-cli -- {{ARGS}}
+    cargo run -q -p teacher-class-cli -- {{ARGS}}
 
 # Wie `just cli`, aber auf .local/ — dieselben Daten wie `just dev-sandbox`.
 sandbox *ARGS:

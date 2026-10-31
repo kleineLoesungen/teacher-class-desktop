@@ -6,8 +6,8 @@
 //!
 //! | | macOS | Linux |
 //! |---|---|---|
-//! | Daten | `~/Library/Application Support/starter` | `~/.local/share/starter` |
-//! | Konfiguration | `~/Library/Application Support/starter` | `~/.config/starter` |
+//! | Daten | `~/Library/Application Support/teacher-class` | `~/.local/share/teacher-class` |
+//! | Konfiguration | `~/Library/Application Support/teacher-class` | `~/.config/teacher-class` |
 //!
 //! Beide Verzeichnisse lassen sich über Umgebungsvariablen verlegen. Das ist
 //! kein Debug-Hintertürchen, sondern die Grundlage dafür, dass die
@@ -17,13 +17,12 @@ use std::path::{Path, PathBuf};
 
 use crate::error::{Error, Result};
 
-/// Anwendungsname. Bestimmt Verzeichnisnamen und wird von
-/// `scripts/new-project.sh` ersetzt.
-pub const APP_NAME: &str = "starter";
+/// Anwendungsname. Bestimmt die Verzeichnisnamen.
+pub const APP_NAME: &str = "teacher-class";
 
 /// Umgebungsvariablen, die die Verzeichnisse überschreiben.
-pub const ENV_DATA_DIR: &str = "STARTER_DATA_DIR";
-pub const ENV_CONFIG_DIR: &str = "STARTER_CONFIG_DIR";
+pub const ENV_DATA_DIR: &str = "TEACHER_CLASS_DATA_DIR";
+pub const ENV_CONFIG_DIR: &str = "TEACHER_CLASS_CONFIG_DIR";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Paths {

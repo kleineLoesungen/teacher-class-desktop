@@ -15,7 +15,7 @@
 
 use std::process::ExitCode;
 
-use starter_core::Error as CoreError;
+use teacher_class_core::Error as CoreError;
 
 pub const FAILURE: u8 = 1;
 pub const NOT_FOUND: u8 = 3;

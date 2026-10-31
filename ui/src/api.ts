@@ -10,21 +10,25 @@
 //   3. hier                               call<…>("name", { … })
 // crates/desktop/tests/ipc_contract.rs prüft, dass keine fehlt.
 //
-// Argumentnamen: Tauri macht aus einem Rust-Argument `note_id` in JavaScript
+// Argumentnamen: Tauri macht aus einem Rust-Argument `class_id` in JavaScript
 // `noteId`. Die Befehle hier haben deshalb nur einwortige Argumente.
 
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { save } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type {
   ApiError as ApiErrorData,
   AppInfo,
+  Class,
+  ClassInput,
   Config,
   ErrorCode,
+  Exam,
+  ExamInput,
   FieldError,
-  Note,
-  NoteInput,
-  Order,
+  Student,
+  StudentInput,
 } from "./bindings";
 
 /** Ein abgelehnter Befehl. Dieselbe Form wie `error` im JSON der CLI. */
@@ -47,6 +51,11 @@ export class ApiError extends Error {
   /** Die Meldung zu einem Feld, falls es eine gibt. */
   fieldMessage(field: string): string | undefined {
     return this.fields.find((f) => f.field === field)?.message;
+  }
+
+  /** Alle Meldungen zu einem Feld — `groups` und `grades` haben oft mehrere. */
+  fieldMessages(field: string): string[] {
+    return this.fields.filter((f) => f.field === field).map((f) => f.message);
   }
 
   /**
@@ -73,12 +82,45 @@ async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> 
 }
 
 export const api = {
-  notes: {
-    list: (order: Order) => call<Note[]>("note_list", { order }),
-    get: (id: string) => call<Note>("note_get", { id }),
-    create: (input: NoteInput) => call<Note>("note_create", { input }),
-    update: (id: string, input: NoteInput) => call<Note>("note_update", { id, input }),
-    remove: (id: string) => call<null>("note_delete", { id }),
+  classes: {
+    list: () => call<Class[]>("class_list"),
+    create: (input: ClassInput) => call<Class>("class_create", { input }),
+    update: (id: string, input: ClassInput) => call<Class>("class_update", { id, input }),
+    remove: (id: string) => call<null>("class_delete", { id }),
+  },
+
+  students: {
+    /** Die Schüler der Klasse `classId`. */
+    list: (classId: string) => call<Student[]>("student_list", { id: classId }),
+    /** Eine Zeile `Nachname, Vorname` je Schüler. Alle oder keine. */
+    add: (classId: string, text: string) => call<Student[]>("student_add", { id: classId, text }),
+    update: (id: string, input: StudentInput) => call<Student>("student_update", { id, input }),
+    remove: (id: string) => call<null>("student_delete", { id }),
+  },
+
+  exams: {
+    list: () => call<Exam[]>("exam_list"),
+    create: (input: ExamInput) => call<Exam>("exam_create", { input }),
+    update: (id: string, input: ExamInput) => call<Exam>("exam_update", { id, input }),
+    remove: (id: string) => call<null>("exam_delete", { id }),
+    /** Schreibt die Excel-Datei nach `path` (aus `pickExportPath`). */
+    export: (id: string, path: string) => call<null>("exam_export", { id, path }),
+  },
+
+  /**
+   * Öffnet den Speichern-Dialog des Systems. `null`, wenn abgebrochen.
+   * Braucht `dialog:allow-save` in crates/desktop/capabilities/.
+   */
+  pickExportPath: async (fileName: string): Promise<string | null> => {
+    try {
+      return await save({
+        title: "Excel-Datei speichern",
+        defaultPath: fileName,
+        filters: [{ name: "Excel-Arbeitsmappe", extensions: ["xlsx"] }],
+      });
+    } catch (raw) {
+      throw ApiError.from(raw);
+    }
   },
 
   config: {

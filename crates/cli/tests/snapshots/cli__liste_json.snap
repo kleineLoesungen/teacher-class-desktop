@@ -5,16 +5,16 @@ expression: text
 [
   {
     "id": "[uuid]",
-    "title": "Bauplan",
-    "body": "Regal",
-    "created_at": "[zeit]",
-    "updated_at": "[zeit]"
+    "name": "7a",
+    "year": 2025,
+    "student_count": 3,
+    "created_at": "[zeit]"
   },
   {
     "id": "[uuid]",
-    "title": "Einkauf",
-    "body": "Milch, Brot",
-    "created_at": "[zeit]",
-    "updated_at": "[zeit]"
+    "name": "8b",
+    "year": 2024,
+    "student_count": 0,
+    "created_at": "[zeit]"
   }
 ]

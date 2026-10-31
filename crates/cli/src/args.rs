@@ -5,19 +5,19 @@
 //! Hilfetexte zu überfliegen, ohne Logik zu lesen.
 //!
 //! Hilfetexte sind deutsch, Bezeichner und Optionsnamen englisch — wie überall
-//! im Kit.
+//! in der App.
 
 use std::path::PathBuf;
 
-use clap::{Args as ClapArgs, Parser, Subcommand, ValueEnum};
+use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "starter",
+    name = "teacher-class",
     version,
-    about = "Beispielanwendung des Starter-Kits",
-    long_about = "Verwaltet Notizen. Dieselbe Fachlogik bedient die Oberfläche \
-                  `starter-desktop`.",
+    about = "Klassen, Schüler und Prüfungen für Lehrkräfte",
+    long_about = "Verwaltet Klassen und Schüler. Dieselbe Fachlogik bedient die \
+                  Oberfläche `teacher-class-desktop`.",
     propagate_version = true
 )]
 pub struct Cli {
@@ -37,7 +37,7 @@ pub struct Cli {
         long,
         global = true,
         value_name = "VERZEICHNIS",
-        env = "STARTER_DATA_DIR"
+        env = "TEACHER_CLASS_DATA_DIR"
     )]
     pub data_dir: Option<PathBuf>,
 
@@ -46,7 +46,7 @@ pub struct Cli {
         long,
         global = true,
         value_name = "VERZEICHNIS",
-        env = "STARTER_CONFIG_DIR"
+        env = "TEACHER_CLASS_CONFIG_DIR"
     )]
     pub config_dir: Option<PathBuf>,
 
@@ -56,9 +56,17 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    /// Notizen verwalten.
+    /// Klassen verwalten.
     #[command(subcommand)]
-    Note(NoteCommand),
+    Class(ClassCommand),
+
+    /// Schüler einer Klasse verwalten.
+    #[command(subcommand)]
+    Student(StudentCommand),
+
+    /// Prüfungen verwalten und als Excel exportieren.
+    #[command(subcommand)]
+    Exam(ExamCommand),
 
     /// Einstellungen anzeigen und ändern.
     #[command(subcommand)]
@@ -69,7 +77,7 @@ pub enum Command {
 
     /// Vervollständigung für die Shell ausgeben.
     ///
-    /// Beispiel: `starter completions zsh > ~/.zfunc/_starter`
+    /// Beispiel: `teacher-class completions zsh > ~/.zfunc/_teacher-class`
     Completions {
         #[arg(value_enum)]
         shell: Shell,
@@ -83,40 +91,36 @@ pub enum Command {
 }
 
 #[derive(Debug, Subcommand)]
-pub enum NoteCommand {
-    /// Neue Notiz anlegen.
-    Add(NoteFields),
+pub enum ClassCommand {
+    /// Neue Klasse anlegen, z. B. `class add 7a 2025`.
+    Add {
+        /// Name: nur Buchstaben und Zahlen.
+        name: String,
 
-    /// Alle Notizen auflisten.
+        /// Vierstelliges Jahr.
+        year: i32,
+    },
+
+    /// Alle Klassen auflisten.
     #[command(alias = "ls")]
-    List {
-        /// Sortierung.
-        #[arg(long, value_enum, default_value_t = Order::Recent)]
-        order: Order,
-    },
+    List,
 
-    /// Eine Notiz vollständig anzeigen.
-    Show {
-        /// Kennung oder ein eindeutiger Anfang davon.
-        id: String,
-    },
-
-    /// Eine Notiz ändern. Nicht angegebene Felder bleiben, wie sie sind.
+    /// Name oder Jahr einer Klasse ändern.
     Edit {
-        /// Kennung oder ein eindeutiger Anfang davon.
+        /// Kennung oder ein eindeutiges Ende davon.
         id: String,
 
         #[arg(long)]
-        title: Option<String>,
+        name: Option<String>,
 
         #[arg(long)]
-        body: Option<String>,
+        year: Option<i32>,
     },
 
-    /// Eine Notiz löschen.
+    /// Eine Klasse samt ihren Schülern löschen.
     #[command(alias = "delete")]
     Rm {
-        /// Kennung oder ein eindeutiger Anfang davon.
+        /// Kennung oder ein eindeutiges Ende davon.
         id: String,
 
         /// Nicht nachfragen.
@@ -125,14 +129,105 @@ pub enum NoteCommand {
     },
 }
 
-#[derive(Debug, ClapArgs)]
-pub struct NoteFields {
-    /// Titel der Notiz.
-    pub title: String,
+#[derive(Debug, Subcommand)]
+pub enum StudentCommand {
+    /// Schüler anlegen: eine Zeile `Nachname, Vorname` je Schüler.
+    Add {
+        /// Kennung der Klasse oder ein eindeutiges Ende davon.
+        class: String,
 
-    /// Text der Notiz. `-` liest von stdin.
-    #[arg(long, default_value = "")]
-    pub body: String,
+        /// Die Namen, getrennt durch Zeilenumbrüche. `-` liest von stdin.
+        text: String,
+    },
+
+    /// Die Schüler einer Klasse auflisten.
+    #[command(alias = "ls")]
+    List {
+        /// Kennung der Klasse oder ein eindeutiges Ende davon.
+        class: String,
+    },
+
+    /// Einen Schüler löschen.
+    #[command(alias = "delete")]
+    Rm {
+        /// Kennung oder ein eindeutiges Ende davon.
+        id: String,
+
+        /// Nicht nachfragen.
+        #[arg(short = 'y', long)]
+        yes: bool,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ExamCommand {
+    /// Neue Prüfung anlegen.
+    ///
+    /// Beispiel:
+    ///   exam add "Klassenarbeit 1" --class a1b2c3d4 \
+    ///     --group "Aufgabe 1: a=4; b=2.5" --group "Aufgabe 2: a=13.5" \
+    ///     --grade 6=0 --grade 3=10 --grade 1=17
+    ///
+    /// Punkte sind ganz oder halb. Bei den Noten wird nur „ab“ angegeben;
+    /// „bis“ berechnet sich. Die niedrigste Note beginnt bei 0.
+    Add {
+        /// Name der Prüfung.
+        name: String,
+
+        /// Kennung einer Klasse oder ein eindeutiges Ende davon. Mehrfach
+        /// möglich.
+        #[arg(long, required = true, value_name = "KLASSE")]
+        class: Vec<String>,
+
+        /// Eine Gruppe: `Name: Punkt=Höchstpunkte; Punkt=Höchstpunkte`.
+        #[arg(
+            long,
+            required = true,
+            value_name = "GRUPPE",
+            value_parser = crate::commands::exam::parse_group
+        )]
+        group: Vec<teacher_class_core::exam::GroupInput>,
+
+        /// Eine Note: `Note=ab-Punkte`.
+        #[arg(
+            long,
+            required = true,
+            value_name = "NOTE=AB",
+            value_parser = crate::commands::exam::parse_grade
+        )]
+        grade: Vec<teacher_class_core::exam::GradeInput>,
+    },
+
+    /// Alle Prüfungen auflisten.
+    #[command(alias = "ls")]
+    List,
+
+    /// Schema und Bewertungsmatrix einer Prüfung anzeigen.
+    Show {
+        /// Kennung oder ein eindeutiges Ende davon.
+        id: String,
+    },
+
+    /// Eine Prüfung löschen.
+    #[command(alias = "delete")]
+    Rm {
+        /// Kennung oder ein eindeutiges Ende davon.
+        id: String,
+
+        /// Nicht nachfragen.
+        #[arg(short = 'y', long)]
+        yes: bool,
+    },
+
+    /// Eine Prüfung als Excel-Datei (.xlsx) exportieren.
+    Export {
+        /// Kennung oder ein eindeutiges Ende davon.
+        id: String,
+
+        /// Zieldatei, muss auf .xlsx enden.
+        #[arg(long, value_name = "DATEI")]
+        out: PathBuf,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -147,23 +242,6 @@ pub enum ConfigCommand {
 
     /// Einstellungen auf die Voreinstellung zurücksetzen.
     Reset,
-}
-
-#[derive(Debug, Clone, Copy, ValueEnum)]
-pub enum Order {
-    /// Zuletzt geändert zuerst.
-    Recent,
-    /// Alphabetisch nach Titel.
-    Title,
-}
-
-impl From<Order> for starter_core::note::Order {
-    fn from(o: Order) -> Self {
-        match o {
-            Order::Recent => starter_core::note::Order::Recent,
-            Order::Title => starter_core::note::Order::Title,
-        }
-    }
 }
 
 pub use clap_complete::Shell;

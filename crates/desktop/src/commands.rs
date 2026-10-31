@@ -1,7 +1,7 @@
 //! Die Befehle, die das Webview aufrufen kann.
 //!
 //! **Jeder Befehl ist dünn:** Argumente annehmen, eine Funktion in
-//! `starter_core` rufen, das Ergebnis zurückgeben. Prüfung und SQL stehen in
+//! `teacher_class_core` rufen, das Ergebnis zurückgeben. Prüfung und SQL stehen in
 //! core — sonst gälten sie für die Kommandozeile nicht.
 //! `crates/core/tests/layering.rs` sucht hier nach `execute(` und `Validator`.
 //!
@@ -15,44 +15,112 @@
 //!    `ui/src/api.ts`. `tests/ipc_contract.rs` prüft, dass keine fehlt.
 
 use serde::Serialize;
-use starter_core::note::{self, Note, NoteInput, Order};
-use starter_core::{Config, Paths};
 use tauri::State;
+use teacher_class_core::class::{self, Class, ClassInput};
+use teacher_class_core::exam::{self, Exam, ExamInput};
+use teacher_class_core::export;
+use teacher_class_core::student::{self, Student, StudentInput};
+use teacher_class_core::{Config, Paths};
 use ts_rs::TS;
 use uuid::Uuid;
 
 use crate::error::ApiResult;
 use crate::state::AppState;
 
-// --- Notizen ---------------------------------------------------------------
+// --- Klassen ---------------------------------------------------------------
 
 #[tauri::command]
-pub async fn note_list(state: State<'_, AppState>, order: Order) -> ApiResult<Vec<Note>> {
-    state.with(|app| note::list(app.conn(), order))
+pub async fn class_list(state: State<'_, AppState>) -> ApiResult<Vec<Class>> {
+    state.with(|app| class::list(app.conn()))
 }
 
 #[tauri::command]
-pub async fn note_get(state: State<'_, AppState>, id: Uuid) -> ApiResult<Note> {
-    state.with(|app| note::get(app.conn(), id))
+pub async fn class_create(state: State<'_, AppState>, input: ClassInput) -> ApiResult<Class> {
+    state.with(|app| class::create(app.conn(), input))
 }
 
 #[tauri::command]
-pub async fn note_create(state: State<'_, AppState>, input: NoteInput) -> ApiResult<Note> {
-    state.with(|app| note::create(app.conn(), input))
-}
-
-#[tauri::command]
-pub async fn note_update(
+pub async fn class_update(
     state: State<'_, AppState>,
     id: Uuid,
-    input: NoteInput,
-) -> ApiResult<Note> {
-    state.with(|app| note::update(app.conn(), id, input))
+    input: ClassInput,
+) -> ApiResult<Class> {
+    state.with(|app| class::update(app.conn(), id, input))
+}
+
+/// Löscht die Klasse samt ihren Schülern.
+#[tauri::command]
+pub async fn class_delete(state: State<'_, AppState>, id: Uuid) -> ApiResult<()> {
+    state.with(|app| class::delete(app.conn(), id))
+}
+
+// --- Schüler ---------------------------------------------------------------
+
+/// Die Schüler der Klasse `id`.
+#[tauri::command]
+pub async fn student_list(state: State<'_, AppState>, id: Uuid) -> ApiResult<Vec<Student>> {
+    state.with(|app| student::list(app.conn(), id))
+}
+
+/// Legt Schüler in der Klasse `id` an: eine Zeile `Nachname, Vorname` je
+/// Schüler. Entweder alle oder keine; Fehler tragen `fields` für `students`.
+#[tauri::command]
+pub async fn student_add(
+    state: State<'_, AppState>,
+    id: Uuid,
+    text: String,
+) -> ApiResult<Vec<Student>> {
+    state.with(|app| student::add_many(app.conn(), id, &text))
 }
 
 #[tauri::command]
-pub async fn note_delete(state: State<'_, AppState>, id: Uuid) -> ApiResult<()> {
-    state.with(|app| note::delete(app.conn(), id))
+pub async fn student_update(
+    state: State<'_, AppState>,
+    id: Uuid,
+    input: StudentInput,
+) -> ApiResult<Student> {
+    state.with(|app| student::update(app.conn(), id, input))
+}
+
+#[tauri::command]
+pub async fn student_delete(state: State<'_, AppState>, id: Uuid) -> ApiResult<()> {
+    state.with(|app| student::delete(app.conn(), id))
+}
+
+// --- Prüfungen -------------------------------------------------------------
+
+#[tauri::command]
+pub async fn exam_list(state: State<'_, AppState>) -> ApiResult<Vec<Exam>> {
+    state.with(|app| exam::list(app.conn()))
+}
+
+/// Schema und Matrix kommen als Ganzes; Fehler tragen `fields` für `name`,
+/// `classes`, `groups` und `grades`.
+#[tauri::command]
+pub async fn exam_create(state: State<'_, AppState>, input: ExamInput) -> ApiResult<Exam> {
+    state.with(|app| exam::create(app.conn(), input))
+}
+
+/// Ersetzt Name, Klassen, Schema und Matrix der Prüfung `id`.
+#[tauri::command]
+pub async fn exam_update(
+    state: State<'_, AppState>,
+    id: Uuid,
+    input: ExamInput,
+) -> ApiResult<Exam> {
+    state.with(|app| exam::update(app.conn(), id, input))
+}
+
+#[tauri::command]
+pub async fn exam_delete(state: State<'_, AppState>, id: Uuid) -> ApiResult<()> {
+    state.with(|app| exam::delete(app.conn(), id))
+}
+
+/// Schreibt die Prüfung `id` als `.xlsx` nach `path`. Den Pfad liefert der
+/// Speichern-Dialog der Oberfläche.
+#[tauri::command]
+pub async fn exam_export(state: State<'_, AppState>, id: Uuid, path: String) -> ApiResult<()> {
+    state.with(|app| export::write_xlsx(app.conn(), id, std::path::Path::new(&path)))
 }
 
 // --- Einstellungen ---------------------------------------------------------
@@ -74,7 +142,7 @@ pub async fn config_set(state: State<'_, AppState>, config: Config) -> ApiResult
 
 // --- Über die Anwendung ----------------------------------------------------
 
-/// Wo die Dateien liegen — dieselben Pfade wie `starter paths --json`.
+/// Wo die Dateien liegen — dieselben Pfade wie `teacher-class paths --json`.
 #[derive(Debug, Clone, Serialize, TS)]
 pub struct AppInfo {
     pub version: String,

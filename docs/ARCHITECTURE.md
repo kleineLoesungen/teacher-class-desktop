@@ -1,6 +1,12 @@
 # Aufbau
 
-## Das Problem, das dieses Kit löst
+## Wofür der Aufbau gedacht ist
+
+Teacher Class pflegt Klassen, Schüler und Prüfungen und erzeugt daraus Excel-
+Dateien. Fachliche Regeln — ein Klassenname besteht nur aus Buchstaben und
+Zahlen, Punkte sind ganz oder halb, die Bewertungsmatrix hat keine Lücken —
+müssen in der Oberfläche **und** auf der Kommandozeile gleich gelten. Darum
+sieht der Aufbau so aus.
 
 Eine Desktop-Anwendung mit Weboberfläche hat eine typische
 Verfallsgeschichte: Die Oberfläche entsteht zuerst, und weil JavaScript gerade
@@ -43,37 +49,83 @@ Die Pfeile gehen nur in eine Richtung. `core` weiß nicht, dass es Schalen gibt.
 
 | Frage | Antwort |
 |---|---|
-| Darf ein Titel leer sein? | `core` |
-| Wird ein leerer Titel rot umrandet? | `ui/src/components` |
-| Welchen Rückgabewert liefert ein leerer Titel auf der Kommandozeile? | `cli` |
+| Darf ein Klassenname ein Leerzeichen enthalten? | `core` |
+| Wird ein ungültiger Klassenname rot umrandet? | `ui/src/components` |
+| Welchen Rückgabewert liefert er auf der Kommandozeile? | `cli` |
+| Sind 2,3 Punkte erlaubt? Wie wird das „bis“ einer Note berechnet? | `core` (`exam.rs`) |
+| Wie sieht die Excel-Datei aus, welche Formeln stehen darin? | `core` (`export.rs`) |
+| Wo wird die Excel-Datei gespeichert? | `ui` (Speichern-Dialog) → Pfad an `exam_export` |
 | Wie heißt der IPC-Befehl, welche Argumente hat er? | `desktop/src/commands.rs` + `ui/src/api.ts` |
 | Wie heißt die Spalte in der Datenbank? | `core` |
-| Wie wird Markdown zu HTML, wie ein Diagramm gezeichnet? | `ui/src/lib` |
 | Wie wird der Zeitstempel angezeigt? | die jeweilige Schale |
 | Wie wird der Zeitstempel gespeichert? | `core` — immer UTC |
 
 Die Faustregel: **Was auf beiden Wegen gleich sein muss, steht in `core`.**
-Was nur mit Darstellung zu tun hat — Markdown, Mermaid, Farben —, steht in
-`ui/`. Die Kommandozeile gibt den Markdown-Text roh aus; sie muss ihn nicht
-verstehen.
+Was nur mit Darstellung zu tun hat — Farben, Anordnung, Eingabefelder —, steht
+in `ui/`. Auch **berechnete Werte** kommen aus `core`: Die Oberfläche rechnet
+weder Gruppensummen noch das „bis“ einer Note nach, sondern zeigt, was Rust
+nach dem Speichern liefert. Solange der Entwurf geändert ist, steht dort ein
+Strich.
+
+## Prüfungen und Excel-Export
+
+```
+ExamInput  ──exam::create/update──▶  Tabellen exams, exam_classes,
+(Name, Klassen, Gruppen, Noten)       exam_groups, exam_items, exam_grades
+                                              │
+                                   exam::get ─┘  ──▶  Exam (mit berechneten Summen und „bis“)
+                                                          │
+                                         export::build ───┘  ──▶  .xlsx (Bytes)
+```
+
+* **Eine Prüfung wird als Ganzes geschrieben.** `create` und `update` nehmen
+  den kompletten `ExamInput` und ersetzen Klassen, Gruppen, Punkte und Noten
+  in einer Transaktion. Es gibt keine Einzeländerungen, also auch keinen
+  halb gespeicherten Zustand.
+* **Punkte sind Halbpunkte als ganze Zahl** (`max_half`, `from_half`; 2,5 wird 5).
+  So rundet nichts, und „halb“ ist die kleinste Einheit. Nach außen sind es
+  `f64`.
+* **Von der Matrix wird nur das „ab“ gespeichert.** Das „bis“ berechnet `get`
+  aus der nächsten Note. Lücken und Überschneidungen sind dadurch nicht
+  darstellbar; geprüft wird nur noch, dass die niedrigste Note bei 0 beginnt
+  und kein „ab“ doppelt vorkommt oder über der Gesamtpunktzahl liegt.
+* **Excel rechnet, nicht die App.** `export.rs` schreibt Formeln, keine
+  Ergebnisse: Summen mit `SUM`, die Note mit
+  `INDEX(Noten, MATCH(Gesamtpunkte, ab, 1))` auf das Blatt „Bewertung“. Ändert
+  die Lehrkraft dort ein „ab“, folgen alle Klassenblätter. Die Matrix steht
+  deshalb aufsteigend nach „ab“ — `MATCH(…, 1)` verlangt das.
+* **Der Ausdruck ist ein Blatt mit Auswahl.** Die Auswahlliste liegt auf dem
+  verborgenen Blatt „Listen“ (Beschriftung, Klassenblatt, Zeile). „Ausdruck“
+  holt die Werte mit `INDIRECT` aus dem Klassenblatt. Ein Blatt je Schüler
+  wäre bei 90 Schülern unübersichtlich, und ein Stapeldruck bräuchte ein Makro
+  (`.xlsm`).
+* **Der Speichern-Dialog gehört zur Oberfläche.** `tauri-plugin-dialog` liefert
+  den Pfad, `exam_export` schreibt die Datei und verlangt die Endung `.xlsx`.
+  Dazu steht `dialog:allow-save` in `capabilities/default.json`.
+* **Blattnamen:** Excel erlaubt höchstens 31 Zeichen. Ein Klassenname darf
+  deshalb höchstens 24 Zeichen haben (`Name (2025)` = 24 + 7).
+
+Die Formeln prüft `crates/core/tests/export.rs` nur **als Text** in der
+erzeugten XML. Gerechnet hat sie dort niemand — ein Blick in Excel oder
+LibreOffice bleibt nötig, wenn sich der Export ändert.
 
 ## Die IPC-Grenze
 
 ```
 ui/src/api.ts                         crates/desktop/src/commands.rs
 ─────────────                         ──────────────────────────────
-api.notes.update(id, draft)
-  └▶ invoke("note_update",     ──▶    #[tauri::command]
-            { id, input })            async fn note_update(state, id: Uuid, input: NoteInput)
-                                        └▶ state.with(|app| note::update(app.conn(), id, input))
-  ◀── Note                     ◀──    Ok(Note)            → JSON
+api.classes.update(id, draft)
+  └▶ invoke("class_update",    ──▶    #[tauri::command]
+            { id, input })            async fn class_update(state, id: Uuid, input: ClassInput)
+                                        └▶ state.with(|app| class::update(app.conn(), id, input))
+  ◀── Class                    ◀──    Ok(Class)           → JSON
   ◀── throw ApiError           ◀──    Err(ApiError)       → abgelehntes Promise
 ```
 
 Vier Riegel halten diese Grenze zusammen:
 
-1. **Typen aus Rust.** `#[derive(TS)]` an `Note`, `NoteInput`, `Config`,
-   `ApiError` … erzeugt `ui/src/bindings.ts`. `tests/bindings.rs` schlägt
+1. **Typen aus Rust.** `#[derive(TS)]` an `Class`, `ClassInput`, `Student`,
+   `Exam`, `ExamInput`, `Config`, `ApiError` … erzeugt `ui/src/bindings.ts`. `tests/bindings.rs` schlägt
    fehl, wenn die Datei veraltet ist. Danach zeigt `tsc`, wo die Oberfläche
    nicht mehr passt.
 2. **Eine Befehlsliste.** `tests/ipc_contract.rs` liest `generate_handler![…]`
@@ -87,14 +139,14 @@ Vier Riegel halten diese Grenze zusammen:
 
 ### Warum `api.ts` Argumente einwortig hält
 
-Tauri übersetzt Rust-Argumentnamen in camelCase: `note_id` erwartet im JSON
-`noteId`. Das ist dokumentiert, wird aber zuverlässig vergessen — von Menschen
-und von Sprachmodellen. Einwortige Namen (`id`, `input`, `order`) machen die
+Tauri übersetzt Rust-Argumentnamen in camelCase: `class_id` erwartet im JSON
+`classId`. Das ist dokumentiert, wird aber zuverlässig vergessen — von Menschen
+und von Sprachmodellen. Einwortige Namen (`id`, `input`, `text`) machen die
 Frage gegenstandslos.
 
 ### Warum eine eigene Fehlerhülle
 
-`starter_core::Error` enthält `rusqlite::Error` und Pfade — nicht
+`teacher_class_core::Error` enthält `rusqlite::Error` und Pfade — nicht
 serialisierbar und nicht für die Oberfläche gedacht. `ApiError` hat genau die
 Form von `error` im JSON der Kommandozeile:
 
@@ -122,19 +174,29 @@ Komponente — dann weiß niemand mehr, wann was gespeichert wird.
 Deshalb:
 
 ```
-components/NoteEditor.tsx   Props rein: draft, fieldMessage, dark …
+components/ClassEditor.tsx  Props rein: draft, students, fieldMessage …
                             Rückrufe raus: onChange, onSave, onDelete …
 App.tsx                     hält den Zustand, ruft api, verteilt Fehler
 ```
 
 Komponenten *können* nicht speichern — sie importieren `api` nicht, der
-Schichtwächter besteht darauf. Das Gegenstück zu `Model`/`Action` im
-egui-Kit, nur in der Sprache von React.
+Schichtwächter besteht darauf.
 
-## Markdown und Mermaid
+Der Entwurf einer Prüfung (`lib/exam.ts`) hält Punkte als **Text**, damit
+„2,5“ und halbfertige Eingaben tippbar bleiben. Erst beim Abschicken wird
+daraus eine Zahl; was keine Zahl ist, wird `-1`, und Rust lehnt es mit einer
+Meldung am Feld ab. `NaN` ginge als `null` über die Grenze und scheiterte dort
+ohne Hinweis auf das Feld.
+
+## Markdown und Mermaid (derzeit ungenutzt)
+
+Die Oberfläche zeigt aktuell keinen Benutzertext als Markdown. `lib/markdown.ts`,
+`lib/mermaid.ts` und `MarkdownView` bleiben stehen, getestet, für spätere
+Funktionen wie Bemerkungen zu Prüfungen. Wer Benutzertext als HTML anzeigt,
+tut es nur darüber.
 
 ```
-Notiz.body ──marked──▶ HTML ──DOMPurify──▶ sicheres HTML ──▶ .markdown
+Text ──marked──▶ HTML ──DOMPurify──▶ sicheres HTML ──▶ .markdown
                                                               │
                               <pre><code class="language-mermaid"> gefunden?
                                                               │ ja
@@ -143,9 +205,9 @@ Notiz.body ──marked──▶ HTML ──DOMPurify──▶ sicheres HTML ─
 ```
 
 * **Bereinigt wird immer.** Im Webview hätte ein eingeschleustes Skript
-  Zugriff auf jeden IPC-Befehl — also auf `note_delete`.
+  Zugriff auf jeden IPC-Befehl — also auf `class_delete`.
 * **Mermaid wird nachgeladen.** Vite legt es als eigene Stücke ins Bündel.
-  Eine Notiz ohne Diagramm lädt es nie; die Anwendung startet ohne Wartezeit
+  Ein Text ohne Diagramm lädt es nie; die Anwendung startet ohne Wartezeit
   und ohne Netz.
 * **Veraltete Darstellungen werden verworfen.** Wer tippt, erzeugt alle
   150 ms eine neue; eine langsame alte darf eine schnelle neue nicht
@@ -165,7 +227,7 @@ Notiz.body ──marked──▶ HTML ──DOMPurify──▶ sicheres HTML ─
 
 | Statt | Grund gegen |
 |---|---|
-| egui (das Schwester-Kit) | Kein Zugang zu Browserpaketen wie mermaid, KaTeX, Chart.js, Monaco |
+| egui (reines Rust) | Kein Zugang zu Browserpaketen wie mermaid, KaTeX, Chart.js, Monaco — für spätere Funktionen wie Diagramme in Auswertungen |
 | Electron | Liefert Chromium und Node mit — 150 MB je Anwendung, zweite Laufzeit |
 | Wails (Go) | Zweite Sprache neben der vorhandenen Rust-Fachlogik |
 | Eine lokale Webanwendung im Browser | Kein Dock-Symbol, kein Dateisystem ohne Server, Port-Konflikte |

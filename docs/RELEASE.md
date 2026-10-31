@@ -10,9 +10,9 @@ just package-cli              # die Kommandozeile als Tarball
 
 | System | Ergebnis unter `target/release/bundle/` |
 |---|---|
-| macOS | `macos/Starter.app`, `dmg/Starter_<version>_<arch>.dmg` |
-| Linux | `deb/starter_<version>_<arch>.deb`, `appimage/Starter_<version>_<arch>.AppImage` |
-| Windows | `msi/Starter_<version>_x64_en-US.msi`, `nsis/Starter_<version>_x64-setup.exe` |
+| macOS | `macos/Teacher Class.app`, `dmg/Teacher Class_<version>_<arch>.dmg` |
+| Linux | `deb/teacher_class_<version>_<arch>.deb`, `appimage/Teacher Class_<version>_<arch>.AppImage` |
+| Windows | `msi/Teacher Class_<version>_x64_en-US.msi`, `nsis/Teacher Class_<version>_x64-setup.exe` |
 
 **Gebaut wird immer auf dem Zielsystem.** Es gibt keine Kreuzübersetzung, die
 diesen Namen verdient: WiX (für `.msi`) läuft nur auf Windows, ein `.dmg` nur
@@ -32,16 +32,16 @@ das sie erbt. `package.json` hat eine eigene Nummer, die niemand liest.
 ### Was im Bündel steckt
 
 ```
-Starter.app/Contents/
+Teacher Class.app/Contents/
 ├── Info.plist           aus tauri.conf.json: productName, identifier, Mindestsystem 11.0
-├── MacOS/starter-desktop
+├── MacOS/teacher-class-desktop
 └── Resources/icon.icns
 ```
 
-`mainBinaryName` ist ausdrücklich `starter-desktop`. Hieße die Datei wie der
-Anzeigename `Starter`, wäre sie auf dem Dateisystem, das Groß- und
+`mainBinaryName` ist ausdrücklich `teacher-class-desktop`. Hieße die Datei wie der
+Anzeigename `Teacher Class`, wäre sie auf dem Dateisystem, das Groß- und
 Kleinschreibung nicht unterscheidet, dieselbe wie eine daneben gelegte CLI
-`starter`.
+`teacher-class`.
 
 Die Oberfläche steckt **im Binary** — `ui/dist` wird beim Bau eingebettet.
 Ein Bündel ist deshalb nur wenige Megabyte groß; das Webview liefert macOS.
@@ -78,7 +78,7 @@ Für den eigenen Rechner gibt es zwei Wege:
    **Trotzdem öffnen**. Der sanktionierte Weg.
 2. **Markierung entfernen**, wenn sich das Abbild gar nicht erst einhängt:
    ```bash
-   xattr -dr com.apple.quarantine ~/Downloads/Starter_<version>_universal.dmg
+   xattr -dr com.apple.quarantine ~/Downloads/Teacher Class_<version>_universal.dmg
    ```
 
 Der ältere Rat „Rechtsklick → Öffnen" **funktioniert nicht mehr**; Apple hat
@@ -135,7 +135,7 @@ WebKitGTK zeichnet auf manchen Kombinationen aus Wayland und
 NVIDIA-Treibern ein leeres oder flackerndes Fenster. Abhilfe für Betroffene:
 
 ```bash
-WEBKIT_DISABLE_DMABUF_RENDERER=1 starter-desktop
+WEBKIT_DISABLE_DMABUF_RENDERER=1 teacher-class-desktop
 ```
 
 Wer das dauerhaft braucht, setzt es in `crates/desktop/src/lib.rs` vor dem
@@ -198,10 +198,10 @@ Entwicklungsbau bleibt es absichtlich — dort steht das Protokoll aus
 
 ---
 
-## Was dieses Kit nicht mitbringt
+## Was die App nicht mitbringt
 
 * **Kein Auto-Update.** `tauri-plugin-updater` braucht einen
-  Signaturschlüssel und einen Ort, an dem die Update-Beschreibung liegt. Gehört
-  nicht in einen Startpunkt.
+  Signaturschlüssel und einen Ort, an dem die Update-Beschreibung liegt. Kommt
+  frühestens, wenn Releases regelmäßig erscheinen.
 * **Kein Mobil.** Tauri kann iOS und Android; die Symbole dafür löscht
   `just icons` absichtlich.

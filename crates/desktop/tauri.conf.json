@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Starter",
-  "mainBinaryName": "starter-desktop",
-  "identifier": "de.kleineloesungen.starter",
+  "productName": "Teacher Class",
+  "mainBinaryName": "teacher-class-desktop",
+  "identifier": "de.example.teacher-class",
   "build": {
     "beforeDevCommand": "npm run dev:ui",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Starter",
+        "title": "Teacher Class",
         "width": 1100,
         "height": 720,
         "minWidth": 640,
@@ -43,7 +43,7 @@
     "active": true,
     "targets": ["app", "dmg", "deb", "appimage", "nsis", "msi"],
     "category": "Productivity",
-    "shortDescription": "Notizen mit Markdown und Diagrammen",
+    "shortDescription": "Prüfungen für Klassen anlegen und als Excel exportieren",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

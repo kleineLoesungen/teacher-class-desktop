@@ -1,5 +1,5 @@
 [package]
-name = "starter-core"
+name = "teacher-class-core"
 description = "Fachlogik des Kits. Kennt weder Kommandozeile noch Oberfläche."
 version.workspace = true
 edition.workspace = true
@@ -21,7 +21,9 @@ uuid.workspace = true
 time.workspace = true
 tracing.workspace = true
 ts-rs.workspace = true
+rust_xlsxwriter.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
 tempfile.workspace = true
+zip.workspace = true

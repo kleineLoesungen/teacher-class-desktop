@@ -18,7 +18,7 @@ use std::process::ExitCode;
 
 use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser};
-use starter_core::{App, Paths};
+use teacher_class_core::{App, Paths};
 
 use crate::args::{Cli, Command};
 use crate::output::Out;
@@ -38,7 +38,7 @@ fn run(cli: Cli) -> Result<()> {
     let out = Out { json: cli.json };
 
     // Befehle, die keine Datenbank brauchen, kommen vor dem Öffnen — sonst
-    // scheitert `starter completions zsh` auf einem Rechner ohne Schreibrecht
+    // scheitert `teacher-class completions zsh` auf einem Rechner ohne Schreibrecht
     // im Datenverzeichnis.
     match cli.command {
         Command::Completions { shell } => return completions(shell),
@@ -53,9 +53,17 @@ fn run(cli: Cli) -> Result<()> {
             out.paths(&paths);
             Ok(())
         }
-        Command::Note(cmd) => {
+        Command::Class(cmd) => {
             let app = App::open(paths)?;
-            commands::note::run(cmd, &app, &out)
+            commands::class::run(cmd, &app, &out)
+        }
+        Command::Student(cmd) => {
+            let app = App::open(paths)?;
+            commands::student::run(cmd, &app, &out)
+        }
+        Command::Exam(cmd) => {
+            let app = App::open(paths)?;
+            commands::exam::run(cmd, &app, &out)
         }
         Command::Config(cmd) => {
             let mut app = App::open(paths)?;
@@ -96,8 +104,8 @@ fn init_tracing(verbose: u8) {
         2 => "debug",
         _ => "trace",
     };
-    let filter = tracing_subscriber::EnvFilter::try_from_env("STARTER_LOG")
-        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(format!("starter={level}")));
+    let filter = tracing_subscriber::EnvFilter::try_from_env("TEACHER_CLASS_LOG")
+        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(format!("teacher-class={level}")));
 
     tracing_subscriber::fmt()
         .with_env_filter(filter)

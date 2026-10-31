@@ -2,11 +2,11 @@
 //!
 //! Aufgabe: ein Fenster mit der Weboberfläche aus `ui/` öffnen und die
 //! Befehle aus `commands.rs` bereitstellen. Fachlogik steht in
-//! `starter_core`, Darstellung in `ui/`. Hier steht nur, was die beiden
+//! `teacher_class_core`, Darstellung in `ui/`. Hier steht nur, was die beiden
 //! verbindet.
 //!
 //! ```text
-//! ui/src/api.ts  ──invoke──▶  commands.rs  ──▶  starter_core
+//! ui/src/api.ts  ──invoke──▶  commands.rs  ──▶  teacher_class_core
 //!      ▲                           │
 //!      └──── JSON oder ApiError ───┘
 //! ```
@@ -15,8 +15,8 @@ pub mod commands;
 pub mod error;
 pub mod state;
 
-use starter_core::{App, Paths};
 use tauri::{Runtime, Wry};
+use teacher_class_core::{App, Paths};
 
 pub use error::{ApiError, ApiResult};
 pub use state::AppState;
@@ -50,15 +50,26 @@ pub fn configure<R: Runtime>(builder: tauri::Builder<R>, state: AppState) -> tau
         // Öffnet Verweise im Standardbrowser statt im Webview. Welche
         // Adressen erlaubt sind, steht in capabilities/default.json.
         .plugin(tauri_plugin_opener::init())
+        // Speichern-Dialog für den Excel-Export. Der Befehl `exam_export`
+        // schreibt die Datei; der Dialog liefert nur den Pfad.
+        .plugin(tauri_plugin_dialog::init())
         .manage(state)
         // NEUER BEFEHL? Hier eintragen UND in ui/src/api.ts.
         // tests/ipc_contract.rs vergleicht beide Listen.
         .invoke_handler(tauri::generate_handler![
-            commands::note_list,
-            commands::note_get,
-            commands::note_create,
-            commands::note_update,
-            commands::note_delete,
+            commands::class_list,
+            commands::class_create,
+            commands::class_update,
+            commands::class_delete,
+            commands::student_list,
+            commands::student_add,
+            commands::student_update,
+            commands::student_delete,
+            commands::exam_list,
+            commands::exam_create,
+            commands::exam_update,
+            commands::exam_delete,
+            commands::exam_export,
             commands::config_get,
             commands::config_set,
             commands::app_info,
@@ -71,8 +82,8 @@ pub fn configure<R: Runtime>(builder: tauri::Builder<R>, state: AppState) -> tau
 fn init_tracing(paths: &Paths) {
     use tracing_subscriber::prelude::*;
 
-    let filter = tracing_subscriber::EnvFilter::try_from_env("STARTER_LOG")
-        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("starter=info"));
+    let filter = tracing_subscriber::EnvFilter::try_from_env("TEACHER_CLASS_LOG")
+        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("teacher-class=info"));
 
     let file = std::fs::OpenOptions::new()
         .create(true)

@@ -1,5 +1,5 @@
 [package]
-name = "starter-desktop"
+name = "teacher-class-desktop"
 description = "Desktop-Schale mit Tauri. Dünn — nimmt IPC-Befehle an, ruft core, gibt JSON zurück."
 version.workspace = true
 edition.workspace = true
@@ -10,11 +10,11 @@ publish.workspace = true
 # Die Bibliothek trägt die ganze Schale, main.rs ruft nur `run()`. So können
 # die Tests in tests/ denselben Builder mit der Attrappe von Tauri benutzen.
 [lib]
-name = "starter_desktop"
+name = "teacher_class_desktop"
 path = "src/lib.rs"
 
 [[bin]]
-name = "starter-desktop"
+name = "teacher-class-desktop"
 path = "src/main.rs"
 
 [lints]
@@ -24,11 +24,12 @@ workspace = true
 tauri-build.workspace = true
 
 [dependencies]
-starter-core = { path = "../core" }
+teacher-class-core = { path = "../core" }
 serde.workspace = true
 serde_json.workspace = true
 tauri.workspace = true
 tauri-plugin-opener.workspace = true
+tauri-plugin-dialog.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 ts-rs.workspace = true

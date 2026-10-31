@@ -36,9 +36,9 @@ die Workflows stillschweigend. Fehlt die App, laufen sie an und scheitern
 mit `Claude Code is not installed on this repository` — die Inhaber-Sperre
 und das Auslösewort greifen also schon, nur der Token-Tausch nicht.
 
-**Das Kit selbst hat bewusst keines von beidem.** Ein Secret gehört in ein
-Projekt, nicht in eine Vorlage. Die Schritte unten macht man einmal je
-abgeleitetem Projekt.
+Beides ist für dieses Repository **eingerichtet** (siehe README). Die
+Schritte unten gelten, wenn man die Automatik in einem anderen Repository
+oder mit einem neuen Token wieder aufsetzen muss.
 
 ### 1. Die Claude-GitHub-App installieren
 
@@ -80,8 +80,8 @@ einfügen.
 
 ### 4. Probe
 
-Ein Issue anlegen: *„@claude trage in die README eine Zeile ein, dass dieses
-Projekt aus dem Kit stammt."* Innerhalb einer Minute sollte ein Lauf unter
+Ein Issue anlegen: *„@claude trage in die README eine Zeile ein, dass die Einrichtung
+funktioniert."* Innerhalb einer Minute sollte ein Lauf unter
 *Actions* erscheinen.
 
 ---
@@ -101,7 +101,7 @@ Das Repository ist öffentlich: **Jeder kann Issues schreiben und
 kommentieren.** Ohne die erste Bedingung könnte ein Fremder mit einem
 `@claude`-Kommentar einen selbst geschriebenen Auftrag in deiner CI
 ausführen lassen — auf Kosten deines Abo-Kontingents. `claude-code-action`
-kennt dafür den Schalter `allowed_non_write_users`; dieses Kit setzt ihn
+kennt dafür den Schalter `allowed_non_write_users`; dieses Projekt setzt ihn
 **nicht**, und die Doku der Action nennt ihn ausdrücklich ein erhebliches
 Risiko.
 
@@ -125,7 +125,7 @@ in der GitHub-App.
 *Wer das nicht will,* trägt in `claude-issue.yml` ein Personal Access Token
 als `github_token` ein. Dann entfällt die Rückfrage — und dafür läuft alles
 unbeaufsichtigt, das Token läuft irgendwann ab, und seine Reichweite ist
-größer als die des `GITHUB_TOKEN`. Dieses Kit hat sich bewusst anders
+größer als die des `GITHUB_TOKEN`. Dieses Projekt hat sich bewusst anders
 entschieden.
 
 ---
@@ -185,7 +185,7 @@ Die Action erlaubt von Haus aus Lesen, Bearbeiten und Committen — aber
 **keine Shell-Befehle**. Ohne Freigabe könnte Claude also Code schreiben,
 ihn aber weder übersetzen noch prüfen.
 
-`claude-issue.yml` gibt deshalb die Werkzeugkette dieses Kits frei:
+`claude-issue.yml` gibt deshalb die Werkzeugkette dieses Projekts frei:
 
 ```
 Bash(just:*)  Bash(cargo:*)  Bash(npm:*)  Bash(npx:*)  Bash(node:*)
@@ -278,7 +278,7 @@ Wer dauerhaft mehr braucht, als das Abo hergibt, stellt die Workflows auf
 | `Claude Code is not installed on this repository` | Die GitHub-App fehlt — Schritt 1. Der Token ist in Ordnung |
 | `Claude execution failed: result is_error:true`, Abbruch nach ~2 s, `total_cost_usd: 0` | Der Token wird abgelehnt. 401 oder 429 — siehe unten |
 | `Not logged in · Please run /login` (nur mit `CLAUDE_DEBUG` sichtbar) | Dasselbe von innen: Die Claude-CLI im Runner bekommt keine **gültigen** Zugangsdaten. Fast immer das Secret, nicht der Aufbau |
-| `@claude` löst **gar nichts** aus, unter *Actions* steht ein roter Lauf `.github/workflows/…` | Ungültiges YAML — oft Konfliktmarker aus einem `cherry-pick`. GitHub führt solche Workflows stillschweigend nicht aus. Siehe README, „Spätere Verbesserungen aus dem Kit holen" |
+| `@claude` löst **gar nichts** aus, unter *Actions* steht ein roter Lauf `.github/workflows/…` | Ungültiges YAML — oft Konfliktmarker aus einem `cherry-pick`. GitHub führt solche Workflows stillschweigend nicht aus. Konfliktmarker beseitigen oder die Datei aus `main` wiederherstellen |
 | PR da, aber keine Haken und keine Kommentare | Der Freigabe-Tipp fehlt noch (siehe oben) |
 | `durchsicht` übersprungen | PR ist ein Entwurf oder kommt aus einem Fork |
 | `check` rot nur auf Windows | Genau der Fall, für den die Matrix da ist. `crates/core/tests/layering.rs` nennt die üblichen Ursachen |
@@ -407,16 +407,10 @@ Weg, auf dem die meisten gelandet sind.
 
 ---
 
-## In einem Projekt aus dem Template
+## Ohne App oder Token
 
-`node scripts/new-project.mjs` nimmt `.github/` und `.claude/` mit — das neue
-Projekt hat alles sofort.
-
-**Was es nicht mitnimmt, sind App und Token.** Beide hängen an einem Konto
-und haben in einer Vorlage nichts zu suchen. Jedes Projekt braucht die
-GitHub-App (Schritt 1) und seinen eigenen Eintrag `CLAUDE_CODE_OAUTH_TOKEN`
-(Schritt 3, mit demselben Token).
-
-Bis dahin laufen die beiden Claude-Workflows ins Leere, aber sauber: Sie
-überspringen sich und schreiben einen Hinweis in den Lauf. Keine roten Haken
-an einem frischen Projekt.
+Fehlt die GitHub-App oder der Eintrag `CLAUDE_CODE_OAUTH_TOKEN` (zum Beispiel
+in einem Fork), laufen die beiden Claude-Workflows ins Leere, aber sauber: Sie
+überspringen sich und schreiben einen Hinweis in den Lauf. Keine roten Haken.
+Beides hängt an einem Konto und wird je Repository eingerichtet (Schritt 1 und
+3 oben).

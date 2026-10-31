@@ -1,25 +1,82 @@
-# Starter — Desktop-Anwendungen mit Tauri, Weboberfläche und Kommandozeile
+# Teacher Class
 
-Startpunkt für Desktop-Werkzeuge auf **macOS, Linux und Windows**, deren Oberfläche aus
-dem Web kommt: **React und TypeScript** im Webview des Betriebssystems, damit
-Browserpakete wie **mermaid.js**, marked oder Chart-Bibliotheken einfach über
-npm benutzbar sind. Dahinter **Tauri 2** und **eine** Fachlogik in Rust, die
-auch ein Kommandozeilenwerkzeug bedient. Daten in einer **eingebetteten
-SQLite**.
+Eine schlichte Desktop-App, die Lehrkräften die **Korrektur von Prüfungen**
+erleichtert. Läuft auf **macOS, Linux und Windows**.
 
-Gemacht für die Arbeit mit KI-Assistenten: klare Regeln in
-[CLAUDE.md](CLAUDE.md) (inklusive der Tauri-1-Fallen, in die Sprachmodelle
-tappen), aus Rust erzeugte TypeScript-Typen, fertige Rezepte, ein strenges
-`just check` — und Tests, die die Architektur und die IPC-Grenze bewachen.
+Man pflegt Klassen und Schüler, legt eine Prüfung mit **Prüfungsschema** und
+**Bewertungsmatrix** an und exportiert sie als **Excel-Datei**. Darin trägt man
+die Punkte je Schüler ein; Summen und Noten rechnen **Formeln**. Ändert man die
+Bewertungsmatrix, ändern sich die Noten. Je Schüler gibt es einen **Ausdruck**
+mit Punkteaufschlüsselung und Bewertungsmatrix.
 
-Das Gegenstück ohne Webview, in reinem Rust mit egui:
-[vibe-starter-desktop](https://github.com/kleineLoesungen/vibe-starter-desktop).
-
-Die Einrichtung mit dem Claude OAuth Token ist abgeschlossen.
+Technisch: **Tauri 2**, Oberfläche in **React und TypeScript**, Fachlogik in
+**Rust** mit eingebetteter **SQLite**. Dieselbe Fachlogik bedient auch eine
+Kommandozeile (`teacher-class`).
 
 ---
 
-## In fünf Minuten laufen
+## Was die App kann
+
+### Klassen und Schüler
+
+* Eine **Klasse** hat einen Namen aus Buchstaben und Zahlen (`7a`) und ein
+  vierstelliges Jahr. Angezeigt wird sie als `7a (2025)`.
+* **Schüler** heißen `Nachname, Vorname`. Mehrere legt man auf einmal an: ein
+  Textfeld, eine Zeile je Schüler. Gespeichert wird alles oder nichts; ein
+  Fehler nennt die Zeilennummer.
+* Einen Klassenwechsel gibt es nicht, einen Import aus Dateien noch nicht.
+
+### Prüfungen
+
+Eine Prüfung gilt für eine oder mehrere Klassen und besteht aus:
+
+* **Prüfungsschema:** Gruppen mit Namen; darin **Punkte** (Aufgaben) mit Namen
+  und einer Höchstpunktzahl. Ganze und halbe Punkte sind erlaubt (`2,5`). Die
+  Höchstpunktzahl einer Gruppe und der ganzen Prüfung wird berechnet.
+* **Bewertungsmatrix:** Noten frei benennbar, üblich `1` bis `6`. Je Note trägt
+  man nur das **„ab“** ein (Punkte). Das **„bis“** wird berechnet — eine halbe
+  Punktstufe unter dem „ab“ der nächsten Note. Dadurch gibt es weder Lücken
+  noch Überschneidungen. Die niedrigste Note beginnt bei 0.
+
+### Excel-Export
+
+**„Als Excel exportieren“** in der Prüfung öffnet einen Speichern-Dialog.
+Die `.xlsx`-Datei enthält:
+
+| Blatt | Inhalt |
+|---|---|
+| **Bewertung** | Prüfungsschema und Bewertungsmatrix. Hier ändert man „ab“ und Höchstpunkte; alles andere folgt per Formel. |
+| **Ausdruck** | Eine Seite für einen Schüler, der oben aus einer Liste gewählt wird: Punkte je Aufgabe, Summen je Gruppe, Gesamtpunkte, Note und die Bewertungsmatrix. In Excel drucken oder als PDF speichern. |
+| **je Klasse** | Blattname `7a (2025)`. Schüler in den Zeilen, Punkte des Schemas in den Spalten, Summe je Gruppe, Gesamtpunkte, zuletzt die **Note** aus der Bewertungsmatrix. Solange nichts eingetragen ist, bleibt die Note leer. |
+| *Listen* | Verborgene Hilfsliste für die Schülerauswahl auf „Ausdruck“. |
+
+Die App schreibt nur die leere Vorlage; die vergebenen Punkte stehen allein
+in Excel. Ein Wiedereinlesen ist denkbar, aber nicht gebaut.
+
+Der **Ausdruck** ist ein Blatt mit Auswahl, kein Blatt je Schüler: Ein
+Stapeldruck aller Schüler auf einmal geht damit nicht, dafür bleibt die Datei
+übersichtlich und ohne Makros (`.xlsx`).
+
+### Kommandozeile
+
+```bash
+teacher-class class add 7a 2025
+teacher-class student add <KLASSE> "Muster, Max
+Beispiel, Eva"
+teacher-class exam add "Klassenarbeit 1" --class <KLASSE> \
+    --group "Aufgabe 1: a=4; b=2,5" --group "Aufgabe 2: a=13,5" \
+    --grade 6=0 --grade 3=10 --grade 1=17
+teacher-class exam show <PRÜFUNG>
+teacher-class exam export <PRÜFUNG> --out Klassenarbeit.xlsx
+```
+
+Jeder Befehl kann `--json`. Alles dazu in [docs/CLI.md](docs/CLI.md).
+Oberfläche und Kommandozeile arbeiten auf **derselben** Datenbank; wo sie liegt,
+sagt `teacher-class paths`.
+
+---
+
+## Entwickeln
 
 Voraussetzungen auf **allen** Systemen: [rustup](https://rustup.rs),
 [Node.js 22](https://nodejs.org), [just](https://github.com/casey/just).
@@ -39,160 +96,37 @@ sudo apt install libwebkit2gtk-4.1-dev libxdo-dev libssl-dev \
 (Fedora, Arch und andere: [Tauri-Voraussetzungen](https://v2.tauri.app/start/prerequisites/).)
 
 **Kein Git Bash, keine Shell-Skripte.** Jedes `just`-Rezept ist ein schlichter
-Befehl; alles Weitere liegt in `scripts/*.mjs` und läuft über Node. Dieselben
-Befehle auf allen drei Systemen.
+Befehl; alles Weitere liegt in `scripts/*.mjs` und läuft über Node.
 
 ```bash
-just setup    # npm-Pakete, Werkzeuge, einmal durchbauen
-just dev      # Desktop-Anwendung starten, lädt bei Änderungen neu
+just setup          # npm-Pakete, Werkzeuge, einmal durchbauen
+just dev            # Desktop-Anwendung starten, lädt bei Änderungen neu
+just dev-sandbox    # dasselbe mit leerer Wegwerf-Datenbank
+just cli class list # die Kommandozeile
+just check          # alles prüfen, vor jedem Commit
 ```
 
-Im leeren Fenster **„Beispiel mit Diagramm anlegen"** klicken — die Notiz
-enthält zwei Mermaid-Diagramme.
+Ohne die echten Daten anzufassen: `just sandbox class list`.
 
-Und dieselbe Anwendung auf der Kommandozeile:
-
-```bash
-just cli note list
-just cli note add "Einkauf" --body "Milch, Brot"
-just cli note list --json | jq '.[].title'
-```
-
-Beides arbeitet auf **derselben** Datenbank. Wo die liegt, sagt `just cli paths`.
-Ohne die echten Daten anzufassen: `just dev-sandbox` und `just sandbox note list`.
-
----
-
-## Eigenes Projekt aus dem Kit
-
-Das Kit selbst bleibt unverändert. Zwei Wege zu einer eigenen Kopie:
-
-**Über GitHub** — der grüne Knopf **„Use this template"** legt ein eigenes
-Repository mit frischer Historie an. Danach klonen und umbenennen:
-
-```bash
-git clone git@github.com:<du>/notizbuch.git
-cd notizbuch
-node scripts/new-project.mjs notizbuch "Notizbuch"
-just setup && just check
-```
-
-**Lokal**, ohne Umweg über GitHub:
-
-```bash
-git clone https://github.com/kleineLoesungen/vibe-starter-tauri notizbuch
-cd notizbuch
-node scripts/new-project.mjs notizbuch "Notizbuch"
-git remote remove origin        # zeigt sonst noch auf das Kit
-just setup && just check
-```
-
-`new-project.mjs` benennt um: Kistennamen, Binaries, Bündelkennung,
-Umgebungsvariablen, Datenverzeichnis, Fenstertitel, `package.json`,
-`tauri.conf.json`, Workflows.
-
-**Das Skript direkt nach dem Klonen ausführen.** Bis dahin heißt das Projekt
-noch „starter" und benutzt dasselbe Datenverzeichnis wie das Kit — zwei
-Projekte mit demselben Namen teilen sich unbemerkt eine Datenbank.
-
-### Spätere Verbesserungen aus dem Kit holen
-
-```bash
-git remote add kit https://github.com/kleineLoesungen/vibe-starter-tauri
-git fetch kit
-git log --oneline kit/main
-```
-
-Dann je nachdem, **was** du holst — und der Unterschied ist wichtiger, als er
-aussieht:
-
-**Infrastruktur — Workflows, `docs/`, `scripts/`, `deny.toml`, `biome.json`:**
-
-```bash
-git checkout kit/main -- .github/workflows docs/AUTOMATION.md
-git commit -m "Workflows vom Kit übernehmen"
-```
-
-Diese Dateien enthalten **keine projektspezifischen Stellen** (geprüft: kein
-Projektname in `.github/workflows/`). Es gibt also nichts zusammenzuführen —
-die Fassung aus dem Kit ist die richtige, Punkt. `git checkout` nimmt sie am
-Stück und kann nicht in einen Konflikt laufen.
-
-**Code — alles unter `crates/` und `ui/src/`:**
-
-```bash
-git cherry-pick <sha>
-```
-
-Hier hast du eigene Änderungen, hier ist Zusammenführen richtig.
-
-> **Warum die Unterscheidung:** Ein `cherry-pick` auf eine Infrastrukturdatei,
-> die du einmal von Hand angefasst hast, endet im Konflikt. Bleiben die Marker
-> versehentlich in einer Workflow-Datei stehen, ist das YAML ungültig — und
-> GitHub führt den Workflow dann **stillschweigend gar nicht mehr aus**. Der
-> Auslöser scheint kaputt, dabei ist es die Datei. Unter *Actions* erscheint
-> dann ein roter Lauf namens `.github/workflows/…`; das ist das Erkennungs-
-> zeichen.
-
-Ein `merge` wäre in beiden Fällen der falsche Griff — er zöge die ganze
-Kit-Geschichte herein.
-
----
-
-## Vom Telefon aus arbeiten
-
-Issue schreiben, `@claude` hineinschreiben, warten. Claude setzt um, lässt
-`just check` laufen und öffnet einen PR; drei Prüf-Agents sehen ihn durch und
-schreiben je einen Kommentar; die CI baut auf allen drei Systemen.
-
-Dafür fehlt einmalig ein Repository-Secret `CLAUDE_CODE_OAUTH_TOKEN` —
-Einrichtung, Sperren und Kosten stehen in
-[docs/AUTOMATION.md](docs/AUTOMATION.md).
-
-Auslösen kann das **nur der Repo-Inhaber**. Dieses Repository ist öffentlich;
-ohne diese Sperre könnte jeder Fremde mit einem `@claude`-Kommentar Aufträge
-in deiner CI ausführen lassen.
-
----
-
-## Was drin ist
-
-| Bereich | Umsetzung |
-|---|---|
-| Aufbau | Arbeitsbereich `core` · `cli` · `desktop` + `ui/`, bewacht von einem Test |
-| Desktop | Tauri 2.12 auf **macOS, Linux und Windows** — Webview des Systems, Fenster in wenigen MB statt Chromium |
-| Ein Codepfad | **Keine einzige `#[cfg(target_os)]`** im Rust-Code, kein Bash in der Werkzeugkette — beides von Tests bewacht |
-| Oberfläche | React 19, TypeScript 7, Vite 8 — kein CSS-Framework, keine Zustandsbibliothek |
-| Browserpakete | mermaid 12 (nachgeladen), marked, DOMPurify — alles über npm, läuft offline |
-| IPC | Befehle als `async fn`, eine Fehlerhülle wie im CLI-JSON, TS-Typen aus Rust (ts-rs) |
-| Sicherheit | CSP ohne fremde Quellen, Capabilities, bereinigtes Markdown, Verweise im Standardbrowser |
-| Kommandozeile | clap 4, `--json` bei jedem Befehl, eigene Rückgabewerte, Handbuch, Vervollständigung |
-| Daten | SQLite eingebettet, `STRICT`, WAL, nummerierte Migrationen |
-| Einstellungen | TOML, von Oberfläche und CLI gemeinsam benutzt; hell/dunkel/System, Akzentfarbe |
-| Prüfung | Feldgenaue Fehler aus Rust — in der Oberfläche am Feld, in der CLI als `error.fields` |
-| Ausliefern | `.app` + `.dmg` (auch universal), `.deb` + `.AppImage`, `.msi` + `-setup.exe`, CLI-Tarball |
-| Automatik | Bau auf drei Systemen, Entwicklung über Issues, drei Prüf-Agents auf jedem PR |
-| Qualität | rustfmt, Clippy, Biome, `tsc`, `cargo deny`, `npm audit` — Warnungen sind Fehler |
-| Tests | Fachlogik, Schichtwächter, CLI-Schnappschüsse, IPC ohne Fenster, Oberfläche mit `mockIPC` |
-
----
-
-## Wo was liegt
+### Wo was liegt
 
 ```
 crates/
 ├── core/                    ← FACHLOGIK. Kennt weder clap noch tauri noch stdout.
 │   ├── migrations/            Nummerierte SQL-Dateien, ins Binary einkompiliert
-│   ├── src/note.rs            Beispielressource zum Kopieren
+│   ├── src/class.rs           Klassen
+│   ├── src/student.rs         Schüler einer Klasse, Massen-Eintrag als Text
+│   ├── src/exam.rs            Prüfungen: Schema, Bewertungsmatrix, Prüfung
+│   ├── src/export.rs          Excel-Export (rust_xlsxwriter)
 │   ├── src/config.rs          Einstellungen, TOML
 │   ├── src/paths.rs           Die einzige Stelle mit macOS/Linux-Unterschieden
 │   └── tests/layering.rs      Der Wächter über die Schichtregel (Rust + TypeScript)
 │
-├── cli/                     ← Kommandozeile `starter`. Dünn.
+├── cli/                     ← Kommandozeile `teacher-class`. Dünn.
 │
 └── desktop/                 ← Tauri-Schale. Dünn.
     ├── tauri.conf.json        Fenster, CSP, Bündel
-    ├── capabilities/          Was das Fenster darf
+    ├── capabilities/          Was das Fenster darf (u. a. Speichern-Dialog)
     ├── src/commands.rs        Die IPC-Befehle
     ├── src/error.rs           ApiError — die Fehlerhülle
     ├── tests/ipc_contract.rs  Befehle ohne Fenster aufrufen; Rust ↔ api.ts
@@ -204,20 +138,34 @@ ui/
     ├── api.ts                 ← Die EINZIGE Stelle, die mit Rust spricht
     ├── bindings.ts            Erzeugt aus Rust — nicht von Hand ändern
     ├── App.tsx                Zustand, ruft api
-    ├── components/            Zeichnen nur
-    ├── lib/markdown.ts        Markdown → bereinigtes HTML
-    ├── lib/mermaid.ts         Diagramme, nachgeladen
+    ├── components/            Zeichnen nur: Klassen, Schüler, Prüfungen
+    ├── lib/                   Reine Hilfen: Prüfungsentwurf, Format, Farbschema
     ├── theme.css              Die EINZIGE Datei mit Farben
     └── app.css                Aufbau und Abstände
 
 scripts/
-├── new-project.mjs          Kit zu eigenem Projekt umbenennen
-├── package-cli.mjs          dist/starter-cli-<version>-<os>-<arch>.tar.gz
+├── package-cli.mjs          dist/teacher-class-cli-<version>-<os>-<arch>.tar.gz
 └── tasks.mjs                Was im Justfile keine schlichte Zeile wäre
 
 .claude/agents/              Architektur · Dokumentation · Sicherheit
 .github/workflows/           Bau auf drei Systemen, Issues, PR-Durchsicht
 ```
+
+Regeln, Festgenageltes und die Tauri-2-Fallstricke stehen in
+[CLAUDE.md](CLAUDE.md). Die wichtigste: **Prüfung gehört nach `core`.** Was für
+die Oberfläche gilt, gilt so auch für die Kommandozeile.
+
+---
+
+## Vom Telefon aus arbeiten
+
+Issue schreiben, `@claude` hineinschreiben, warten. Claude setzt um, lässt
+`just check` laufen und öffnet einen PR; drei Prüf-Agents sehen ihn durch und
+schreiben je einen Kommentar; die CI baut auf allen drei Systemen.
+
+Dafür braucht das Repository einmalig das Secret `CLAUDE_CODE_OAUTH_TOKEN`
+(die Einrichtung ist abgeschlossen). Auslösen kann das **nur der
+Repo-Inhaber**. Sperren und Kosten: [docs/AUTOMATION.md](docs/AUTOMATION.md).
 
 ---
 
@@ -236,10 +184,13 @@ just package-cli              # die Kommandozeile als Tarball
 | Windows | `.msi` + `-setup.exe` |
 
 Gebaut wird immer **auf** dem Zielsystem — ein `.msi` entsteht nur auf Windows.
-Dafür gibt es die Bau-Workflows unter `.github/workflows/`.
+Dafür gibt es die Bau-Workflows unter `.github/workflows/`. Ergebnisse unter
+`target/release/bundle/` bzw. `dist/`. Signieren und Notarisieren:
+[docs/RELEASE.md](docs/RELEASE.md).
 
-Ergebnisse unter `target/release/bundle/` bzw. `dist/`. Signieren und
-Notarisieren: [docs/RELEASE.md](docs/RELEASE.md).
+> **Noch offen für den ersten Release:** `assets/icon.png` ist noch das
+> Symbol der Vorlage. Ein eigenes 1024×1024-PNG dorthin legen und `just icons`
+> ausführen (`icon.ico` entsteht nur auf Windows, `icon.icns` nur auf macOS).
 
 ---
 
@@ -248,8 +199,8 @@ Notarisieren: [docs/RELEASE.md](docs/RELEASE.md).
 | Datei | Inhalt |
 |---|---|
 | [CLAUDE.md](CLAUDE.md) | Die Regeln. Tauri-2-Fallstricke, festgenagelte Versionen, Schichtregel |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Warum die Schichten so geschnitten sind, wie die IPC-Grenze aussieht |
-| [docs/RECIPES.md](docs/RECIPES.md) | npm-Paket einbinden, neuer Befehl, neue Ressource, Plugin, Hintergrundarbeit |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Warum die Schichten so geschnitten sind, wie die IPC-Grenze und der Excel-Export aussehen |
+| [docs/RECIPES.md](docs/RECIPES.md) | Neuer Befehl, neue Ressource, Excel-Blatt ändern, npm-Paket, Plugin |
 | [docs/DESIGN.md](docs/DESIGN.md) | Aussehen ändern, Farbmarken, Symbole |
 | [docs/CLI.md](docs/CLI.md) | Befehle, Rückgabewerte, JSON-Format |
 | [docs/AUTOMATION.md](docs/AUTOMATION.md) | Entwicklung über Issues, die drei Prüf-Agents, Einrichtung |

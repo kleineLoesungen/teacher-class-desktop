@@ -2,4 +2,4 @@
 source: crates/cli/tests/cli.rs
 expression: text
 ---
-Fehler: title: darf nicht leer sein
+Fehler: name: darf nur Buchstaben und Zahlen enthalten

@@ -1,5 +1,5 @@
 [package]
-name = "starter-cli"
+name = "teacher-class-cli"
 description = "Kommandozeilenschale. Dünn — parst Argumente, ruft core, formatiert Ausgabe."
 version.workspace = true
 edition.workspace = true
@@ -7,16 +7,16 @@ license.workspace = true
 repository.workspace = true
 publish.workspace = true
 
-# Der Befehl heißt `starter`, nicht `starter-cli`.
+# Der Befehl heißt `teacher-class`, nicht `teacher-class-cli`.
 [[bin]]
-name = "starter"
+name = "teacher-class"
 path = "src/main.rs"
 
 [lints]
 workspace = true
 
 [dependencies]
-starter-core = { path = "../core" }
+teacher-class-core = { path = "../core" }
 anyhow.workspace = true
 clap.workspace = true
 clap_complete.workspace = true

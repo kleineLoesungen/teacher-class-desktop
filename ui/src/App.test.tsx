@@ -13,8 +13,8 @@ import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
-import { App, EXAMPLE_NOTE } from "./App";
-import type { ApiError, Config, Note, NoteInput } from "./bindings";
+import { App } from "./App";
+import type { ApiError, Class, ClassInput, Config, Exam, ExamInput, Student } from "./bindings";
 
 type Call = { cmd: string; args: Record<string, unknown> };
 
@@ -22,12 +22,19 @@ class Rejection {
   constructor(readonly error: ApiError) {}
 }
 
-function note(id: string, input: NoteInput): Note {
-  const stamp = "2026-09-15T06:39:51Z";
-  return { id, ...input, created_at: stamp, updated_at: stamp };
+function cls(id: string, input: ClassInput, studentCount = 0): Class {
+  return { id, ...input, student_count: studentCount, created_at: "2026-09-15T06:39:51Z" };
 }
 
-let notes: Note[];
+function student(id: string, classId: string, last: string, first: string): Student {
+  return { id, class_id: classId, last_name: last, first_name: first };
+}
+
+let classes: Class[];
+let students: Student[];
+let exams: Exam[];
+/** Was der Speichern-Dialog liefert; `null` = abgebrochen. */
+let savePath: string | null;
 let calls: Call[];
 let config: Config;
 let nextError: ApiError | null;
@@ -53,23 +60,69 @@ function backend(cmd: string, args: Record<string, unknown> = {}): unknown {
         db_file: "/tmp/db",
         log_file: "/tmp/l",
       };
-    case "note_list":
-      return notes;
-    case "note_get":
-      return notes.find((n) => n.id === args.id);
-    case "note_create": {
-      const created = note(`id-${notes.length + 1}`, args.input as NoteInput);
-      notes = [created, ...notes];
+    case "class_list":
+      return classes.map((c) => ({
+        ...c,
+        student_count: students.filter((s) => s.class_id === c.id).length,
+      }));
+    case "class_create": {
+      const created = cls(`id-${classes.length + 1}`, args.input as ClassInput);
+      classes = [created, ...classes];
       return created;
     }
-    case "note_update": {
-      const updated = note(args.id as string, args.input as NoteInput);
-      notes = notes.map((n) => (n.id === updated.id ? updated : n));
+    case "class_update": {
+      const updated = cls(args.id as string, args.input as ClassInput);
+      classes = classes.map((c) => (c.id === updated.id ? updated : c));
       return updated;
     }
-    case "note_delete":
-      notes = notes.filter((n) => n.id !== args.id);
+    case "class_delete":
+      classes = classes.filter((c) => c.id !== args.id);
       return null;
+    case "student_list":
+      return students.filter((s) => s.class_id === args.id);
+    case "student_add": {
+      const added = (args.text as string)
+        .split("\n")
+        .filter((line) => line.trim() !== "")
+        .map((line, i) => {
+          const [last = "", first = ""] = line.split(",").map((p) => p.trim());
+          return student(`s-${students.length + i + 1}`, args.id as string, last, first);
+        });
+      students = [...students, ...added];
+      return added;
+    }
+    case "student_delete":
+      students = students.filter((s) => s.id !== args.id);
+      return null;
+    case "exam_list":
+      return exams;
+    case "exam_create":
+    case "exam_update": {
+      // Die Attrappe rechnet nichts nach: „bis“ und die Summen hat Rust
+      // errechnet — hier stehen feste Werte, damit die Anzeige geprüft wird.
+      const input = args.input as ExamInput;
+      const exam: Exam = {
+        id: cmd === "exam_create" ? `e-${exams.length + 1}` : (args.id as string),
+        name: input.name,
+        class_ids: input.class_ids,
+        groups: input.groups.map((g) => ({
+          name: g.name,
+          items: g.items,
+          max_points: g.items.reduce((sum, i) => sum + i.max_points, 0),
+        })),
+        grades: [{ name: "6", from_points: 0, to_points: 9.5 }],
+        max_points: 20,
+        created_at: "2026-09-15T06:39:51Z",
+      };
+      exams =
+        cmd === "exam_create" ? [exam, ...exams] : exams.map((e) => (e.id === exam.id ? exam : e));
+      return exam;
+    }
+    case "exam_delete":
+      exams = exams.filter((e) => e.id !== args.id);
+      return null;
+    case "plugin:dialog|save":
+      return savePath;
     default:
       // Fenster-API und Plugins: annehmen, nichts tun.
       return null;
@@ -77,10 +130,13 @@ function backend(cmd: string, args: Record<string, unknown> = {}): unknown {
 }
 
 beforeEach(() => {
-  notes = [];
+  classes = [];
+  students = [];
+  exams = [];
+  savePath = "/tmp/Klassenarbeit.xlsx";
   calls = [];
   nextError = null;
-  config = { app_name: "Starter", theme: "light", accent: "#3b6ea5" };
+  config = { app_name: "Teacher Class", theme: "light", accent: "#3b6ea5" };
   mockWindows("main");
   mockIPC((cmd, args) => {
     try {
@@ -98,101 +154,146 @@ function commands(name: string): Call[] {
 }
 
 describe("Oberfläche", () => {
-  it("lädt beim Start Einstellungen und Notizen", async () => {
-    notes = [note("a", { title: "Einkauf", body: "Milch" })];
-    render(<App previewDelayMs={0} />);
+  it("lädt beim Start Einstellungen und Klassen", async () => {
+    classes = [cls("a", { name: "7a", year: 2025 })];
+    render(<App />);
 
-    expect(await screen.findByRole("button", { name: /Einkauf/ })).toBeTruthy();
-    expect(commands("note_list")[0]?.args).toEqual({ order: "recent" });
+    expect(await screen.findByRole("button", { name: /7a \(2025\)/ })).toBeTruthy();
     // waitFor, nicht expect: Das Aussehen setzt ein useEffect, nachdem die
-    // Einstellungen angekommen sind. Dass die Notizen schon dastehen, heißt
+    // Einstellungen angekommen sind. Dass die Klassen schon dastehen, heißt
     // nicht, dass React diesen Effekt bereits ausgeführt hat — auf einem
     // langsamen Rechner liegt dazwischen ein Zeichendurchgang. Genau daran
     // ist dieser Test in der CI auf Windows hängen geblieben.
     await waitFor(() => expect(document.documentElement.dataset.theme).toBe("light"));
   });
 
-  it("legt eine Notiz an und schickt den Entwurf als `input`", async () => {
+  it("legt eine Klasse an und schickt den Entwurf als `input`", async () => {
     const user = userEvent.setup();
-    render(<App previewDelayMs={0} />);
+    render(<App />);
 
     await user.click(
-      (await screen.findAllByRole("button", { name: "Neue Notiz" }))[0] as HTMLElement,
+      (await screen.findAllByRole("button", { name: "Neue Klasse" }))[0] as HTMLElement,
     );
-    await user.type(screen.getByRole("textbox", { name: "Titel" }), "Einkauf");
-    await user.type(screen.getByRole("textbox", { name: "Text" }), "Milch");
+    await user.type(screen.getByRole("textbox", { name: "Klassenname" }), "7a");
+    const year = screen.getByRole("textbox", { name: "Jahr" });
+    await user.clear(year);
+    await user.type(year, "2025");
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
-    await waitFor(() => expect(commands("note_create")).toHaveLength(1));
-    expect(commands("note_create")[0]?.args).toEqual({
-      input: { title: "Einkauf", body: "Milch" },
-    });
-    expect(await screen.findByRole("button", { name: /Einkauf/ })).toBeTruthy();
+    await waitFor(() => expect(commands("class_create")).toHaveLength(1));
+    expect(commands("class_create")[0]?.args).toEqual({ input: { name: "7a", year: 2025 } });
+    expect(await screen.findByRole("button", { name: /7a \(2025\)/ })).toBeTruthy();
   });
 
   it("zeigt einen Eingabefehler am Feld, nicht oben", async () => {
     const user = userEvent.setup();
-    render(<App previewDelayMs={0} />);
+    render(<App />);
 
     await user.click(
-      (await screen.findAllByRole("button", { name: "Neue Notiz" }))[0] as HTMLElement,
+      (await screen.findAllByRole("button", { name: "Neue Klasse" }))[0] as HTMLElement,
     );
     nextError = {
       code: "validation_failed",
-      message: "title: darf nicht leer sein",
-      fields: [{ field: "title", message: "darf nicht leer sein" }],
+      message: "name: darf nicht leer sein",
+      fields: [{ field: "name", message: "darf nicht leer sein" }],
     };
     await user.click(screen.getByRole("button", { name: "Speichern" }));
 
-    const title = screen.getByRole("textbox", { name: "Titel" });
-    await waitFor(() => expect(title.getAttribute("aria-invalid")).toBe("true"));
+    const name = screen.getByRole("textbox", { name: "Klassenname" });
+    await waitFor(() => expect(name.getAttribute("aria-invalid")).toBe("true"));
     expect(screen.getByText("darf nicht leer sein")).toBeTruthy();
     expect(document.querySelector(".banner")).toBeNull();
   });
 
   it("zeigt einen Programmfehler oben", async () => {
     nextError = { code: "internal_error", message: "Datenbankfehler: disk full" };
-    render(<App previewDelayMs={0} />);
+    render(<App />);
     expect(await screen.findByText("Datenbankfehler: disk full")).toBeTruthy();
   });
 
-  it("löscht erst nach der Rückfrage", async () => {
+  it("zeigt die Schüler einer Klasse", async () => {
     const user = userEvent.setup();
-    notes = [note("a", { title: "Weg damit", body: "" })];
-    render(<App previewDelayMs={0} />);
+    classes = [cls("a", { name: "7a", year: 2025 })];
+    students = [student("s1", "a", "Muster", "Max")];
+    render(<App />);
 
-    await user.click(await screen.findByRole("button", { name: /Weg damit/ }));
-    await user.click(screen.getByRole("button", { name: "Löschen" }));
-    expect(commands("note_delete")).toHaveLength(0);
+    await user.click(await screen.findByRole("button", { name: /7a \(2025\)/ }));
+
+    expect(await screen.findByText("Muster, Max")).toBeTruthy();
+    expect(commands("student_list")[0]?.args).toEqual({ id: "a" });
+  });
+
+  it("schickt mehrere Schüler als ein Text mit `id` und `text`", async () => {
+    const user = userEvent.setup();
+    classes = [cls("a", { name: "7a", year: 2025 })];
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: /7a \(2025\)/ }));
+    await user.type(
+      await screen.findByRole("textbox", { name: "Schüler hinzufügen" }),
+      "Muster, Max{Enter}Beispiel, Eva",
+    );
+    await user.click(screen.getByRole("button", { name: "Hinzufügen" }));
+
+    await waitFor(() => expect(commands("student_add")).toHaveLength(1));
+    expect(commands("student_add")[0]?.args).toEqual({
+      id: "a",
+      text: "Muster, Max\nBeispiel, Eva",
+    });
+    expect(await screen.findByText("Beispiel, Eva")).toBeTruthy();
+  });
+
+  it("zeigt den Fehler zu den Schülerzeilen am Eingabefeld", async () => {
+    const user = userEvent.setup();
+    classes = [cls("a", { name: "7a", year: 2025 })];
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: /7a \(2025\)/ }));
+    await user.type(
+      await screen.findByRole("textbox", { name: "Schüler hinzufügen" }),
+      "ohne Komma",
+    );
+    nextError = {
+      code: "validation_failed",
+      message: "students: Zeile 1",
+      fields: [{ field: "students", message: "Zeile 1: erwartet „Nachname, Vorname“" }],
+    };
+    await user.click(screen.getByRole("button", { name: "Hinzufügen" }));
+
+    expect(await screen.findByText(/Zeile 1: erwartet/)).toBeTruthy();
+    expect(document.querySelector(".banner")).toBeNull();
+  });
+
+  it("löscht eine Klasse erst nach der Rückfrage", async () => {
+    const user = userEvent.setup();
+    classes = [cls("a", { name: "7a", year: 2025 })];
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: /7a \(2025\)/ }));
+    await user.click(screen.getByRole("button", { name: "Klasse löschen" }));
+    expect(commands("class_delete")).toHaveLength(0);
 
     await user.click(screen.getByRole("button", { name: "Endgültig löschen" }));
-    await waitFor(() => expect(commands("note_delete")[0]?.args).toEqual({ id: "a" }));
+    await waitFor(() => expect(commands("class_delete")[0]?.args).toEqual({ id: "a" }));
   });
 
-  it("legt die Beispielnotiz mit Diagramm an", async () => {
+  it("entfernt einen Schüler erst nach der Rückfrage", async () => {
     const user = userEvent.setup();
-    render(<App previewDelayMs={0} />);
+    classes = [cls("a", { name: "7a", year: 2025 })];
+    students = [student("s1", "a", "Muster", "Max")];
+    render(<App />);
 
-    await user.click(await screen.findByRole("button", { name: "Beispiel mit Diagramm anlegen" }));
-    await waitFor(() => expect(commands("note_create")[0]?.args).toEqual({ input: EXAMPLE_NOTE }));
-  });
+    await user.click(await screen.findByRole("button", { name: /7a \(2025\)/ }));
+    await user.click(await screen.findByRole("button", { name: "Muster, Max entfernen" }));
+    expect(commands("student_delete")).toHaveLength(0);
 
-  it("öffnet Verweise über das Opener-Plugin statt im Fenster", async () => {
-    const user = userEvent.setup();
-    notes = [note("a", { title: "Mit Verweis", body: "[Doku](https://tauri.app)" })];
-    render(<App previewDelayMs={0} />);
-
-    await user.click(await screen.findByRole("button", { name: /Mit Verweis/ }));
-    const link = await screen.findByRole("link", { name: "Doku" });
-    await user.click(link);
-
-    await waitFor(() => expect(commands("plugin:opener|open_url")).toHaveLength(1));
-    expect(commands("plugin:opener|open_url")[0]?.args).toMatchObject({ url: "https://tauri.app" });
+    await user.click(screen.getByRole("button", { name: "Endgültig entfernen" }));
+    await waitFor(() => expect(commands("student_delete")[0]?.args).toEqual({ id: "s1" }));
   });
 
   it("speichert Einstellungen und wendet die Akzentfarbe an", async () => {
     const user = userEvent.setup();
-    render(<App previewDelayMs={0} />);
+    render(<App />);
 
     await user.click(await screen.findByRole("button", { name: "Einstellungen" }));
     const accent = screen.getByRole("textbox", { name: "Akzentfarbe" });
@@ -205,6 +306,150 @@ describe("Oberfläche", () => {
     await waitFor(() => {
       expect(document.documentElement.style.getPropertyValue("--accent")).toBe("#ffdd00");
       expect(document.documentElement.dataset.accentLight).toBe("true");
+    });
+  });
+
+  describe("Prüfungen", () => {
+    async function openExams(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(await screen.findByRole("button", { name: "Prüfungen" }));
+    }
+
+    function savedExam(): Exam {
+      return {
+        id: "e1",
+        name: "Klassenarbeit",
+        class_ids: ["a"],
+        groups: [{ name: "Aufgabe 1", items: [{ name: "a", max_points: 2.5 }], max_points: 2.5 }],
+        grades: [
+          { name: "6", from_points: 0, to_points: 1.5 },
+          { name: "1", from_points: 2, to_points: 2.5 },
+        ],
+        max_points: 2.5,
+        created_at: "2026-09-15T06:39:51Z",
+      };
+    }
+
+    it("legt eine Prüfung an und schickt Punkte als Zahlen", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      render(<App />);
+
+      await openExams(user);
+      await user.click(
+        (await screen.findAllByRole("button", { name: "Neue Prüfung" }))[0] as HTMLElement,
+      );
+      await user.type(screen.getByRole("textbox", { name: "Name der Prüfung" }), "Klassenarbeit");
+      await user.click(screen.getByRole("checkbox", { name: "7a (2025)" }));
+      await user.type(screen.getByRole("textbox", { name: "Gruppe 1 Name" }), "Aufgabe 1");
+      await user.type(screen.getByRole("textbox", { name: "Gruppe 1 Punkt 1 Name" }), "a");
+      // Deutsches Komma, wie man Halbpunkte tippt.
+      await user.type(
+        screen.getByRole("textbox", { name: "Gruppe 1 Punkt 1 Höchstpunkte" }),
+        "2,5",
+      );
+      await user.type(screen.getByRole("textbox", { name: "Note 1 ab" }), "2");
+      await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+      await waitFor(() => expect(commands("exam_create")).toHaveLength(1));
+      const input = commands("exam_create")[0]?.args.input as ExamInput;
+      expect(input.class_ids).toEqual(["a"]);
+      expect(input.groups).toEqual([
+        { name: "Aufgabe 1", items: [{ name: "a", max_points: 2.5 }] },
+      ]);
+      // Sechs vorbelegte Noten; nur die 6 beginnt bei 0, die 1 bei dem, was getippt wurde.
+      expect(input.grades).toHaveLength(6);
+      expect(input.grades[0]).toEqual({ name: "1", from_points: 2 });
+      expect(input.grades[5]).toEqual({ name: "6", from_points: 0 });
+    });
+
+    it("zeigt Fehler zu Schema und Matrix, wie Rust sie meldet", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      render(<App />);
+
+      await openExams(user);
+      await user.click(
+        (await screen.findAllByRole("button", { name: "Neue Prüfung" }))[0] as HTMLElement,
+      );
+      nextError = {
+        code: "validation_failed",
+        message: "x",
+        fields: [
+          { field: "groups", message: "Gruppe 1: Name darf nicht leer sein" },
+          { field: "grades", message: "die niedrigste Note muss bei 0 Punkten beginnen" },
+        ],
+      };
+      await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+      expect(await screen.findByText("Gruppe 1: Name darf nicht leer sein")).toBeTruthy();
+      expect(screen.getByText("die niedrigste Note muss bei 0 Punkten beginnen")).toBeTruthy();
+    });
+
+    it("exportiert nach dem Speichern an den gewählten Ort", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      exams = [savedExam()];
+      render(<App />);
+
+      await openExams(user);
+      await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
+      await user.click(screen.getByRole("button", { name: "Als Excel exportieren" }));
+
+      await waitFor(() => expect(commands("exam_export")).toHaveLength(1));
+      expect(commands("exam_export")[0]?.args).toEqual({
+        id: "e1",
+        path: "/tmp/Klassenarbeit.xlsx",
+      });
+      expect(await screen.findByText("Gespeichert: /tmp/Klassenarbeit.xlsx")).toBeTruthy();
+      // Ohne Änderungen wird vor dem Export nicht gespeichert.
+      expect(commands("exam_update")).toHaveLength(0);
+    });
+
+    it("exportiert nichts, wenn der Dialog abgebrochen wird", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      exams = [savedExam()];
+      savePath = null;
+      render(<App />);
+
+      await openExams(user);
+      await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
+      await user.click(screen.getByRole("button", { name: "Als Excel exportieren" }));
+
+      await waitFor(() => expect(commands("plugin:dialog|save")).toHaveLength(1));
+      expect(commands("exam_export")).toHaveLength(0);
+    });
+
+    it("zeigt die berechneten Werte nur für den gespeicherten Stand", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      exams = [savedExam()];
+      render(<App />);
+
+      await openExams(user);
+      await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
+      expect(screen.getByText("max. 2,5")).toBeTruthy();
+      expect(screen.getByText("1,5")).toBeTruthy();
+
+      await user.type(screen.getByRole("textbox", { name: "Gruppe 1 Punkt 1 Höchstpunkte" }), "0");
+      // Der Entwurf weicht ab — Rust hat dafür noch nichts gerechnet.
+      expect(screen.queryByText("max. 2,5")).toBeNull();
+      expect(screen.queryByText("1,5")).toBeNull();
+    });
+
+    it("löscht eine Prüfung erst nach der Rückfrage", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      exams = [savedExam()];
+      render(<App />);
+
+      await openExams(user);
+      await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
+      await user.click(screen.getByRole("button", { name: "Prüfung löschen" }));
+      expect(commands("exam_delete")).toHaveLength(0);
+
+      await user.click(screen.getByRole("button", { name: "Endgültig löschen" }));
+      await waitFor(() => expect(commands("exam_delete")[0]?.args).toEqual({ id: "e1" }));
     });
   });
 });

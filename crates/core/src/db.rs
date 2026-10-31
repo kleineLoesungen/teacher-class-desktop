@@ -18,8 +18,13 @@ use rusqlite_migration::{M, Migrations};
 
 use crate::error::{Error, Result};
 
-static MIGRATIONS: LazyLock<Migrations<'static>> =
-    LazyLock::new(|| Migrations::new(vec![M::up(include_str!("../migrations/0001_init.sql"))]));
+static MIGRATIONS: LazyLock<Migrations<'static>> = LazyLock::new(|| {
+    Migrations::new(vec![
+        M::up(include_str!("../migrations/0001_init.sql")),
+        M::up(include_str!("../migrations/0002_klassen.sql")),
+        M::up(include_str!("../migrations/0003_pruefungen.sql")),
+    ])
+});
 
 /// Öffnet die Datei, legt sie bei Bedarf an und bringt das Schema auf Stand.
 pub fn open(path: &Path) -> Result<Connection> {
@@ -71,7 +76,7 @@ mod tests {
     fn frische_datenbank_hat_das_schema() {
         let conn = open_in_memory().unwrap();
         let count: i64 = conn
-            .query_row("SELECT count(*) FROM notes", [], |r| r.get(0))
+            .query_row("SELECT count(*) FROM classes", [], |r| r.get(0))
             .unwrap();
         assert_eq!(count, 0);
     }

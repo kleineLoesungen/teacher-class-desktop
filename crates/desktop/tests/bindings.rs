@@ -11,14 +11,18 @@
 //!
 //! **Neuer Typ über IPC?** Unten in `TYPES` eintragen, `#[derive(TS)]` am Typ.
 
-use starter_core::note::{Note, NoteInput, Order};
-use starter_core::{Config, ErrorCode, FieldError, Theme};
-use starter_desktop::ApiError;
-use starter_desktop::commands::AppInfo;
+use teacher_class_core::class::{Class, ClassInput};
+use teacher_class_core::exam::{
+    Exam, ExamInput, Grade, GradeInput, Group, GroupInput, Item, ItemInput,
+};
+use teacher_class_core::student::{Student, StudentInput};
+use teacher_class_core::{Config, ErrorCode, FieldError, Theme};
+use teacher_class_desktop::ApiError;
+use teacher_class_desktop::commands::AppInfo;
 use ts_rs::TS;
 
 const TARGET: &str = "ui/src/bindings.ts";
-const UPDATE_ENV: &str = "STARTER_UPDATE_BINDINGS";
+const UPDATE_ENV: &str = "TEACHER_CLASS_UPDATE_BINDINGS";
 
 fn decl<T: TS>(cfg: &ts_rs::Config) -> String {
     let docs = T::docs()
@@ -34,12 +38,21 @@ fn generate() -> String {
     let types = [
         decl::<ApiError>(&cfg),
         decl::<AppInfo>(&cfg),
+        decl::<Class>(&cfg),
+        decl::<ClassInput>(&cfg),
         decl::<Config>(&cfg),
         decl::<ErrorCode>(&cfg),
+        decl::<Exam>(&cfg),
+        decl::<ExamInput>(&cfg),
         decl::<FieldError>(&cfg),
-        decl::<Note>(&cfg),
-        decl::<NoteInput>(&cfg),
-        decl::<Order>(&cfg),
+        decl::<Grade>(&cfg),
+        decl::<GradeInput>(&cfg),
+        decl::<Group>(&cfg),
+        decl::<GroupInput>(&cfg),
+        decl::<Item>(&cfg),
+        decl::<ItemInput>(&cfg),
+        decl::<Student>(&cfg),
+        decl::<StudentInput>(&cfg),
         decl::<Theme>(&cfg),
     ];
 

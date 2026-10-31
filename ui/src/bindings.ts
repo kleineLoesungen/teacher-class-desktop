@@ -5,9 +5,20 @@
 export type ApiError = { code: ErrorCode, message: string, fields?: Array<FieldError>, matches?: Array<string>, };
 
 /**
- * Wo die Dateien liegen — dieselben Pfade wie `starter paths --json`.
+ * Wo die Dateien liegen — dieselben Pfade wie `teacher-class paths --json`.
  */
 export type AppInfo = { version: string, data_dir: string, config_file: string, db_file: string, log_file: string, };
+
+export type Class = { id: string, name: string, year: number, 
+/**
+ * Wie viele Schüler in der Klasse sind.
+ */
+student_count: number, created_at: string, };
+
+/**
+ * Was von außen hereinkommt — ungeprüft.
+ */
+export type ClassInput = { name: string, year: number, };
 
 export type Config = { 
 /**
@@ -32,6 +43,21 @@ accent: string, };
  */
 export type ErrorCode = "not_found" | "validation_failed" | "ambiguous_id" | "config_invalid" | "internal_error";
 
+export type Exam = { id: string, name: string, class_ids: Array<string>, groups: Array<Group>, 
+/**
+ * Aufsteigend nach „ab“: die schlechteste Note zuerst.
+ */
+grades: Array<Grade>, 
+/**
+ * Gesamtpunktzahl. Berechnet.
+ */
+max_points: number, created_at: string, };
+
+/**
+ * Was von außen hereinkommt — ungeprüft.
+ */
+export type ExamInput = { name: string, class_ids: Array<string>, groups: Array<GroupInput>, grades: Array<GradeInput>, };
+
 /**
  * Eine Meldung, die zu genau einem Eingabefeld gehört.
  *
@@ -40,21 +66,31 @@ export type ErrorCode = "not_found" | "validation_failed" | "ambiguous_id" | "co
  */
 export type FieldError = { field: string, message: string, };
 
-export type Note = { id: string, title: string, body: string, created_at: string, updated_at: string, };
+export type Grade = { name: string, from_points: number, 
+/**
+ * Berechnet, siehe Moduldoku.
+ */
+to_points: number, };
+
+export type GradeInput = { name: string, from_points: number, };
+
+export type Group = { name: string, items: Array<Item>, 
+/**
+ * Summe der Punkte der Gruppe. Berechnet.
+ */
+max_points: number, };
+
+export type GroupInput = { name: string, items: Array<ItemInput>, };
+
+export type Item = { name: string, max_points: number, };
+
+export type ItemInput = { name: string, max_points: number, };
+
+export type Student = { id: string, class_id: string, last_name: string, first_name: string, };
 
 /**
- * Was von außen hereinkommt — ungeprüft.
- *
- * Der Typ ist absichtlich ein anderer als [`Note`]: so lässt sich nichts
- * speichern, ohne vorher durch [`NoteInput::clean`] gegangen zu sein.
- *
- * `Deserialize`, weil die Oberfläche genau diesen Typ über IPC schickt.
+ * Ein Schüler, ungeprüft.
  */
-export type NoteInput = { title: string, body: string, };
-
-/**
- * Wonach die Liste sortiert wird.
- */
-export type Order = "recent" | "title";
+export type StudentInput = { last_name: string, first_name: string, };
 
 export type Theme = "system" | "light" | "dark";

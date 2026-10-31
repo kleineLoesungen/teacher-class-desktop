@@ -6,77 +6,127 @@
 //!
 //! Regeln für die JSON-Fassung:
 //!
-//! * Listen sind ein Array, kein Objekt mit Zähler — `jq '.[] | .title'`
+//! * Listen sind ein Array, kein Objekt mit Zähler — `jq '.[] | .name'`
 //!   soll ohne Umweg gehen.
-//! * Zeitstempel in UTC als RFC-3339-Text (macht `starter_core` schon).
-//! * Für Menschen wird in Ortszeit umgerechnet, für Maschinen nie.
+//! * Zeitstempel in UTC als RFC-3339-Text (macht `teacher_class_core` schon).
 
-use starter_core::note::{self, Note};
-use starter_core::{Config, Paths, timestamp};
-use time::macros::format_description;
+use teacher_class_core::class::Class;
+use teacher_class_core::exam::Exam;
+use teacher_class_core::student::Student;
+use teacher_class_core::{Config, Paths, ids};
+use uuid::Uuid;
 
 pub struct Out {
     pub json: bool,
 }
 
 impl Out {
-    /// Kurzform der Kennung, wie `starter note show <KURZ>` sie wieder
-    /// entgegennimmt. Die Begründung für „hinten statt vorn" steht in
-    /// [`starter_core::note::short_id`].
-    pub fn short_id(note: &Note) -> String {
-        note::short_id(note.id)
+    /// Kurzform der Kennung, wie die Befehle sie wieder entgegennehmen. Die
+    /// Begründung für „hinten statt vorn" steht in [`teacher_class_core::ids`].
+    pub fn short_id(id: Uuid) -> String {
+        ids::short_id(id)
     }
 
-    fn local(note_time: time::OffsetDateTime) -> String {
-        let fmt = format_description!("[day].[month].[year] [hour]:[minute]");
-        timestamp::to_local(note_time)
-            .format(fmt)
-            .unwrap_or_else(|_| timestamp::to_text(note_time))
-    }
-
-    pub fn notes(&self, notes: &[Note]) {
+    pub fn classes(&self, classes: &[Class]) {
         if self.json {
-            self.print(notes);
+            self.print(classes);
             return;
         }
-        if notes.is_empty() {
-            println!("Keine Notizen. Anlegen mit:  starter note add \"Titel\"");
+        if classes.is_empty() {
+            println!("Keine Klassen. Anlegen mit:  teacher-class class add 7a 2025");
             return;
         }
-        // Die Spaltenbreite richtet sich nach dem längsten Titel, gedeckelt,
-        // damit ein Ausreißer die Tabelle nicht sprengt.
-        let width = notes
+        let width = classes
             .iter()
-            .map(|n| n.title.chars().count())
+            .map(|c| c.label().chars().count())
             .max()
-            .unwrap_or(5)
-            .clamp(5, 50);
+            .unwrap_or(6)
+            .clamp(6, 40);
 
-        println!("{:<8}  {:<width$}  GEÄNDERT", "ID", "TITEL");
-        for note in notes {
+        println!("{:<8}  {:<width$}  SCHÜLER", "ID", "KLASSE");
+        for class in classes {
             println!(
                 "{:<8}  {:<width$}  {}",
-                Self::short_id(note),
-                truncate(&note.title, width),
-                Self::local(note.updated_at)
+                Self::short_id(class.id),
+                class.label(),
+                class.student_count
             );
         }
     }
 
-    pub fn note(&self, note: &Note) {
+    pub fn students(&self, students: &[Student]) {
         if self.json {
-            self.print(note);
+            self.print(students);
             return;
         }
-        println!("{}", note.title);
-        println!("{}", "─".repeat(note.title.chars().count().max(3)));
-        if !note.body.is_empty() {
-            println!("{}", note.body);
-            println!();
+        if students.is_empty() {
+            println!(
+                "Keine Schüler. Anlegen mit:  teacher-class student add <KLASSE> \"Nachname, Vorname\""
+            );
+            return;
         }
-        println!("Kennung:   {}", note.id);
-        println!("Angelegt:  {}", Self::local(note.created_at));
-        println!("Geändert:  {}", Self::local(note.updated_at));
+        println!("{:<8}  NAME", "ID");
+        for student in students {
+            println!("{:<8}  {}", Self::short_id(student.id), student.label());
+        }
+    }
+
+    pub fn exams(&self, exams: &[Exam]) {
+        if self.json {
+            self.print(exams);
+            return;
+        }
+        if exams.is_empty() {
+            println!(
+                "Keine Prüfungen. Anlegen mit:  teacher-class exam add \"Name\" --class <KLASSE> \
+                 --group \"Aufgabe 1: a=4\" --grade 6=0 --grade 1=3"
+            );
+            return;
+        }
+        let width = exams
+            .iter()
+            .map(|e| e.name.chars().count())
+            .max()
+            .unwrap_or(7)
+            .clamp(7, 40);
+        println!("{:<8}  {:<width$}  KLASSEN  PUNKTE", "ID", "PRÜFUNG");
+        for exam in exams {
+            println!(
+                "{:<8}  {:<width$}  {:>7}  {:>6}",
+                Self::short_id(exam.id),
+                exam.name,
+                exam.class_ids.len(),
+                exam.max_points
+            );
+        }
+    }
+
+    /// Schema und Matrix einer Prüfung.
+    pub fn exam_detail(&self, exam: &Exam, labels: &[String]) {
+        if self.json {
+            self.print(exam);
+            return;
+        }
+        println!("{}  ({})", exam.name, Self::short_id(exam.id));
+        println!("Klassen: {}", labels.join(", "));
+        println!();
+        println!("Prüfungsschema");
+        for group in &exam.groups {
+            println!("  {}  (max. {})", group.name, group.max_points);
+            for item in &group.items {
+                println!("    {:<20} {}", item.name, item.max_points);
+            }
+        }
+        println!("  Gesamt: {}", exam.max_points);
+        println!();
+        println!("Bewertungsmatrix");
+        println!("  {:<12} {:>6}  {:>6}", "NOTE", "AB", "BIS");
+        for grade in &exam.grades {
+            println!(
+                "  {:<12} {:>6}  {:>6}",
+                grade.name, grade.from_points, grade.to_points
+            );
+        }
     }
 
     pub fn config(&self, config: &Config) {
@@ -122,13 +172,4 @@ impl Out {
         let text = serde_json::to_string_pretty(value).expect("Ausgabe serialisierbar");
         println!("{text}");
     }
-}
-
-fn truncate(s: &str, max: usize) -> String {
-    if s.chars().count() <= max {
-        return s.to_string();
-    }
-    let mut out: String = s.chars().take(max.saturating_sub(1)).collect();
-    out.push('…');
-    out
 }

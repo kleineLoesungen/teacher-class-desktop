@@ -7,10 +7,14 @@ expression: text
     "code": "validation_failed",
     "fields": [
       {
-        "field": "title",
-        "message": "darf nicht leer sein"
+        "field": "name",
+        "message": "darf nur Buchstaben und Zahlen enthalten"
+      },
+      {
+        "field": "year",
+        "message": "muss ein vierstelliges Jahr sein"
       }
     ],
-    "message": "title: darf nicht leer sein"
+    "message": "name: darf nur Buchstaben und Zahlen enthalten; year: muss ein vierstelliges Jahr sein"
   }
 }
