@@ -5,7 +5,7 @@
 export type ApiError = { code: ErrorCode, message: string, fields?: Array<FieldError>, matches?: Array<string>, };
 
 /**
- * Wo die Dateien liegen — dieselben Pfade wie `starter paths --json`.
+ * Wo die Dateien liegen — dieselben Pfade wie `teacher-class paths --json`.
  */
 export type AppInfo = { version: string, data_dir: string, config_file: string, db_file: string, log_file: string, };
 

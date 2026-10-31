@@ -10,7 +10,7 @@
 
 use std::sync::Mutex;
 
-use starter_core::App;
+use teacher_class_core::App;
 
 use crate::error::{ApiError, ApiResult};
 
@@ -38,7 +38,10 @@ impl AppState {
     }
 
     /// Führt `f` mit der geöffneten Anwendung aus.
-    pub fn with<T>(&self, f: impl FnOnce(&mut App) -> starter_core::Result<T>) -> ApiResult<T> {
+    pub fn with<T>(
+        &self,
+        f: impl FnOnce(&mut App) -> teacher_class_core::Result<T>,
+    ) -> ApiResult<T> {
         // Eine vergiftete Sperre heißt: Ein früherer Befehl ist mitten in der
         // Arbeit abgestürzt. Die Datenbank selbst ist dank Transaktionen
         // heil, also weiterarbeiten statt jeden weiteren Befehl scheitern zu

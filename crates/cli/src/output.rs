@@ -8,11 +8,11 @@
 //!
 //! * Listen sind ein Array, kein Objekt mit Zähler — `jq '.[] | .title'`
 //!   soll ohne Umweg gehen.
-//! * Zeitstempel in UTC als RFC-3339-Text (macht `starter_core` schon).
+//! * Zeitstempel in UTC als RFC-3339-Text (macht `teacher_class_core` schon).
 //! * Für Menschen wird in Ortszeit umgerechnet, für Maschinen nie.
 
-use starter_core::note::{self, Note};
-use starter_core::{Config, Paths, timestamp};
+use teacher_class_core::note::{self, Note};
+use teacher_class_core::{Config, Paths, timestamp};
 use time::macros::format_description;
 
 pub struct Out {
@@ -20,9 +20,9 @@ pub struct Out {
 }
 
 impl Out {
-    /// Kurzform der Kennung, wie `starter note show <KURZ>` sie wieder
+    /// Kurzform der Kennung, wie `teacher-class note show <KURZ>` sie wieder
     /// entgegennimmt. Die Begründung für „hinten statt vorn" steht in
-    /// [`starter_core::note::short_id`].
+    /// [`teacher_class_core::note::short_id`].
     pub fn short_id(note: &Note) -> String {
         note::short_id(note.id)
     }
@@ -40,7 +40,7 @@ impl Out {
             return;
         }
         if notes.is_empty() {
-            println!("Keine Notizen. Anlegen mit:  starter note add \"Titel\"");
+            println!("Keine Notizen. Anlegen mit:  teacher-class note add \"Titel\"");
             return;
         }
         // Die Spaltenbreite richtet sich nach dem längsten Titel, gedeckelt,

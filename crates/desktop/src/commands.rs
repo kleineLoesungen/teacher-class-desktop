@@ -1,7 +1,7 @@
 //! Die Befehle, die das Webview aufrufen kann.
 //!
 //! **Jeder Befehl ist dünn:** Argumente annehmen, eine Funktion in
-//! `starter_core` rufen, das Ergebnis zurückgeben. Prüfung und SQL stehen in
+//! `teacher_class_core` rufen, das Ergebnis zurückgeben. Prüfung und SQL stehen in
 //! core — sonst gälten sie für die Kommandozeile nicht.
 //! `crates/core/tests/layering.rs` sucht hier nach `execute(` und `Validator`.
 //!
@@ -15,9 +15,9 @@
 //!    `ui/src/api.ts`. `tests/ipc_contract.rs` prüft, dass keine fehlt.
 
 use serde::Serialize;
-use starter_core::note::{self, Note, NoteInput, Order};
-use starter_core::{Config, Paths};
 use tauri::State;
+use teacher_class_core::note::{self, Note, NoteInput, Order};
+use teacher_class_core::{Config, Paths};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -74,7 +74,7 @@ pub async fn config_set(state: State<'_, AppState>, config: Config) -> ApiResult
 
 // --- Über die Anwendung ----------------------------------------------------
 
-/// Wo die Dateien liegen — dieselben Pfade wie `starter paths --json`.
+/// Wo die Dateien liegen — dieselben Pfade wie `teacher-class paths --json`.
 #[derive(Debug, Clone, Serialize, TS)]
 pub struct AppInfo {
     pub version: String,
