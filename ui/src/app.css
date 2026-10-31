@@ -163,7 +163,7 @@ input[type="color"] {
   padding: var(--space-3) var(--space-4) 0;
 }
 
-.note-nav {
+.class-nav {
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -190,7 +190,7 @@ input[type="color"] {
   text-align: left;
 }
 
-.note-list {
+.class-list {
   list-style: none;
   margin: 0;
   padding: 0 var(--space-2);
@@ -198,7 +198,7 @@ input[type="color"] {
   flex: 1;
 }
 
-.note-item {
+.class-item {
   display: grid;
   width: 100%;
   text-align: left;
@@ -208,20 +208,20 @@ input[type="color"] {
   margin-bottom: 2px;
 }
 
-.note-item[aria-current="true"] {
+.class-item[aria-current="true"] {
   background: var(--surface-2);
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
-.note-title {
+.class-title {
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.note-excerpt,
-.note-date {
+.class-excerpt,
+.class-date {
   color: var(--muted);
   font-size: 12px;
   overflow: hidden;

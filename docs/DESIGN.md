@@ -16,7 +16,7 @@ dunklen Aussehen falsch ist. `crates/core/tests/layering.rs`
 Über die Einstellungen, in der Oberfläche oder auf der Kommandozeile:
 
 ```bash
-teacher-class config set app_name "Notizbuch"
+teacher-class config set app_name "Klassenbuch"
 teacher-class config set theme dark          # system | light | dark
 teacher-class config set accent "#aa3344"
 ```
