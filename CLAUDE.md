@@ -157,9 +157,9 @@ und wird zur Laufzeit verweigert.
    `api.openExternal` öffnet im Standardbrowser.
 
 9. **Pfade kommen aus `core`, nicht aus Tauri.** `app.path().app_data_dir()`
-   liefert `~/Library/Application Support/de.example.teacher-class` — die
-   CLI sucht in `…/teacher-class`. Beide Schalen benutzen `teacher_class_core::Paths`,
-   sonst sehen sie verschiedene Datenbanken.
+   liefert `~/Library/Application Support/de.kleineloesungen.teacher-class` —
+   die CLI sucht in `…/teacher-class`. Beide Schalen benutzen
+   `teacher_class_core::Paths`, sonst sehen sie verschiedene Datenbanken.
 
 10. **`ui/dist` muss existieren, bevor Rust kompiliert.** `generate_context!`
     bettet es ein. Nach `just clean` erst `npm run build:ui`. `just test` tut
