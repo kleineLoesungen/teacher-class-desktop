@@ -11,7 +11,8 @@
 //!
 //! **Neuer Typ über IPC?** Unten in `TYPES` eintragen, `#[derive(TS)]` am Typ.
 
-use teacher_class_core::note::{Note, NoteInput, Order};
+use teacher_class_core::class::{Class, ClassInput};
+use teacher_class_core::student::{Student, StudentInput};
 use teacher_class_core::{Config, ErrorCode, FieldError, Theme};
 use teacher_class_desktop::ApiError;
 use teacher_class_desktop::commands::AppInfo;
@@ -34,12 +35,13 @@ fn generate() -> String {
     let types = [
         decl::<ApiError>(&cfg),
         decl::<AppInfo>(&cfg),
+        decl::<Class>(&cfg),
+        decl::<ClassInput>(&cfg),
         decl::<Config>(&cfg),
         decl::<ErrorCode>(&cfg),
         decl::<FieldError>(&cfg),
-        decl::<Note>(&cfg),
-        decl::<NoteInput>(&cfg),
-        decl::<Order>(&cfg),
+        decl::<Student>(&cfg),
+        decl::<StudentInput>(&cfg),
         decl::<Theme>(&cfg),
     ];
 

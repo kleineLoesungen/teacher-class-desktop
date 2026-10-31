@@ -53,9 +53,13 @@ fn run(cli: Cli) -> Result<()> {
             out.paths(&paths);
             Ok(())
         }
-        Command::Note(cmd) => {
+        Command::Class(cmd) => {
             let app = App::open(paths)?;
-            commands::note::run(cmd, &app, &out)
+            commands::class::run(cmd, &app, &out)
+        }
+        Command::Student(cmd) => {
+            let app = App::open(paths)?;
+            commands::student::run(cmd, &app, &out)
         }
         Command::Config(cmd) => {
             let mut app = App::open(paths)?;

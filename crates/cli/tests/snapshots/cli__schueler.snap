@@ -1,0 +1,8 @@
+---
+source: crates/cli/tests/cli.rs
+expression: text
+---
+ID        NAME
+[id]  Abel, Zoe
+[id]  Beispiel, Eva
+[id]  Muster, Max
