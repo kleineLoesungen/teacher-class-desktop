@@ -15,24 +15,31 @@ Kommandozeile rufen nur `export::write_xlsx`. Der Aufbau:
 | Funktion | Schreibt |
 |---|---|
 | `write_grading` | Blatt „Bewertung“ und merkt sich, **wo** Schema und Matrix stehen (`GradingRefs`) |
-| `write_class` | Ein Klassenblatt; gibt die Spalten zurück (`ClassLayout`) |
-| `write_print` | Blatt „Ausdruck“, holt Werte aus dem Klassenblatt |
+| `write_class` | Ein Klassenblatt als Matrix (Prüfung ohne Begründungen) |
+| `write_tiles`, `write_tile` | Ein Klassenblatt als Bewertungskacheln, eine je Schüler (Prüfung mit Begründungen) |
 
 Regeln, die sich bewährt haben:
 
-* **Formeln statt Werte.** Die Klassenblätter verweisen auf „Bewertung“
-  (`=Bewertung!$C$6`), damit eine Änderung dort überall ankommt.
+* **Formeln statt Werte** für alles, was gerechnet wird. Die Klassenblätter
+  verweisen auf „Bewertung“ (`=Bewertung!$C$6`), damit eine Änderung dort
+  überall ankommt. Eingetragene Punkte und Begründungen sind dagegen **Werte**
+  aus `grading::results`.
 * **Zellen nie von Hand zählen.** Zeilen und Spalten kommen aus `GradingRefs`
-  und `ClassLayout`; Adressen aus `row_col_to_cell`. Sonst verschiebt eine
-  neue Spalte stillschweigend alle Formeln dahinter.
+  und den Zeilen, die `write_tile` selbst mitführt; Adressen aus
+  `row_col_to_cell`. Sonst verschiebt eine neue Spalte stillschweigend alle
+  Formeln dahinter.
+* **Kacheln drucken:** Seitenumbrüche vor jeder Kachel (`set_page_breaks`) und
+  ein fester Druckmaßstab (`set_print_scale`). Mit „auf Seiten anpassen“
+  ignoriert Excel manuelle Umbrüche.
 * **Ein neues Blatt** in `build` anlegen und mit `push_worksheet` in der
   gewünschten Reihenfolge anhängen.
 * **Test in `crates/core/tests/export.rs`**: Die erzeugte `.xlsx` ist ein ZIP;
   der Test liest `xl/worksheets/sheetN.xml` und sucht die Formel als Text.
   Das fängt verrutschte Adressen, aber keine falsche Rechnung.
 * **Danach einmal in Excel oder LibreOffice öffnen.** Ein Beispiel mit Halb­
-  punkten ausfüllen und prüfen, dass Summe und Note stimmen und der Ausdruck
-  auf eine Seite passt. Das kann kein Test ersetzen.
+  punkten ausfüllen und prüfen, dass Summe und Note stimmen und – bei einer
+  Prüfung mit Begründungen – jede Kachel auf genau eine Seite passt. Das kann
+  kein Test ersetzen.
 
 ---
 

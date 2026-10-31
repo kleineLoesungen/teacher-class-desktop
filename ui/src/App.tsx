@@ -11,13 +11,23 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, api } from "./api";
-import type { AppInfo, Class, ClassInput, Config, Exam, Student } from "./bindings";
+import type {
+  AppInfo,
+  Class,
+  ClassInput,
+  Config,
+  Exam,
+  ScoreInput,
+  Student,
+  StudentResult,
+} from "./bindings";
 import { ClassEditor } from "./components/ClassEditor";
 import { ClassList } from "./components/ClassList";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { EmptyState } from "./components/EmptyState";
 import { ExamEditor } from "./components/ExamEditor";
 import { ExamList } from "./components/ExamList";
+import { GradingView } from "./components/GradingView";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { draftFromExam, type ExamDraft, emptyExamDraft, sameDraft, toExamInput } from "./lib/exam";
 import { classLabel } from "./lib/format";
@@ -50,6 +60,11 @@ export function App() {
   const [examDraft, setExamDraft] = useState<ExamDraft>(emptyExamDraft);
   const [examSaved, setExamSaved] = useState<ExamDraft>(emptyExamDraft);
   const [notice, setNotice] = useState<string | null>(null);
+  // Bewertung: ist sie offen, ersetzt sie den Prüfungseditor.
+  const [grading, setGrading] = useState<{ classId: string; studentId: string | null } | null>(
+    null,
+  );
+  const [results, setResults] = useState<StudentResult[]>([]);
 
   const [config, setConfig] = useState<Config | null>(null);
   const [info, setInfo] = useState<AppInfo | null>(null);
@@ -219,9 +234,11 @@ export function App() {
     setExamSaved(input);
     setFieldError(null);
     setNotice(null);
+    setGrading(null);
   }
 
-  async function saveExam(): Promise<boolean> {
+  /** Die gespeicherte Prüfung, oder `null`, wenn Rust sie abgelehnt hat. */
+  async function saveExam(): Promise<Exam | null> {
     setSaving(true);
     try {
       const input = toExamInput(examDraft);
@@ -231,10 +248,10 @@ export function App() {
           : await api.exams.create(input);
       openExam({ kind: "exam", id: exam.id }, draftFromExam(exam));
       await reloadExams();
-      return true;
+      return exam;
     } catch (raw) {
       fail(raw);
-      return false;
+      return null;
     } finally {
       setSaving(false);
     }
@@ -242,7 +259,38 @@ export function App() {
 
   async function leaveCurrentExam(): Promise<boolean> {
     if (examSelection.kind === "none" || !examDirty) return true;
-    return saveExam();
+    return (await saveExam()) !== null;
+  }
+
+  // --- Bewertung -----------------------------------------------------------
+
+  /** Öffnet die Bewertung einer Klasse der Prüfung; speichert zuerst. */
+  async function openGrading(classId?: string) {
+    if (examSelection.kind !== "exam") return;
+    let exam = exams.find((e) => e.id === examSelection.id) ?? null;
+    if (examDirty) exam = await saveExam();
+    const target = classId ?? exam?.class_ids[0];
+    if (!exam || !target) return;
+    try {
+      const list = await api.exams.results(exam.id, target);
+      setResults(list);
+      setGrading({ classId: target, studentId: list[0]?.student.id ?? null });
+      setFieldError(null);
+      setNotice(null);
+    } catch (raw) {
+      fail(raw);
+    }
+  }
+
+  async function scoreStudent(input: ScoreInput) {
+    if (examSelection.kind !== "exam") return;
+    try {
+      const updated = await api.exams.score(examSelection.id, input);
+      setResults((all) => all.map((r) => (r.student.id === updated.student.id ? updated : r)));
+      setFieldError(null);
+    } catch (raw) {
+      fail(raw);
+    }
   }
 
   async function selectExam(id: string) {
@@ -289,6 +337,7 @@ export function App() {
   async function switchView(next: View) {
     if (next === view) return;
     if (!(view === "classes" ? await leaveCurrent() : await leaveCurrentExam())) return;
+    setGrading(null);
     setFieldError(null);
     setNotice(null);
     setView(next);
@@ -328,6 +377,8 @@ export function App() {
 
   const fieldMessage = (field: string) => fieldError?.fieldMessage(field);
   const selected = selection.kind === "class" ? classes.find((c) => c.id === selection.id) : null;
+  const gradingExam =
+    examSelection.kind === "exam" ? (exams.find((e) => e.id === examSelection.id) ?? null) : null;
 
   return (
     <div className="app">
@@ -402,9 +453,29 @@ export function App() {
           examSelection.kind === "none" ? (
             <EmptyState
               title={exams.length > 0 ? "Keine Prüfung ausgewählt" : "Noch keine Prüfungen"}
-              text="Eine Prüfung hat ein Schema aus Gruppen und Punkten und eine Bewertungsmatrix. Daraus entsteht eine Excel-Datei zum Bewerten, mit Noten per Formel und einem Ausdruck je Schüler."
+              text="Eine Prüfung hat ein Schema aus Gruppen und Punkten und eine Bewertungsmatrix. Bewertet wird in der App oder in der Excel-Datei; mit Begründungen gibt es im Export eine Bewertungskachel je Schüler."
               action="Neue Prüfung"
               onCreate={() => void createNewExam()}
+            />
+          ) : grading !== null && examSelection.kind === "exam" && gradingExam ? (
+            <GradingView
+              exam={gradingExam}
+              classes={classes.filter((c) => gradingExam.class_ids.includes(c.id))}
+              classId={grading.classId}
+              results={results}
+              studentId={grading.studentId}
+              messages={(field) => fieldError?.fieldMessages(field) ?? []}
+              onSelectClass={(id) => void openGrading(id)}
+              onSelectStudent={(id) => {
+                setFieldError(null);
+                setGrading({ ...grading, studentId: id });
+              }}
+              onScore={(input) => void scoreStudent(input)}
+              onBack={() => {
+                setGrading(null);
+                setFieldError(null);
+              }}
+              onExport={() => void exportExam()}
             />
           ) : (
             <ExamEditor
@@ -423,6 +494,7 @@ export function App() {
               onSave={() => void saveExam()}
               onDelete={() => setDialog("delete-exam")}
               onExport={() => void exportExam()}
+              onGrade={() => void openGrading()}
             />
           )
         ) : selection.kind === "none" ? (

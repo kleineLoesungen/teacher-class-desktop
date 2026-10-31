@@ -33,8 +33,9 @@ teacher-class exam rm 3f9c01ab --yes
 | Option | Bedeutung |
 |---|---|
 | `--class KLASSE` | Kennung oder Endstück einer Klasse. Mehrfach möglich, mindestens eine. |
-| `--group "Name: Punkt=Max; Punkt=Max"` | Eine Gruppe mit ihren Punkten. Mehrfach möglich. Punkte ganz oder halb, `2,5` und `2.5` gelten gleich. |
+| `--group "Name: Punkt=Max; Punkt=Max"` | Eine Gruppe mit ihren Punkten. Mehrfach möglich. Punkte ganz oder halb, `2,5` und `2.5` gelten gleich. Eine optionale Beschreibung folgt nach `\|`: `a=4\|Rechenweg angeben` (ohne `;` darin). |
 | `--grade Note=ab` | Eine Note und der Punktwert, ab dem sie gilt. Mehrfach möglich. Die Noten sind frei benennbar. |
+| `--notes` | Zu jedem Prüfkriterium eine Begründung pflegen. Der Excel-Export hat dann eine Bewertungskachel je Schüler statt einer Matrix. |
 
 Das „bis“ jeder Note gibt es nicht als Eingabe; `exam show` zeigt es berechnet
 (eine halbe Punktstufe unter dem „ab“ der nächsten Note, bei der höchsten Note
@@ -45,13 +46,14 @@ nicht dasselbe „ab“ haben. Verstöße ergeben Rückgabewert 4, ein unlesbare
 ```
 Klassenarbeit 1  (3f9c01ab)
 Klassen: 7a (2025)
+Begründungen: nein
 
 Prüfungsschema
-  Aufgabe 1  (max. 6.5)
-    a                    4
-    b                    2.5
-  Aufgabe 2  (max. 13.5)
-    a                    13.5
+  1. Aufgabe 1  (max. 6.5)
+    1. a                 4
+    2. b                 2.5
+  2. Aufgabe 2  (max. 13.5)
+    1. a                 13.5
   Gesamt: 20
 
 Bewertungsmatrix
@@ -61,9 +63,28 @@ Bewertungsmatrix
   1                17      20
 ```
 
-`exam export --out DATEI` schreibt die Excel-Datei (Blätter „Bewertung“,
-„Ausdruck“, je Klasse eins) und überschreibt eine vorhandene. Die Datei muss auf
-`.xlsx` enden, sonst Rückgabewert 4. Bearbeiten einer Prüfung geht in der
+`exam score PRÜFUNG SCHÜLER GRUPPE PUNKT [--points P] [--note TEXT]` trägt die
+erreichten Punkte und die Begründung eines Schülers zu einem Prüfkriterium ein.
+Gruppe und Punkt zählen **ab 1**, wie `exam show` sie nummeriert. Ohne
+`--points` werden die Punkte gelöscht, ohne `--note` die Begründung. Eine
+Begründung gibt es nur bei Prüfungen mit `--notes`. Ungültige Punkte (nicht
+ganz oder halb, über der Höchstpunktzahl), ein unbekanntes Prüfkriterium und
+eine Begründung ohne `--notes` ergeben Rückgabewert 4.
+
+`exam results PRÜFUNG --class KLASSE` zeigt je Schüler Gesamtpunkte und Note
+(`–`, solange nichts eingetragen ist). Mit `--json` kommen auch die Punkte und
+Begründungen je Prüfkriterium.
+
+```
+ID        NAME           PUNKTE  NOTE   (max. 20)
+7d41e0aa  Beispiel, Eva       0  –
+b2c9a113  Muster, Max      17.5  1
+```
+
+`exam export --out DATEI` schreibt die Excel-Datei (Blatt „Bewertung“, je Klasse
+eins; mit `--notes` je Klasse eine Bewertungskachel pro Schüler) und
+überschreibt eine vorhandene. Eingetragene Punkte und Begründungen stehen
+darin. Die Datei muss auf `.xlsx` enden, sonst Rückgabewert 4. Bearbeiten einer Prüfung geht in der
 Oberfläche; auf der Kommandozeile legt man sie neu an.
 
 ## Kennungen

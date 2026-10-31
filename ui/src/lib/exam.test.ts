@@ -38,18 +38,27 @@ describe("Prüfungsentwurf", () => {
       id: "e",
       name: "Test",
       class_ids: ["a"],
-      groups: [{ name: "G", items: [{ name: "a", max_points: 2.5 }], max_points: 2.5 }],
+      groups: [
+        {
+          name: "G",
+          items: [{ name: "a", description: "Rechenweg", max_points: 2.5 }],
+          max_points: 2.5,
+        },
+      ],
       grades: [{ name: "1", from_points: 0, to_points: 2.5 }],
       max_points: 2.5,
+      with_notes: true,
       created_at: "2026-09-15T06:39:51Z",
     };
     const draft = draftFromExam(exam);
     expect(draft.groups[0]?.items[0]?.max).toBe("2,5");
+    expect(draft.groups[0]?.items[0]?.description).toBe("Rechenweg");
     expect(toExamInput(draft)).toEqual({
       name: "Test",
       class_ids: ["a"],
-      groups: [{ name: "G", items: [{ name: "a", max_points: 2.5 }] }],
+      groups: [{ name: "G", items: [{ name: "a", description: "Rechenweg", max_points: 2.5 }] }],
       grades: [{ name: "1", from_points: 0 }],
+      with_notes: true,
     });
     expect(sameDraft(draft, draftFromExam(exam))).toBe(true);
     expect(sameDraft(draft, { ...draft, name: "anders" })).toBe(false);

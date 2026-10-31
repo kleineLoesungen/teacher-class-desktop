@@ -51,12 +51,20 @@ grades: Array<Grade>,
 /**
  * Gesamtpunktzahl. Berechnet.
  */
-max_points: number, created_at: string, };
+max_points: number, 
+/**
+ * Ob zu jedem Prüfkriterium eine Begründung gepflegt wird.
+ */
+with_notes: boolean, created_at: string, };
 
 /**
  * Was von außen hereinkommt — ungeprüft.
  */
-export type ExamInput = { name: string, class_ids: Array<string>, groups: Array<GroupInput>, grades: Array<GradeInput>, };
+export type ExamInput = { name: string, class_ids: Array<string>, groups: Array<GroupInput>, grades: Array<GradeInput>, 
+/**
+ * Ob zu jedem Prüfkriterium eine Begründung gepflegt wird.
+ */
+with_notes: boolean, };
 
 /**
  * Eine Meldung, die zu genau einem Eingabefeld gehört.
@@ -82,9 +90,53 @@ max_points: number, };
 
 export type GroupInput = { name: string, items: Array<ItemInput>, };
 
-export type Item = { name: string, max_points: number, };
+export type GroupResult = { 
+/**
+ * Je Punkt der Gruppe, in der Reihenfolge des Schemas.
+ */
+scores: Array<Score>, 
+/**
+ * Summe der eingetragenen Punkte. Berechnet.
+ */
+points: number, };
 
-export type ItemInput = { name: string, max_points: number, };
+export type Item = { name: string, 
+/**
+ * Optional, leer = keine.
+ */
+description: string, max_points: number, };
+
+export type ItemInput = { name: string, description: string, max_points: number, };
+
+/**
+ * Der Eintrag zu einem Prüfkriterium.
+ */
+export type Score = { 
+/**
+ * `None`: noch nicht bewertet.
+ */
+points: number | null, 
+/**
+ * Begründung, leer = keine.
+ */
+note: string, };
+
+/**
+ * Ein Eintrag, ungeprüft. Ersetzt den bisherigen Eintrag zu diesem Punkt.
+ */
+export type ScoreInput = { student_id: string, 
+/**
+ * Stelle der Gruppe im Schema, nullbasiert.
+ */
+group: number, 
+/**
+ * Stelle des Punktes in der Gruppe, nullbasiert.
+ */
+item: number, 
+/**
+ * `None` löscht die Punkte.
+ */
+points: number | null, note: string, };
 
 export type Student = { id: string, class_id: string, last_name: string, first_name: string, };
 
@@ -92,5 +144,22 @@ export type Student = { id: string, class_id: string, last_name: string, first_n
  * Ein Schüler, ungeprüft.
  */
 export type StudentInput = { last_name: string, first_name: string, };
+
+/**
+ * Die Bewertung eines Schülers.
+ */
+export type StudentResult = { student: Student, 
+/**
+ * Je Gruppe des Schemas.
+ */
+groups: Array<GroupResult>, 
+/**
+ * Gesamtpunkte. Berechnet.
+ */
+total: number, 
+/**
+ * Note aus der Bewertungsmatrix; `None`, solange nichts eingetragen ist.
+ */
+grade: string | null, };
 
 export type Theme = "system" | "light" | "dark";

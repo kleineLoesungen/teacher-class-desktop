@@ -6,7 +6,7 @@
 
 import type { Exam, ExamInput } from "../bindings";
 
-export type ItemDraft = { name: string; max: string };
+export type ItemDraft = { name: string; description: string; max: string };
 export type GroupDraft = { name: string; items: ItemDraft[] };
 export type GradeDraft = { name: string; from: string };
 
@@ -15,7 +15,13 @@ export type ExamDraft = {
   class_ids: string[];
   groups: GroupDraft[];
   grades: GradeDraft[];
+  /** Ob zu jedem Prüfkriterium eine Begründung gepflegt wird. */
+  with_notes: boolean;
 };
+
+export function emptyItemDraft(): ItemDraft {
+  return { name: "", description: "", max: "" };
+}
 
 /** Die üblichen Noten 1 bis 6. Nur die 6 beginnt von vornherein bei 0. */
 const DEFAULT_GRADES = ["1", "2", "3", "4", "5", "6"];
@@ -24,8 +30,9 @@ export function emptyExamDraft(): ExamDraft {
   return {
     name: "",
     class_ids: [],
-    groups: [{ name: "", items: [{ name: "", max: "" }] }],
+    groups: [{ name: "", items: [emptyItemDraft()] }],
     grades: DEFAULT_GRADES.map((name) => ({ name, from: name === "6" ? "0" : "" })),
+    with_notes: false,
   };
 }
 
@@ -40,10 +47,15 @@ export function draftFromExam(exam: Exam): ExamDraft {
     class_ids: [...exam.class_ids],
     groups: exam.groups.map((g) => ({
       name: g.name,
-      items: g.items.map((i) => ({ name: i.name, max: formatPoints(i.max_points) })),
+      items: g.items.map((i) => ({
+        name: i.name,
+        description: i.description,
+        max: formatPoints(i.max_points),
+      })),
     })),
     // Rust liefert die Matrix aufsteigend nach „ab“; die Reihenfolge bleibt.
     grades: exam.grades.map((g) => ({ name: g.name, from: formatPoints(g.from_points) })),
+    with_notes: exam.with_notes,
   };
 }
 
@@ -63,9 +75,14 @@ export function toExamInput(draft: ExamDraft): ExamInput {
     class_ids: draft.class_ids,
     groups: draft.groups.map((g) => ({
       name: g.name,
-      items: g.items.map((i) => ({ name: i.name, max_points: parsePoints(i.max) })),
+      items: g.items.map((i) => ({
+        name: i.name,
+        description: i.description,
+        max_points: parsePoints(i.max),
+      })),
     })),
     grades: draft.grades.map((g) => ({ name: g.name, from_points: parsePoints(g.from) })),
+    with_notes: draft.with_notes,
   };
 }
 

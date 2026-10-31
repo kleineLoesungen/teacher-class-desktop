@@ -1,0 +1,21 @@
+---
+source: crates/cli/tests/exam.rs
+expression: text
+---
+Klassenarbeit 1  ([id])
+Klassen: 7a (2025)
+Begründungen: ja
+
+Prüfungsschema
+  1. Aufgabe 1  (max. 6.5)
+    1. a                 4      Rechenweg angeben
+    2. b                 2.5
+  2. Aufgabe 2  (max. 13.5)
+    1. a                 13.5
+  Gesamt: 20
+
+Bewertungsmatrix
+  NOTE             AB     BIS
+  6                 0     9.5
+  3                10    16.5
+  1                17      20

@@ -27,8 +27,10 @@ import type {
   Exam,
   ExamInput,
   FieldError,
+  ScoreInput,
   Student,
   StudentInput,
+  StudentResult,
 } from "./bindings";
 
 /** Ein abgelehnter Befehl. Dieselbe Form wie `error` im JSON der CLI. */
@@ -105,6 +107,11 @@ export const api = {
     remove: (id: string) => call<null>("exam_delete", { id }),
     /** Schreibt die Excel-Datei nach `path` (aus `pickExportPath`). */
     export: (id: string, path: string) => call<null>("exam_export", { id, path }),
+    /** Die Bewertung der Schüler der Klasse `classId` in der Prüfung `id`. */
+    results: (id: string, classId: string) =>
+      call<StudentResult[]>("exam_results", { id, class: classId }),
+    /** Trägt Punkte und Begründung ein; liefert die neu berechnete Bewertung. */
+    score: (id: string, input: ScoreInput) => call<StudentResult>("exam_score", { id, input }),
   },
 
   /**

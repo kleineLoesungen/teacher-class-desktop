@@ -14,7 +14,17 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { App } from "./App";
-import type { ApiError, Class, ClassInput, Config, Exam, ExamInput, Student } from "./bindings";
+import type {
+  ApiError,
+  Class,
+  ClassInput,
+  Config,
+  Exam,
+  ExamInput,
+  ScoreInput,
+  Student,
+  StudentResult,
+} from "./bindings";
 
 type Call = { cmd: string; args: Record<string, unknown> };
 
@@ -33,6 +43,7 @@ function student(id: string, classId: string, last: string, first: string): Stud
 let classes: Class[];
 let students: Student[];
 let exams: Exam[];
+let results: StudentResult[];
 /** Was der Speichern-Dialog liefert; `null` = abgebrochen. */
 let savePath: string | null;
 let calls: Call[];
@@ -107,11 +118,12 @@ function backend(cmd: string, args: Record<string, unknown> = {}): unknown {
         class_ids: input.class_ids,
         groups: input.groups.map((g) => ({
           name: g.name,
-          items: g.items,
+          items: g.items.map((i) => ({ ...i, description: i.description ?? "" })),
           max_points: g.items.reduce((sum, i) => sum + i.max_points, 0),
         })),
         grades: [{ name: "6", from_points: 0, to_points: 9.5 }],
         max_points: 20,
+        with_notes: input.with_notes ?? false,
         created_at: "2026-09-15T06:39:51Z",
       };
       exams =
@@ -121,6 +133,20 @@ function backend(cmd: string, args: Record<string, unknown> = {}): unknown {
     case "exam_delete":
       exams = exams.filter((e) => e.id !== args.id);
       return null;
+    case "exam_results":
+      return results;
+    case "exam_score": {
+      // Keine Regeln, keine Rechnung: Rust hat Summe und Note errechnet — hier
+      // stehen feste Werte, damit die Anzeige geprüft wird.
+      const input = args.input as ScoreInput;
+      const updated: StudentResult = {
+        ...(results.find((r) => r.student.id === input.student_id) as StudentResult),
+        total: input.points ?? 0,
+        grade: input.points === null ? null : "1",
+      };
+      results = results.map((r) => (r.student.id === updated.student.id ? updated : r));
+      return updated;
+    }
     case "plugin:dialog|save":
       return savePath;
     default:
@@ -133,6 +159,7 @@ beforeEach(() => {
   classes = [];
   students = [];
   exams = [];
+  results = [];
   savePath = "/tmp/Klassenarbeit.xlsx";
   calls = [];
   nextError = null;
@@ -319,13 +346,29 @@ describe("Oberfläche", () => {
         id: "e1",
         name: "Klassenarbeit",
         class_ids: ["a"],
-        groups: [{ name: "Aufgabe 1", items: [{ name: "a", max_points: 2.5 }], max_points: 2.5 }],
+        groups: [
+          {
+            name: "Aufgabe 1",
+            items: [{ name: "a", description: "Rechenweg angeben", max_points: 2.5 }],
+            max_points: 2.5,
+          },
+        ],
         grades: [
           { name: "6", from_points: 0, to_points: 1.5 },
           { name: "1", from_points: 2, to_points: 2.5 },
         ],
         max_points: 2.5,
+        with_notes: false,
         created_at: "2026-09-15T06:39:51Z",
+      };
+    }
+
+    function maxResult(): StudentResult {
+      return {
+        student: student("s1", "a", "Muster", "Max"),
+        groups: [{ scores: [{ points: null, note: "" }], points: 0 }],
+        total: 0,
+        grade: null,
       };
     }
 
@@ -347,14 +390,25 @@ describe("Oberfläche", () => {
         screen.getByRole("textbox", { name: "Gruppe 1 Punkt 1 Höchstpunkte" }),
         "2,5",
       );
+      await user.type(
+        screen.getByRole("textbox", { name: "Gruppe 1 Punkt 1 Beschreibung" }),
+        "Rechenweg angeben",
+      );
+      await user.click(
+        screen.getByRole("checkbox", { name: "Zu jedem Prüfkriterium eine Begründung pflegen" }),
+      );
       await user.type(screen.getByRole("textbox", { name: "Note 1 ab" }), "2");
       await user.click(screen.getByRole("button", { name: "Speichern" }));
 
       await waitFor(() => expect(commands("exam_create")).toHaveLength(1));
       const input = commands("exam_create")[0]?.args.input as ExamInput;
       expect(input.class_ids).toEqual(["a"]);
+      expect(input.with_notes).toBe(true);
       expect(input.groups).toEqual([
-        { name: "Aufgabe 1", items: [{ name: "a", max_points: 2.5 }] },
+        {
+          name: "Aufgabe 1",
+          items: [{ name: "a", description: "Rechenweg angeben", max_points: 2.5 }],
+        },
       ]);
       // Sechs vorbelegte Noten; nur die 6 beginnt bei 0, die 1 bei dem, was getippt wurde.
       expect(input.grades).toHaveLength(6);
@@ -435,6 +489,92 @@ describe("Oberfläche", () => {
       // Der Entwurf weicht ab — Rust hat dafür noch nichts gerechnet.
       expect(screen.queryByText("max. 2,5")).toBeNull();
       expect(screen.queryByText("1,5")).toBeNull();
+    });
+
+    it("trägt Punkte beim Verlassen des Feldes ein und zeigt, was Rust berechnet", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      exams = [savedExam()];
+      results = [maxResult()];
+      render(<App />);
+
+      await openExams(user);
+      await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
+      await user.click(screen.getByRole("button", { name: "Bewerten" }));
+      // Ohne Änderungen am Entwurf wird vorher nicht gespeichert.
+      expect(commands("exam_update")).toHaveLength(0);
+
+      await user.click(await screen.findByRole("button", { name: /Muster, Max/ }));
+      expect(screen.getByText("Rechenweg angeben")).toBeTruthy();
+      // Ohne Begründungen gibt es kein Begründungsfeld.
+      expect(screen.queryByRole("textbox", { name: /Begründung/ })).toBeNull();
+
+      await user.type(screen.getByRole("textbox", { name: "Gruppe 1 Punkt 1 Punkte" }), "2,5");
+      expect(commands("exam_score")).toHaveLength(0);
+      await user.tab();
+
+      await waitFor(() => expect(commands("exam_score")).toHaveLength(1));
+      expect(commands("exam_score")[0]?.args).toEqual({
+        id: "e1",
+        input: { student_id: "s1", group: 0, item: 0, points: 2.5, note: "" },
+      });
+      expect(await screen.findByText("Gesamt: 2,5 / 2,5")).toBeTruthy();
+      expect(screen.getByText("Note: 1")).toBeTruthy();
+    });
+
+    it("schickt Begründungen mit, wenn die Prüfung sie vorsieht", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      exams = [{ ...savedExam(), with_notes: true }];
+      results = [maxResult()];
+      render(<App />);
+
+      await openExams(user);
+      await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
+      await user.click(screen.getByRole("button", { name: "Bewerten" }));
+      await user.click(await screen.findByRole("button", { name: /Muster, Max/ }));
+
+      await user.type(screen.getByRole("textbox", { name: "Gruppe 1 Punkt 1 Punkte" }), "2");
+      await user.type(
+        screen.getByRole("textbox", { name: "Gruppe 1 Punkt 1 Begründung" }),
+        "Vorzeichenfehler",
+      );
+      await user.tab();
+
+      // Der Wechsel von den Punkten zur Begründung speichert die Punkte, das
+      // Verlassen der Begründung speichert beides.
+      await waitFor(() => expect(commands("exam_score")).toHaveLength(2));
+      expect(commands("exam_score")[0]?.args.input).toMatchObject({ points: 2, note: "" });
+      expect(commands("exam_score")[1]?.args.input).toEqual({
+        student_id: "s1",
+        group: 0,
+        item: 0,
+        points: 2,
+        note: "Vorzeichenfehler",
+      });
+    });
+
+    it("zeigt eine abgelehnte Eingabe mit Rusts Meldung", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      exams = [savedExam()];
+      results = [maxResult()];
+      render(<App />);
+
+      await openExams(user);
+      await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
+      await user.click(screen.getByRole("button", { name: "Bewerten" }));
+      await user.click(await screen.findByRole("button", { name: /Muster, Max/ }));
+
+      await user.type(screen.getByRole("textbox", { name: "Gruppe 1 Punkt 1 Punkte" }), "9");
+      nextError = {
+        code: "validation_failed",
+        message: "x",
+        fields: [{ field: "points", message: "Punkte müssen zwischen 0 und 2.5 liegen" }],
+      };
+      await user.tab();
+
+      expect(await screen.findByText("Punkte müssen zwischen 0 und 2.5 liegen")).toBeTruthy();
     });
 
     it("löscht eine Prüfung erst nach der Rückfrage", async () => {

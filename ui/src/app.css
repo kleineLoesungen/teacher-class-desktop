@@ -633,3 +633,58 @@ input[type="color"] {
   overflow-wrap: anywhere;
   user-select: text;
 }
+
+/* --- Bewertung ------------------------------------------------------------ */
+
+.item-name {
+  width: 140px;
+}
+
+.grading {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.student-pick {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.student-pick button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  text-align: left;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.criterion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-left: var(--space-4);
+}
+
+.note-input {
+  resize: vertical;
+  width: 100%;
+}
+
+.tile-total {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+}

@@ -11,6 +11,10 @@
 //! Punkte sind ganze oder halbe Zahlen. Gespeichert werden Halbpunkte als
 //! ganze Zahl (2,5 → 5), damit nichts rundet.
 //!
+//! Jeder Punkt (jedes Prüfkriterium) kann eine Beschreibung tragen. Ist
+//! `with_notes` gesetzt, wird zu jedem Punkt auch eine Begründung gepflegt
+//! (siehe [`crate::grading`]).
+//!
 //! Eine Prüfung wird immer als Ganzes angelegt oder ersetzt (`ExamInput`);
 //! es gibt keine einzelnen Änderungen an Gruppen oder Noten.
 
@@ -26,12 +30,16 @@ use crate::{class, ids, timestamp};
 pub const NAME_MAX: usize = 100;
 /// Größte Punktzahl eines einzelnen Punktes.
 pub const POINTS_MAX: f64 = 1000.0;
+/// Längste Beschreibung eines Prüfkriteriums.
+pub const DESCRIPTION_MAX: usize = 500;
 
 // --- Ausgabe ---------------------------------------------------------------
 
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
 pub struct Item {
     pub name: String,
+    /// Optional, leer = keine.
+    pub description: String,
     pub max_points: f64,
 }
 
@@ -61,6 +69,8 @@ pub struct Exam {
     pub grades: Vec<Grade>,
     /// Gesamtpunktzahl. Berechnet.
     pub max_points: f64,
+    /// Ob zu jedem Prüfkriterium eine Begründung gepflegt wird.
+    pub with_notes: bool,
     #[serde(with = "crate::timestamp::serde_rfc3339")]
     #[ts(type = "string")]
     pub created_at: OffsetDateTime,
@@ -71,6 +81,8 @@ pub struct Exam {
 #[derive(Debug, Clone, Default, Deserialize, TS)]
 pub struct ItemInput {
     pub name: String,
+    #[serde(default)]
+    pub description: String,
     pub max_points: f64,
 }
 
@@ -93,10 +105,13 @@ pub struct ExamInput {
     pub class_ids: Vec<Uuid>,
     pub groups: Vec<GroupInput>,
     pub grades: Vec<GradeInput>,
+    /// Ob zu jedem Prüfkriterium eine Begründung gepflegt wird.
+    #[serde(default)]
+    pub with_notes: bool,
 }
 
 /// Halbpunkte als ganze Zahl, falls `points` ein Vielfaches von 0,5 ist.
-fn to_half(points: f64) -> Option<i64> {
+pub(crate) fn to_half(points: f64) -> Option<i64> {
     if !points.is_finite() {
         return None;
     }
@@ -104,7 +119,7 @@ fn to_half(points: f64) -> Option<i64> {
     (doubled.fract() == 0.0 && doubled.abs() < 1e9).then_some(doubled as i64)
 }
 
-fn from_half(half: i64) -> f64 {
+pub(crate) fn from_half(half: i64) -> f64 {
     half as f64 / 2.0
 }
 
@@ -112,9 +127,16 @@ fn from_half(half: i64) -> f64 {
 struct Clean {
     name: String,
     class_ids: Vec<Uuid>,
-    groups: Vec<(String, Vec<(String, i64)>)>,
+    with_notes: bool,
+    groups: Vec<(String, Vec<CleanItem>)>,
     /// Aufsteigend nach `from_half`.
     grades: Vec<(String, i64)>,
+}
+
+struct CleanItem {
+    name: String,
+    description: String,
+    half: i64,
 }
 
 impl ExamInput {
@@ -175,10 +197,23 @@ impl ExamInput {
                         "Gruppe {g}, Punkt {i}: Name darf höchstens {NAME_MAX} Zeichen lang sein"
                     ),
                 );
+                let description = item.description.trim().to_string();
+                v.require(
+                    description.chars().count() <= DESCRIPTION_MAX,
+                    "groups",
+                    format!(
+                        "Gruppe {g}, Punkt {i}: Beschreibung darf höchstens {DESCRIPTION_MAX} \
+                         Zeichen lang sein"
+                    ),
+                );
                 match to_half(item.max_points) {
                     Some(h) if h > 0 && item.max_points <= POINTS_MAX => {
                         total += h;
-                        items.push((iname, h));
+                        items.push(CleanItem {
+                            name: iname,
+                            description,
+                            half: h,
+                        });
                     }
                     _ => v.add(
                         "groups",
@@ -254,6 +289,7 @@ impl ExamInput {
         Ok(Clean {
             name,
             class_ids,
+            with_notes: self.with_notes,
             groups,
             grades,
         })
@@ -272,11 +308,11 @@ pub fn list(conn: &Connection) -> Result<Vec<Exam>> {
 }
 
 pub fn get(conn: &Connection, id: Uuid) -> Result<Exam> {
-    let (name, created_at): (String, String) = conn
+    let (name, created_at, with_notes): (String, String, bool) = conn
         .query_row(
-            "SELECT name, created_at FROM exams WHERE id = ?1",
+            "SELECT name, created_at, with_notes FROM exams WHERE id = ?1",
             [id.to_string()],
-            |r| Ok((r.get(0)?, r.get(1)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
         )
         .optional()?
         .ok_or(Error::NotFound)?;
@@ -303,20 +339,22 @@ pub fn get(conn: &Connection, id: Uuid) -> Result<Exam> {
             .query_map([id.to_string()], |r| Ok((r.get(0)?, r.get(1)?)))?
             .collect::<std::result::Result<_, _>>()?;
         let mut istmt = conn.prepare(
-            "SELECT name, max_half FROM exam_items WHERE group_id = ?1 ORDER BY position",
+            "SELECT name, description, max_half FROM exam_items WHERE group_id = ?1 \
+             ORDER BY position",
         )?;
         for (gid, gname) in group_rows {
-            let items: Vec<(String, i64)> = istmt
-                .query_map([gid], |r| Ok((r.get(0)?, r.get(1)?)))?
+            let items: Vec<(String, String, i64)> = istmt
+                .query_map([gid], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
                 .collect::<std::result::Result<_, _>>()?;
-            let sum: i64 = items.iter().map(|i| i.1).sum();
+            let sum: i64 = items.iter().map(|i| i.2).sum();
             total += sum;
             groups.push(Group {
                 name: gname,
                 items: items
                     .into_iter()
-                    .map(|(name, h)| Item {
+                    .map(|(name, description, h)| Item {
                         name,
+                        description,
                         max_points: from_half(h),
                     })
                     .collect(),
@@ -350,6 +388,7 @@ pub fn get(conn: &Connection, id: Uuid) -> Result<Exam> {
         groups,
         grades,
         max_points: from_half(total),
+        with_notes,
         created_at: timestamp::from_text(&created_at)?,
     })
 }
@@ -362,10 +401,11 @@ pub fn create(conn: &Connection, input: ExamInput) -> Result<Exam> {
     let id = Uuid::now_v7();
     let tx = conn.unchecked_transaction()?;
     tx.execute(
-        "INSERT INTO exams (id, name, created_at) VALUES (?1, ?2, ?3)",
+        "INSERT INTO exams (id, name, with_notes, created_at) VALUES (?1, ?2, ?3, ?4)",
         rusqlite::params![
             id.to_string(),
             clean.name,
+            clean.with_notes,
             timestamp::to_text(timestamp::now())
         ],
     )?;
@@ -382,8 +422,8 @@ pub fn update(conn: &Connection, id: Uuid, input: ExamInput) -> Result<Exam> {
     check_classes(conn, &clean)?;
     let tx = conn.unchecked_transaction()?;
     tx.execute(
-        "UPDATE exams SET name = ?2 WHERE id = ?1",
-        rusqlite::params![id.to_string(), clean.name],
+        "UPDATE exams SET name = ?2, with_notes = ?3 WHERE id = ?1",
+        rusqlite::params![id.to_string(), clean.name, clean.with_notes],
     )?;
     // Gruppen löschen die Punkte mit (ON DELETE CASCADE).
     for table in ["exam_classes", "exam_groups", "exam_grades"] {
@@ -393,6 +433,8 @@ pub fn update(conn: &Connection, id: Uuid, input: ExamInput) -> Result<Exam> {
         )?;
     }
     write_children(&tx, id, &clean)?;
+    // Bereits eingetragene Bewertungen bleiben, soweit sie noch passen.
+    crate::grading::prune(&tx, id)?;
     tx.commit()?;
     get(conn, id)
 }
@@ -435,11 +477,11 @@ fn write_children(conn: &Connection, id: Uuid, clean: &Clean) -> Result<()> {
             rusqlite::params![id.to_string(), gpos as i64, gname],
         )?;
         let gid = conn.last_insert_rowid();
-        for (ipos, (iname, half)) in items.iter().enumerate() {
+        for (ipos, item) in items.iter().enumerate() {
             conn.execute(
-                "INSERT INTO exam_items (group_id, position, name, max_half) \
-                 VALUES (?1, ?2, ?3, ?4)",
-                rusqlite::params![gid, ipos as i64, iname, half],
+                "INSERT INTO exam_items (group_id, position, name, description, max_half) \
+                 VALUES (?1, ?2, ?3, ?4, ?5)",
+                rusqlite::params![gid, ipos as i64, item.name, item.description, item.half],
             )?;
         }
     }
