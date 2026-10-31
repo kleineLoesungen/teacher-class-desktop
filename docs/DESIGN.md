@@ -21,6 +21,10 @@ teacher-class config set theme dark          # system | light | dark
 teacher-class config set accent "#aa3344"
 ```
 
+Der Speicherort der Datenbank (`db_file`) gehört auch in diese Datei, wird aber
+nicht mit `config set` geändert, sondern mit `teacher-class db …` oder in der
+Oberfläche unter „Einstellungen → Speicherort der Datenbank“.
+
 Die Desktop-Anwendung liest die Einstellungen beim Start; nach einer Änderung
 über die CLI einmal neu starten.
 

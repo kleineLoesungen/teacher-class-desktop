@@ -28,6 +28,8 @@ pub const ENV_CONFIG_DIR: &str = "TEACHER_CLASS_CONFIG_DIR";
 pub struct Paths {
     data_dir: PathBuf,
     config_dir: PathBuf,
+    /// Vom Benutzer gewählter Ort der Datenbank, siehe `Config::db_file`.
+    db_override: Option<PathBuf>,
 }
 
 impl Paths {
@@ -48,6 +50,7 @@ impl Paths {
         Ok(Self {
             data_dir,
             config_dir,
+            db_override: None,
         })
     }
 
@@ -59,6 +62,7 @@ impl Paths {
         Self {
             data_dir,
             config_dir,
+            db_override: None,
         }
     }
 
@@ -71,6 +75,7 @@ impl Paths {
         Self {
             data_dir: root.join("data"),
             config_dir: root.join("config"),
+            db_override: None,
         }
     }
 
@@ -82,9 +87,30 @@ impl Paths {
         &self.config_dir
     }
 
-    /// Die SQLite-Datei. WAL legt daneben `-wal` und `-shm` an.
+    /// Die SQLite-Datei: der gewählte Ort, sonst [`Paths::default_db_file`].
+    /// WAL legt daneben `-wal` und `-shm` an.
     pub fn db_file(&self) -> PathBuf {
+        self.db_override
+            .clone()
+            .unwrap_or_else(|| self.default_db_file())
+    }
+
+    /// Der Standardort der Datenbank im Datenverzeichnis.
+    pub fn default_db_file(&self) -> PathBuf {
         self.data_dir.join(format!("{APP_NAME}.sqlite3"))
+    }
+
+    /// Dieselben Pfade mit einem anderen Ort für die Datenbank; `None` heißt
+    /// Standardort.
+    pub fn with_db_file(mut self, file: Option<PathBuf>) -> Self {
+        self.db_override = file;
+        self
+    }
+
+    /// Die Pfade mit dem Ort aus den Einstellungen.
+    pub fn for_config(self, config: &crate::Config) -> Self {
+        let file = config.db_file.as_ref().map(PathBuf::from);
+        self.with_db_file(file)
     }
 
     pub fn config_file(&self) -> PathBuf {

@@ -619,6 +619,26 @@ input[type="color"] {
   font-weight: 500;
 }
 
+.db-location {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.db-location legend {
+  padding: 0 var(--space-1);
+  font-weight: 500;
+}
+
+.db-location p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
 .info {
   display: grid;
   grid-template-columns: max-content 1fr;

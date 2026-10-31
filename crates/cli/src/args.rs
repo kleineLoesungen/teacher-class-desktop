@@ -72,6 +72,10 @@ pub enum Command {
     #[command(subcommand)]
     Config(ConfigCommand),
 
+    /// Speicherort der Datenbank wählen.
+    #[command(subcommand)]
+    Db(DbCommand),
+
     /// Zeigt, wo die Anwendung ihre Dateien ablegt.
     Paths,
 
@@ -277,6 +281,29 @@ pub enum ExamCommand {
 }
 
 #[derive(Debug, Subcommand)]
+pub enum DbCommand {
+    /// Eine vorhandene Datenbankdatei als Speicherort nehmen.
+    ///
+    /// Gilt auch für die Oberfläche, denn der Ort steht in der
+    /// Einstellungsdatei. Beispiel: `db use /media/stick/klassen.sqlite3`
+    Use {
+        /// Die Datenbankdatei.
+        file: PathBuf,
+    },
+
+    /// Eine neue, leere Datenbank anlegen und als Speicherort nehmen.
+    ///
+    /// Eine vorhandene Datei wird nie überschrieben.
+    Create {
+        /// Wo die Datei entstehen soll.
+        file: PathBuf,
+    },
+
+    /// Zurück zum Standardort der Plattform.
+    Reset,
+}
+
+#[derive(Debug, Subcommand)]
 pub enum ConfigCommand {
     /// Aktuelle Einstellungen anzeigen.
     Show,
@@ -284,6 +311,7 @@ pub enum ConfigCommand {
     /// Eine Einstellung setzen.
     ///
     /// Schlüssel: `app_name`, `theme` (system|light|dark), `accent` (#rrggbb).
+    /// Den Speicherort der Datenbank ändert `db`.
     Set { key: String, value: String },
 
     /// Einstellungen auf die Voreinstellung zurücksetzen.

@@ -104,7 +104,10 @@ teacher-class exam export <PRÜFUNG> --out Klassenarbeit.xlsx
 
 Jeder Befehl kann `--json`. Alles dazu in [docs/CLI.md](docs/CLI.md).
 Oberfläche und Kommandozeile arbeiten auf **derselben** Datenbank; wo sie liegt,
-sagt `teacher-class paths`.
+sagt `teacher-class paths`. Den Speicherort kann man wählen — in den
+Einstellungen der Oberfläche oder mit `teacher-class db use|create|reset`. Fehlt
+die Datenbank am gewählten Ort, fragt die App, ob eine neue angelegt oder ein
+anderer Ort gewählt werden soll.
 
 ---
 

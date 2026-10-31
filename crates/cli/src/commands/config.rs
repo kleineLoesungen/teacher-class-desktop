@@ -22,7 +22,12 @@ pub fn run(cmd: ConfigCommand, app: &mut App, out: &Out) -> Result<()> {
         }
 
         ConfigCommand::Reset => {
-            app.set_config(Config::default())?;
+            // Der Speicherort der Datenbank gehört nicht zu den
+            // Einstellungen, die „zurückgesetzt“ werden — das ist `db reset`.
+            app.set_config(Config {
+                db_file: app.config().db_file.clone(),
+                ..Config::default()
+            })?;
             out.done("Einstellungen zurückgesetzt.", app.config());
             Ok(())
         }
@@ -45,6 +50,9 @@ fn apply(config: &mut Config, key: &str, value: &str) -> Result<()> {
                 "dark" => Theme::Dark,
                 _ => bail!("theme kennt nur: system, light, dark (nicht {value:?})"),
             }
+        }
+        "db_file" => {
+            bail!("db_file ändert `teacher-class db use|create|reset`, nicht `config set`")
         }
         _ => bail!("unbekannter Schlüssel {key:?} — bekannt sind: app_name, theme, accent"),
     }

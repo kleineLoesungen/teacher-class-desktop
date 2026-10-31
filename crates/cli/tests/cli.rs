@@ -315,6 +315,56 @@ fn eine_kaputte_einstellung_wird_nicht_uebernommen() {
 }
 
 #[test]
+fn die_datenbank_laesst_sich_verlegen_und_zurueckholen() {
+    let ctx = Ctx::new();
+    ctx.seed();
+    let ziel = ctx._dir.path().join("stick").join("klassen.sqlite3");
+    let ziel = ziel.to_str().unwrap();
+
+    ctx.run(&["db", "create", ziel]).ok();
+    // Die neue Datenbank ist leer, die alte bleibt unberührt.
+    assert!(ctx.run(&["class", "list"]).ok().stdout.contains("Keine"));
+    let paths: serde_json::Value =
+        serde_json::from_str(&ctx.run(&["paths", "--json"]).ok().stdout).unwrap();
+    assert_eq!(paths["db_file"], ziel);
+
+    ctx.run(&["db", "reset"]).ok();
+    assert!(ctx.run(&["class", "list"]).ok().stdout.contains("7a"));
+
+    ctx.run(&["db", "use", ziel]).ok();
+    let config: serde_json::Value =
+        serde_json::from_str(&ctx.run(&["config", "show", "--json"]).ok().stdout).unwrap();
+    assert_eq!(config["db_file"], ziel);
+}
+
+#[test]
+fn fehlt_die_gewaehlte_datenbank_wird_sie_nicht_still_neu_angelegt() {
+    let ctx = Ctx::new();
+    let ziel = ctx._dir.path().join("weg.sqlite3");
+    let ziel_text = ziel.to_str().unwrap();
+    ctx.run(&["db", "create", ziel_text]).ok();
+    std::fs::remove_file(&ziel).unwrap();
+
+    let out = ctx.run(&["class", "list", "--json"]);
+
+    assert_eq!(out.code, 1);
+    assert!(out.stderr.contains("database_missing"), "{}", out.stderr);
+    assert!(!ziel.exists());
+    // Und der Ausweg geht ohne geöffnete Datenbank.
+    ctx.run(&["db", "reset"]).ok();
+}
+
+#[test]
+fn eine_vorhandene_datei_wird_nicht_ueberschrieben() {
+    let ctx = Ctx::new();
+    let datei = ctx._dir.path().join("brief.txt");
+    std::fs::write(&datei, "Hallo").unwrap();
+
+    assert_eq!(ctx.run(&["db", "create", datei.to_str().unwrap()]).code, 4);
+    assert_eq!(std::fs::read_to_string(&datei).unwrap(), "Hallo");
+}
+
+#[test]
 fn schuelernamen_kommen_auch_von_stdin() {
     use std::io::Write;
     let ctx = Ctx::new();

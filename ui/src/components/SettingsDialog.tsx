@@ -13,6 +13,10 @@ type Props = {
   info: AppInfo | null;
   fieldMessage: (field: string) => string | undefined;
   onSave: (config: Config) => void;
+  /** Den Speicherort wählen: Dialog und Befehl liegen in App.tsx. */
+  onUseDatabase: () => void;
+  onCreateDatabase: () => void;
+  onResetDatabase: () => void;
   onClose: () => void;
 };
 
@@ -22,7 +26,16 @@ const THEMES: [Theme, string][] = [
   ["dark", "Dunkel"],
 ];
 
-export function SettingsDialog({ config, info, fieldMessage, onSave, onClose }: Props) {
+export function SettingsDialog({
+  config,
+  info,
+  fieldMessage,
+  onSave,
+  onUseDatabase,
+  onCreateDatabase,
+  onResetDatabase,
+  onClose,
+}: Props) {
   const [draft, setDraft] = useState<Config>(config);
 
   return (
@@ -80,12 +93,29 @@ export function SettingsDialog({ config, info, fieldMessage, onSave, onClose }: 
         </label>
         <FieldMessage id="accent-error" message={fieldMessage("accent")} />
 
+        <fieldset className="db-location">
+          <legend>Speicherort der Datenbank</legend>
+          <p className="muted">{info?.db_file}</p>
+          <span className="row">
+            <button type="button" onClick={onUseDatabase}>
+              Vorhandene wählen …
+            </button>
+            <button type="button" onClick={onCreateDatabase}>
+              Neue anlegen …
+            </button>
+            {config.db_file !== null && (
+              <button type="button" className="ghost" onClick={onResetDatabase}>
+                Standardort
+              </button>
+            )}
+          </span>
+          <FieldMessage id="db_file-error" message={fieldMessage("db_file")} />
+        </fieldset>
+
         {info && (
           <dl className="info">
             <dt>Fassung</dt>
             <dd>{info.version}</dd>
-            <dt>Datenbank</dt>
-            <dd>{info.db_file}</dd>
             <dt>Einstellungen</dt>
             <dd>{info.config_file}</dd>
             <dt>Protokoll</dt>

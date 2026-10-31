@@ -32,7 +32,14 @@ theme: Theme,
 /**
  * Akzentfarbe als `#rrggbb`. Siehe docs/DESIGN.md.
  */
-accent: string, };
+accent: string, 
+/**
+ * Ort der Datenbankdatei, absolut. Fehlt er, gilt der Standardort
+ * (`Paths::db_file`). Geändert wird er nur über `App::use_database` und
+ * Verwandte, nicht über `set_config` — sonst stünde hier ein Ort, an dem
+ * die laufende Anwendung gar nicht arbeitet.
+ */
+db_file: string | null, };
 
 /**
  * Maschinenlesbare Fehlerart.
@@ -41,7 +48,7 @@ accent: string, };
  * Fehlerhülle der Desktop-Schale. Ein Skript und die Oberfläche können sich
  * darauf verlassen — ein Name wird deshalb nie umbenannt, nur ergänzt.
  */
-export type ErrorCode = "not_found" | "validation_failed" | "ambiguous_id" | "config_invalid" | "internal_error";
+export type ErrorCode = "not_found" | "validation_failed" | "ambiguous_id" | "config_invalid" | "database_missing" | "internal_error";
 
 export type Exam = { id: string, name: string, class_ids: Array<string>, groups: Array<Group>, 
 /**

@@ -44,6 +44,9 @@ pub enum Error {
         source: toml::de::Error,
     },
 
+    #[error("Keine Datenbank unter {}", .path.display())]
+    DatabaseMissing { path: PathBuf },
+
     #[error("kein Heimatverzeichnis gefunden — ist HOME gesetzt?")]
     NoHomeDir,
 
@@ -72,6 +75,8 @@ pub enum ErrorCode {
     ValidationFailed,
     AmbiguousId,
     ConfigInvalid,
+    /// Am eingestellten Speicherort liegt keine Datenbank.
+    DatabaseMissing,
     InternalError,
 }
 
@@ -82,6 +87,7 @@ impl ErrorCode {
             ErrorCode::ValidationFailed => "validation_failed",
             ErrorCode::AmbiguousId => "ambiguous_id",
             ErrorCode::ConfigInvalid => "config_invalid",
+            ErrorCode::DatabaseMissing => "database_missing",
             ErrorCode::InternalError => "internal_error",
         }
     }
@@ -94,6 +100,7 @@ impl Error {
             Error::Validation(_) => ErrorCode::ValidationFailed,
             Error::Ambiguous { .. } => ErrorCode::AmbiguousId,
             Error::ConfigParse { .. } => ErrorCode::ConfigInvalid,
+            Error::DatabaseMissing { .. } => ErrorCode::DatabaseMissing,
             _ => ErrorCode::InternalError,
         }
     }

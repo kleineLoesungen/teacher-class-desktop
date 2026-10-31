@@ -22,6 +22,7 @@ fn schreiben_und_lesen_ergibt_dasselbe() {
         app_name: "Vereinsportal".into(),
         theme: Theme::Dark,
         accent: "#aa3344".into(),
+        db_file: Some(dir.path().join("woanders.sqlite3").display().to_string()),
     };
     config.save(&paths.config_file()).unwrap();
 

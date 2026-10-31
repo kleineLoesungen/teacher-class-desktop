@@ -11,6 +11,7 @@ Commands:
   student      Schüler einer Klasse verwalten
   exam         Prüfungen verwalten und als Excel exportieren
   config       Einstellungen anzeigen und ändern
+  db           Speicherort der Datenbank wählen
   paths        Zeigt, wo die Anwendung ihre Dateien ablegt
   completions  Vervollständigung für die Shell ausgeben
   man          Handbuchseiten nach VERZEICHNIS schreiben

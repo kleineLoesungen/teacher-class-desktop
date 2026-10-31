@@ -24,6 +24,7 @@ import type {
 import { ClassEditor } from "./components/ClassEditor";
 import { ClassList } from "./components/ClassList";
 import { ConfirmDialog } from "./components/ConfirmDialog";
+import { DatabaseMissing } from "./components/DatabaseMissing";
 import { EmptyState } from "./components/EmptyState";
 import { ExamEditor } from "./components/ExamEditor";
 import { ExamList } from "./components/ExamList";
@@ -69,6 +70,8 @@ export function App() {
   const [config, setConfig] = useState<Config | null>(null);
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
+  // Gesetzt, wenn am gewählten Ort keine Datenbank liegt: die Meldung aus Rust.
+  const [missingDb, setMissingDb] = useState<string | null>(null);
 
   // Zwei Sorten Fehler, wie überall in der App: mit Feldern an die Felder,
   // ohne Felder als Meldung oben.
@@ -105,18 +108,27 @@ export function App() {
   }, [fail]);
 
   // --- Start ---------------------------------------------------------------
+  const start = useCallback(async () => {
+    try {
+      const [loaded, appInfo] = await Promise.all([api.config.get(), api.appInfo()]);
+      setConfig(loaded);
+      setInfo(appInfo);
+      setMissingDb(null);
+    } catch (raw) {
+      const err = ApiError.from(raw);
+      if (err.code === "database_missing") {
+        // Kein Fehlerbalken: die Arbeitsfläche weicht der Auswahl eines Ortes.
+        setMissingDb(err.message);
+        return;
+      }
+      fail(err);
+    }
+    await Promise.all([reload(), reloadExams()]);
+  }, [fail, reload, reloadExams]);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: nur einmal beim Start
   useEffect(() => {
-    void (async () => {
-      try {
-        const [loaded, appInfo] = await Promise.all([api.config.get(), api.appInfo()]);
-        setConfig(loaded);
-        setInfo(appInfo);
-      } catch (raw) {
-        fail(raw);
-      }
-      await Promise.all([reload(), reloadExams()]);
-    })();
+    void start();
   }, []);
 
   useEffect(() => {
@@ -355,6 +367,36 @@ export function App() {
     }
   }
 
+  /**
+   * Den Ort der Datenbank wechseln: Dialog fragen, Rust prüfen und öffnen
+   * lassen, dann alles neu laden — die Anzeige gehörte zur alten Datenbank.
+   */
+  async function changeDatabase(kind: "use" | "create" | "reset") {
+    try {
+      setFieldError(null);
+      if (kind === "reset") {
+        await api.db.reset();
+      } else {
+        const path = await (kind === "use" ? api.pickDatabase() : api.pickNewDatabase());
+        if (path === null) return;
+        await (kind === "use" ? api.db.use(path) : api.db.create(path));
+      }
+    } catch (raw) {
+      fail(raw);
+      return;
+    }
+    open({ kind: "none" }, emptyDraft());
+    setExamSelection({ kind: "none" });
+    setExamDraft(emptyExamDraft());
+    setExamSaved(emptyExamDraft());
+    setGrading(null);
+    setResults([]);
+    setBanner(null);
+    setNotice(null);
+    setDialog(null);
+    await start();
+  }
+
   // --- Tastatur ------------------------------------------------------------
   // Cmd auf macOS, Strg auf Linux.
   useEffect(() => {
@@ -449,7 +491,15 @@ export function App() {
           </div>
         )}
 
-        {view === "exams" ? (
+        {missingDb !== null ? (
+          <DatabaseMissing
+            message={missingDb}
+            fieldMessage={fieldMessage}
+            onUse={() => void changeDatabase("use")}
+            onCreate={() => void changeDatabase("create")}
+            onReset={() => void changeDatabase("reset")}
+          />
+        ) : view === "exams" ? (
           examSelection.kind === "none" ? (
             <EmptyState
               title={exams.length > 0 ? "Keine Prüfung ausgewählt" : "Noch keine Prüfungen"}
@@ -529,6 +579,9 @@ export function App() {
           info={info}
           fieldMessage={fieldMessage}
           onSave={(next) => void saveConfig(next)}
+          onUseDatabase={() => void changeDatabase("use")}
+          onCreateDatabase={() => void changeDatabase("create")}
+          onResetDatabase={() => void changeDatabase("reset")}
           onClose={() => {
             setFieldError(null);
             setDialog(null);
