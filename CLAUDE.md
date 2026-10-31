@@ -449,6 +449,26 @@ Drei Prüf-Agents sehen deinen PR danach durch (`.claude/agents/`). Ihre
 Prüflisten sind kein Geheimnis — lies sie vorher, dann sparst du euch beiden
 eine Runde. Der ganze Ablauf steht in `docs/AUTOMATION.md`.
 
+#### Wenn ein früherer Lauf schon etwas angefangen hat
+
+Jeder Lauf startet auf einem **frischen** Branch von `main`. Hat ein
+vorheriger Lauf Arbeit auf einem `claude/*`-Branch hinterlassen, liegt sie
+dort — nicht in deinem Arbeitsverzeichnis. Sieh nach, bevor du anfängst:
+
+```bash
+git fetch origin
+git log --oneline --all --grep="" origin/claude/ 2>/dev/null | head
+```
+
+Übernimm sie mit **`git cherry-pick <sha>`** oder `git merge`, **nie** mit
+`git checkout origin/<branch> -- .`: Der alte Branch steht auf einem älteren
+`main`, und ein pauschales Übernehmen brächte Dateien zurück, die seitdem
+gelöscht wurden — oder löschte neue, die er nicht kennt. Ein `cherry-pick`
+wendet nur die Änderung dieses Commits an.
+
+`git push` ist nicht freigegeben und wird auch nicht gebraucht; die Action
+committet und schiebt selbst.
+
 #### Rückfragen: selten, dafür gut
 
 Jeder Kommentar mit `@claude` startet einen **neuen** Lauf, der das Issue
@@ -475,6 +495,9 @@ Deshalb:
 * **Teile Unfertiges mit.** Wenn du nur die Hälfte umsetzen konntest, schreib
   in die PR-Beschreibung, was fehlt und warum — nicht in eine Rückfrage, die
   alles blockiert.
+* **Öffne für Unfertiges einen Entwurfs-PR**, statt den Branch unkommentiert
+  liegen zu lassen. Dann ist er sichtbar, prüfbar und wiederauffindbar — und
+  der nächste Lauf weiß, woran er anknüpft.
 
 ---
 

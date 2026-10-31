@@ -196,7 +196,16 @@ jobs:
           #
           # Die drei Prüf-Agents in claude-review.yml bekommen das NICHT.
           # Eine Durchsicht, die bauen darf, ist keine Durchsicht.
+          # Git ist dabei, weil ein Folgelauf auf einem FRISCHEN Branch von
+          # main startet. Hat ein früherer Lauf schon etwas auf einem
+          # claude/*-Branch abgelegt, sitzt Claude sonst auf seiner eigenen
+          # Arbeit fest und müsste sie blind neu schreiben.
+          #
+          # BEWUSST NICHT dabei: `git push`. Das erledigt die Action selbst,
+          # und ohne die Freigabe kann ein Lauf auch mit Schreibrecht nicht
+          # versehentlich `main` überschreiben. Alles andere wirkt nur im
+          # Runner, der danach verschwindet.
           claude_args: >-
-            --allowedTools "Edit,Write,Bash(just:*),Bash(cargo:*),Bash(npm:*),Bash(npx:*),Bash(node:*)"
+            --allowedTools "Edit,Write,Bash(just:*),Bash(cargo:*),Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(git fetch:*),Bash(git merge:*),Bash(git cherry-pick:*),Bash(git checkout:*),Bash(git switch:*),Bash(git restore:*),Bash(git add:*),Bash(git rm:*),Bash(git mv:*),Bash(git reset:*),Bash(git stash:*),Bash(git commit:*)"
           # Kein --model: Für das Umsetzen darf das stärkere Modell ran.
           # Die Festlegung auf Sonnet gilt nur den Prüf-Agents.
