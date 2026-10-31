@@ -66,9 +66,9 @@ Jeder neue Eintrag erweitert, was das Webview darf.
 * Zeichenketten, die mit `format!` in SQL gebaut werden → **Einspruch**;
   Parameter benutzen
 * Eine Sortierung oder ein Spaltenname aus einer Variablen → nur aus einem
-  festen `match`, wie in `note::list`
-* `LIKE` mit ungeprüfter Eingabe → `%` und `_` sind Joker (siehe
-  `note::resolve_id`, das nur Hexziffern durchlässt)
+  festen `match`, nie aus einer Zeichenkette von außen
+* `LIKE` mit ungeprüfter Eingabe → `%` und `_` sind Joker. Die Auflösung
+  von Kurzkennungen in `core` lässt deshalb nur Hexziffern durch
 
 ### 6. Geheimnisse und Abhängigkeiten
 

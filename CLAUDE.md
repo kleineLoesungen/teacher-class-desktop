@@ -449,6 +449,20 @@ Drei Prüf-Agents sehen deinen PR danach durch (`.claude/agents/`). Ihre
 Prüflisten sind kein Geheimnis — lies sie vorher, dann sparst du euch beiden
 eine Runde. Der ganze Ablauf steht in `docs/AUTOMATION.md`.
 
+#### Was du nicht ändern darfst
+
+* **`.claude/agents/*.md`** — die Prüflisten, an denen deine eigene Arbeit
+  gemessen wird. Wer sie umschreiben darf, entwertet die Prüfung. Dieselbe
+  Regel wie bei `crates/core/tests/layering.rs`: **den Code ändern, nicht den
+  Maßstab.**
+* **`.github/workflows/*.yml`** — technisch verwehrt: Der `GITHUB_TOKEN` darf
+  Workflow-Dateien nicht anfassen.
+
+Fällt dir dort etwas auf — ein veralteter Verweis, eine fehlende Prüfzeile,
+ein zu enges Recht —, dann **schreib es in die PR-Beschreibung**, mit der
+Datei und dem Vorschlag im Wortlaut. Der Mensch trägt es nach. Das ist kein
+Umweg, sondern die Stelle, an der jemand anders hinsehen soll.
+
 #### Wenn ein früherer Lauf schon etwas angefangen hat
 
 Jeder Lauf startet auf einem **frischen** Branch von `main`. Hat ein

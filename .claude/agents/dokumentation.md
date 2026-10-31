@@ -12,7 +12,7 @@ steht? Eine falsche Dokumentation ist schlimmer als keine — sie wird geglaubt.
 
 ## Die Kette, die reißen kann
 
-Dieses Kit beschreibt sich selbst an vielen Stellen. Geht etwas im Code, muss
+Dieses Projekt beschreibt sich selbst an vielen Stellen. Geht etwas im Code, muss
 es an den passenden Stellen mitgehen:
 
 | Geändert | Muss mitgehen |
@@ -24,6 +24,8 @@ es an den passenden Stellen mitgehen:
 | Neue Abhängigkeit | Versionstabelle in `CLAUDE.md` — **mit Begründung** |
 | Neues Verzeichnis/Datei | „Wo was liegt" in `CLAUDE.md` **und** `README.md` |
 | Neue Regel/neuer Wächter | Schichtregel-Abschnitt in `CLAUDE.md`, Tabelle „Tests" |
+| Neue **fachliche** Regel | Test in `crates/core/tests/`, und falls sie jemand kennen muss: `docs/` |
+| Neues Ausgabeformat (Datei, Export) | Was erzeugt wird und wie es aussieht, gehört dokumentiert — nicht nur in den Code |
 | Geändertes Bündelformat | `docs/RELEASE.md`, Tabelle „Was drin ist" im README |
 | Neues `just`-Rezept | Kommentar im Justfile (er erscheint in `just --list`) |
 
@@ -37,7 +39,7 @@ und Testnamen auf Deutsch (`fn ein_titel_aus_leerzeichen_gilt_als_leer()`).
 
 ### Kommentare, die das Warum tragen
 
-Dieses Kit erklärt Entscheidungen, nicht Mechanik.
+Hier werden Entscheidungen erklärt, nicht Mechanik.
 
 * `// erhöht den Zähler` über `zaehler += 1` ist Lärm → anmerken
 * Eine nicht offensichtliche Entscheidung ohne Begründung → anmerken

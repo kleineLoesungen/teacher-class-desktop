@@ -43,9 +43,9 @@ jobs:
       issues: write
       # Die Action braucht das auch mit eigenem Token.
       id-token: write
-    # Das Kit selbst hat keinen Token — der gehört in das abgeleitete
-    # Projekt, nicht in ein Template. Ohne ihn sagt der Lauf, was fehlt,
-    # statt die halbe Werkzeugkette für nichts zu installieren.
+    # Ohne hinterlegten Token sagt der Lauf, was fehlt, statt die halbe
+    # Werkzeugkette für nichts zu installieren. Das ist der Zustand einer
+    # frisch aus der Vorlage erzeugten Kopie.
     env:
       TOKEN_DA: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
     steps:

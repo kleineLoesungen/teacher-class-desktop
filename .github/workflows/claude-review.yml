@@ -33,8 +33,9 @@ jobs:
       fail-fast: false
       matrix:
         agent: [architektur, dokumentation, sicherheit]
-    # Das Kit selbst hat keinen Token — der gehört in das abgeleitete
-    # Projekt, nicht in ein Template. Ohne ihn wird übersprungen statt rot.
+    # Ohne hinterlegten Token überspringt sich der Rest, statt rot zu
+    # werden. Das ist der Zustand einer frisch aus der Vorlage erzeugten
+    # Kopie — ein Secret gehört in ein Projekt, nicht in eine Vorlage.
     env:
       TOKEN_DA: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
     steps:

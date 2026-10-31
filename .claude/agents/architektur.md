@@ -32,7 +32,7 @@ Die wichtigste Frage überhaupt: **Ist hier eine Regel in eine Schale gerutscht?
 
 * Eine Prüfung in TypeScript (`if (!draft.title.trim())`), die es in
   `core` nicht gibt → die Kommandozeile erlaubt dann, was die Oberfläche
-  verbietet. Das ist der Fehler, den dieses Kit verhindern soll.
+  verbietet. Das ist der Fehler, den dieser Aufbau verhindern soll.
 * Ein Tauri-Befehl in `commands.rs`, der mehr tut als durchreichen.
 * Rechnen, Sortieren, Filtern in `App.tsx`, das in `core` gehörte, weil die
   CLI dasselbe Ergebnis liefern müsste.
@@ -58,7 +58,7 @@ Zeichen, dass die Grenze verrutscht.
 ### 4. Wird es unnötig kompliziert?
 
 * Gibt es die Funktion schon? (`lib/format.ts`, `lib/markdown.ts`,
-  `note::resolve_id`, `Validator`)
+  die Auflösung von Kurzkennungen in `core`, `Validator`)
 * Eine neue Abhängigkeit für etwas, das zehn Zeilen wären?
 * Ein globaler Zustandsspeicher, ein CSS-Framework, ein SQL-Plugin — alles in
   CLAUDE.md unter „Was hier NICHT benutzt wird"

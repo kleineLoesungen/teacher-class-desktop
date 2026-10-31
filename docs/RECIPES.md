@@ -264,6 +264,22 @@ Beispiel: `task` mit Titel und Erledigt-Kennzeichen.
 6. **Frontend** `api.tasks.*` in `api.ts`, `components/TaskList.tsx` (nur
    zeichnen, `onToggle` nach oben), Zustand und Aufruf in `App.tsx`.
 
+### Und wenn `note` ganz verschwindet
+
+Sobald die Beispielressource durch eigene ersetzt wird, zeigen zwei Stellen
+ins Leere — beide prüft kein Test:
+
+* **`.claude/agents/*.md`** nennen `note` als Beispiel für Fundstellen. Die
+  Prüflisten werden dadurch nicht falsch, aber die Verweise laufen ins Nichts.
+  Tragt dort die eigenen Regeln nach: fachliche Erfindungen, die kein Test
+  abdeckt, und Ausgabeformate, die jemand kennen muss.
+* **`docs/` und `README.md`** erklären das Kit anhand von Notizen.
+
+**Claude darf die Agent-Dateien nicht selbst ändern** (siehe CLAUDE.md,
+„Was du nicht ändern darfst"). Es wird dir stattdessen im Pull Request
+schreiben, was dort nachzuziehen ist — das ist die Stelle, an der ein Mensch
+hinsehen soll.
+
 ```tsx
 // components/TaskList.tsx
 <input type="checkbox" checked={task.done} onChange={() => onToggle(task.id)} />
