@@ -5,7 +5,7 @@
 //! speichert, erzeugt Datensätze, die nach einem Umzug in eine andere Zeitzone
 //! falsch sind.
 //!
-//! Text statt Zahl, weil `sqlite3 teacher-class.sqlite3 "select * from notes"` dann
+//! Text statt Zahl, weil `sqlite3 teacher-class.sqlite3 "select * from exams"` dann
 //! lesbar ist. Sortieren lässt sich RFC 3339 in UTC trotzdem korrekt, weil das
 //! Format lexikografisch aufsteigt.
 

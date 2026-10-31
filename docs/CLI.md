@@ -15,7 +15,56 @@ teacher-class student add 8a551a8d "Muster, Max
 Beispiel, Eva"
 teacher-class student list 8a551a8d
 teacher-class student rm bd10122c --yes
+
+# Prüfungen: Schema (Gruppen mit Punkten) und Bewertungsmatrix (nur „ab“)
+teacher-class exam add "Klassenarbeit 1" --class 8a551a8d \
+    --group "Aufgabe 1: a=4; b=2,5" --group "Aufgabe 2: a=13,5" \
+    --grade 6=0 --grade 3=10 --grade 1=17
+teacher-class exam list
+teacher-class exam show 3f9c01ab
+teacher-class exam export 3f9c01ab --out Klassenarbeit.xlsx
+teacher-class exam rm 3f9c01ab --yes
 ```
+
+## Prüfungen
+
+`exam add` nimmt den Namen und dann:
+
+| Option | Bedeutung |
+|---|---|
+| `--class KLASSE` | Kennung oder Endstück einer Klasse. Mehrfach möglich, mindestens eine. |
+| `--group "Name: Punkt=Max; Punkt=Max"` | Eine Gruppe mit ihren Punkten. Mehrfach möglich. Punkte ganz oder halb, `2,5` und `2.5` gelten gleich. |
+| `--grade Note=ab` | Eine Note und der Punktwert, ab dem sie gilt. Mehrfach möglich. Die Noten sind frei benennbar. |
+
+Das „bis“ jeder Note gibt es nicht als Eingabe; `exam show` zeigt es berechnet
+(eine halbe Punktstufe unter dem „ab“ der nächsten Note, bei der höchsten Note
+die Gesamtpunktzahl). Die niedrigste Note muss bei 0 beginnen, zwei Noten dürfen
+nicht dasselbe „ab“ haben. Verstöße ergeben Rückgabewert 4, ein unlesbares
+`--group` oder `--grade` (etwa ohne `:` bzw. `=`) Rückgabewert 2.
+
+```
+Klassenarbeit 1  (3f9c01ab)
+Klassen: 7a (2025)
+
+Prüfungsschema
+  Aufgabe 1  (max. 6.5)
+    a                    4
+    b                    2.5
+  Aufgabe 2  (max. 13.5)
+    a                    13.5
+  Gesamt: 20
+
+Bewertungsmatrix
+  NOTE             AB     BIS
+  6                 0     9.5
+  3                10    16.5
+  1                17      20
+```
+
+`exam export --out DATEI` schreibt die Excel-Datei (Blätter „Bewertung“,
+„Ausdruck“, je Klasse eins) und überschreibt eine vorhandene. Die Datei muss auf
+`.xlsx` enden, sonst Rückgabewert 4. Bearbeiten einer Prüfung geht in der
+Oberfläche; auf der Kommandozeile legt man sie neu an.
 
 ## Kennungen
 

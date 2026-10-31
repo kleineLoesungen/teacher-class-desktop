@@ -11,18 +11,24 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, api } from "./api";
-import type { AppInfo, Class, ClassInput, Config, Student } from "./bindings";
+import type { AppInfo, Class, ClassInput, Config, Exam, Student } from "./bindings";
 import { ClassEditor } from "./components/ClassEditor";
 import { ClassList } from "./components/ClassList";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { EmptyState } from "./components/EmptyState";
+import { ExamEditor } from "./components/ExamEditor";
+import { ExamList } from "./components/ExamList";
 import { SettingsDialog } from "./components/SettingsDialog";
+import { draftFromExam, type ExamDraft, emptyExamDraft, sameDraft, toExamInput } from "./lib/exam";
 import { classLabel } from "./lib/format";
 import { applyTheme } from "./lib/theme";
 
 type Selection = { kind: "none" } | { kind: "new" } | { kind: "class"; id: string };
+type ExamSelection = { kind: "none" } | { kind: "new" } | { kind: "exam"; id: string };
 
-type Dialog = "settings" | "delete-class" | { student: Student } | null;
+type View = "classes" | "exams";
+
+type Dialog = "settings" | "delete-class" | "delete-exam" | { student: Student } | null;
 
 /** Eine neue Klasse beginnt im laufenden Jahr; das Jahr ist nur ein Vorschlag. */
 function emptyDraft(): ClassInput {
@@ -38,6 +44,13 @@ export function App() {
   const [studentText, setStudentText] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const [view, setView] = useState<View>("classes");
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [examSelection, setExamSelection] = useState<ExamSelection>({ kind: "none" });
+  const [examDraft, setExamDraft] = useState<ExamDraft>(emptyExamDraft);
+  const [examSaved, setExamSaved] = useState<ExamDraft>(emptyExamDraft);
+  const [notice, setNotice] = useState<string | null>(null);
+
   const [config, setConfig] = useState<Config | null>(null);
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -48,6 +61,7 @@ export function App() {
   const [banner, setBanner] = useState<string | null>(null);
 
   const dirty = draft.name !== saved.name || draft.year !== saved.year;
+  const examDirty = !sameDraft(examDraft, examSaved);
 
   /** Ein fehlgeschlagener Befehl: ans Feld oder nach oben. */
   const fail = useCallback((raw: unknown) => {
@@ -67,6 +81,14 @@ export function App() {
     }
   }, [fail]);
 
+  const reloadExams = useCallback(async () => {
+    try {
+      setExams(await api.exams.list());
+    } catch (raw) {
+      fail(raw);
+    }
+  }, [fail]);
+
   // --- Start ---------------------------------------------------------------
   // biome-ignore lint/correctness/useExhaustiveDependencies: nur einmal beim Start
   useEffect(() => {
@@ -78,7 +100,7 @@ export function App() {
       } catch (raw) {
         fail(raw);
       }
-      await reload();
+      await Promise.all([reload(), reloadExams()]);
     })();
   }, []);
 
@@ -155,7 +177,8 @@ export function App() {
     try {
       await api.classes.remove(selection.id);
       open({ kind: "none" }, emptyDraft());
-      await reload();
+      // Prüfungen verlieren die gelöschte Klasse.
+      await Promise.all([reload(), reloadExams()]);
     } catch (raw) {
       fail(raw);
     }
@@ -188,6 +211,89 @@ export function App() {
     }
   }
 
+  // --- Prüfungen -----------------------------------------------------------
+
+  function openExam(next: ExamSelection, input: ExamDraft) {
+    setExamSelection(next);
+    setExamDraft(input);
+    setExamSaved(input);
+    setFieldError(null);
+    setNotice(null);
+  }
+
+  async function saveExam(): Promise<boolean> {
+    setSaving(true);
+    try {
+      const input = toExamInput(examDraft);
+      const exam =
+        examSelection.kind === "exam"
+          ? await api.exams.update(examSelection.id, input)
+          : await api.exams.create(input);
+      openExam({ kind: "exam", id: exam.id }, draftFromExam(exam));
+      await reloadExams();
+      return true;
+    } catch (raw) {
+      fail(raw);
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function leaveCurrentExam(): Promise<boolean> {
+    if (examSelection.kind === "none" || !examDirty) return true;
+    return saveExam();
+  }
+
+  async function selectExam(id: string) {
+    if (examSelection.kind === "exam" && examSelection.id === id) return;
+    if (!(await leaveCurrentExam())) return;
+    const exam = exams.find((e) => e.id === id);
+    if (exam) openExam({ kind: "exam", id }, draftFromExam(exam));
+  }
+
+  async function createNewExam() {
+    if (!(await leaveCurrentExam())) return;
+    openExam({ kind: "new" }, emptyExamDraft());
+  }
+
+  async function removeExam() {
+    setDialog(null);
+    if (examSelection.kind !== "exam") return;
+    try {
+      await api.exams.remove(examSelection.id);
+      openExam({ kind: "none" }, emptyExamDraft());
+      await reloadExams();
+    } catch (raw) {
+      fail(raw);
+    }
+  }
+
+  /** Speichert zuerst, dann fragt der Dialog nach dem Ziel. */
+  async function exportExam() {
+    if (examSelection.kind !== "exam") return;
+    if (examDirty && !(await saveExam())) return;
+    const exam = exams.find((e) => e.id === examSelection.id);
+    try {
+      const path = await api.pickExportPath(`${exam?.name ?? examDraft.name}.xlsx`);
+      if (path === null) return;
+      await api.exams.export(examSelection.id, path);
+      setBanner(null);
+      setNotice(`Gespeichert: ${path}`);
+    } catch (raw) {
+      setNotice(null);
+      fail(raw);
+    }
+  }
+
+  async function switchView(next: View) {
+    if (next === view) return;
+    if (!(view === "classes" ? await leaveCurrent() : await leaveCurrentExam())) return;
+    setFieldError(null);
+    setNotice(null);
+    setView(next);
+  }
+
   // --- Einstellungen -------------------------------------------------------
 
   async function saveConfig(next: Config) {
@@ -205,12 +311,13 @@ export function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey) || dialog) return;
-      if (e.key === "s" && selection.kind !== "none") {
+      const inClasses = view === "classes";
+      if (e.key === "s" && (inClasses ? selection.kind : examSelection.kind) !== "none") {
         e.preventDefault();
-        void save();
+        void (inClasses ? save() : saveExam());
       } else if (e.key === "n") {
         e.preventDefault();
-        void createNew();
+        void (inClasses ? createNew() : createNewExam());
       }
     };
     window.addEventListener("keydown", onKey);
@@ -226,12 +333,39 @@ export function App() {
     <div className="app">
       <aside className="sidebar">
         <div className="brand">{config?.app_name ?? " "}</div>
-        <ClassList
-          classes={classes}
-          selectedId={selection.kind === "class" ? selection.id : null}
-          onSelect={(id) => void select(id)}
-          onCreate={() => void createNew()}
-        />
+        <div className="view-tabs">
+          <button
+            type="button"
+            className="ghost"
+            aria-pressed={view === "classes"}
+            onClick={() => void switchView("classes")}
+          >
+            Klassen
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            aria-pressed={view === "exams"}
+            onClick={() => void switchView("exams")}
+          >
+            Prüfungen
+          </button>
+        </div>
+        {view === "classes" ? (
+          <ClassList
+            classes={classes}
+            selectedId={selection.kind === "class" ? selection.id : null}
+            onSelect={(id) => void select(id)}
+            onCreate={() => void createNew()}
+          />
+        ) : (
+          <ExamList
+            exams={exams}
+            selectedId={examSelection.kind === "exam" ? examSelection.id : null}
+            onSelect={(id) => void selectExam(id)}
+            onCreate={() => void createNewExam()}
+          />
+        )}
         <button
           type="button"
           className="ghost settings-button"
@@ -255,8 +389,49 @@ export function App() {
           </div>
         )}
 
-        {selection.kind === "none" ? (
-          <EmptyState hasClasses={classes.length > 0} onCreate={() => void createNew()} />
+        {notice && (
+          <div className="notice" role="status">
+            <span>{notice}</span>
+            <button type="button" className="ghost" onClick={() => setNotice(null)}>
+              Schließen
+            </button>
+          </div>
+        )}
+
+        {view === "exams" ? (
+          examSelection.kind === "none" ? (
+            <EmptyState
+              title={exams.length > 0 ? "Keine Prüfung ausgewählt" : "Noch keine Prüfungen"}
+              text="Eine Prüfung hat ein Schema aus Gruppen und Punkten und eine Bewertungsmatrix. Daraus entsteht eine Excel-Datei zum Bewerten, mit Noten per Formel und einem Ausdruck je Schüler."
+              action="Neue Prüfung"
+              onCreate={() => void createNewExam()}
+            />
+          ) : (
+            <ExamEditor
+              draft={examDraft}
+              exam={
+                examSelection.kind === "exam"
+                  ? (exams.find((e) => e.id === examSelection.id) ?? null)
+                  : null
+              }
+              classes={classes}
+              isNew={examSelection.kind === "new"}
+              dirty={examDirty}
+              saving={saving}
+              fieldMessages={dialog ? () => [] : (field) => fieldError?.fieldMessages(field) ?? []}
+              onChange={setExamDraft}
+              onSave={() => void saveExam()}
+              onDelete={() => setDialog("delete-exam")}
+              onExport={() => void exportExam()}
+            />
+          )
+        ) : selection.kind === "none" ? (
+          <EmptyState
+            title={classes.length > 0 ? "Keine Klasse ausgewählt" : "Willkommen"}
+            text="Lege Klassen mit ihren Schülern an. Darauf bauen die Prüfungen und der Excel-Export auf."
+            action="Neue Klasse"
+            onCreate={() => void createNew()}
+          />
         ) : (
           <ClassEditor
             draft={draft}
@@ -295,6 +470,16 @@ export function App() {
           message={`„${classLabel(saved)}" wird mit ${selected?.student_count ?? 0} Schülern endgültig gelöscht.`}
           confirmLabel="Endgültig löschen"
           onConfirm={() => void removeClass()}
+          onCancel={() => setDialog(null)}
+        />
+      )}
+
+      {dialog === "delete-exam" && (
+        <ConfirmDialog
+          title="Prüfung löschen"
+          message={`„${examSaved.name}" wird mit Schema und Bewertungsmatrix endgültig gelöscht.`}
+          confirmLabel="Endgültig löschen"
+          onConfirm={() => void removeExam()}
           onCancel={() => setDialog(null)}
         />
       )}

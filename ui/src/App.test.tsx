@@ -14,7 +14,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { App } from "./App";
-import type { ApiError, Class, ClassInput, Config, Student } from "./bindings";
+import type { ApiError, Class, ClassInput, Config, Exam, ExamInput, Student } from "./bindings";
 
 type Call = { cmd: string; args: Record<string, unknown> };
 
@@ -32,6 +32,9 @@ function student(id: string, classId: string, last: string, first: string): Stud
 
 let classes: Class[];
 let students: Student[];
+let exams: Exam[];
+/** Was der Speichern-Dialog liefert; `null` = abgebrochen. */
+let savePath: string | null;
 let calls: Call[];
 let config: Config;
 let nextError: ApiError | null;
@@ -91,6 +94,35 @@ function backend(cmd: string, args: Record<string, unknown> = {}): unknown {
     case "student_delete":
       students = students.filter((s) => s.id !== args.id);
       return null;
+    case "exam_list":
+      return exams;
+    case "exam_create":
+    case "exam_update": {
+      // Die Attrappe rechnet nichts nach: „bis“ und die Summen hat Rust
+      // errechnet — hier stehen feste Werte, damit die Anzeige geprüft wird.
+      const input = args.input as ExamInput;
+      const exam: Exam = {
+        id: cmd === "exam_create" ? `e-${exams.length + 1}` : (args.id as string),
+        name: input.name,
+        class_ids: input.class_ids,
+        groups: input.groups.map((g) => ({
+          name: g.name,
+          items: g.items,
+          max_points: g.items.reduce((sum, i) => sum + i.max_points, 0),
+        })),
+        grades: [{ name: "6", from_points: 0, to_points: 9.5 }],
+        max_points: 20,
+        created_at: "2026-09-15T06:39:51Z",
+      };
+      exams =
+        cmd === "exam_create" ? [exam, ...exams] : exams.map((e) => (e.id === exam.id ? exam : e));
+      return exam;
+    }
+    case "exam_delete":
+      exams = exams.filter((e) => e.id !== args.id);
+      return null;
+    case "plugin:dialog|save":
+      return savePath;
     default:
       // Fenster-API und Plugins: annehmen, nichts tun.
       return null;
@@ -100,6 +132,8 @@ function backend(cmd: string, args: Record<string, unknown> = {}): unknown {
 beforeEach(() => {
   classes = [];
   students = [];
+  exams = [];
+  savePath = "/tmp/Klassenarbeit.xlsx";
   calls = [];
   nextError = null;
   config = { app_name: "Teacher Class", theme: "light", accent: "#3b6ea5" };
@@ -272,6 +306,150 @@ describe("Oberfläche", () => {
     await waitFor(() => {
       expect(document.documentElement.style.getPropertyValue("--accent")).toBe("#ffdd00");
       expect(document.documentElement.dataset.accentLight).toBe("true");
+    });
+  });
+
+  describe("Prüfungen", () => {
+    async function openExams(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(await screen.findByRole("button", { name: "Prüfungen" }));
+    }
+
+    function savedExam(): Exam {
+      return {
+        id: "e1",
+        name: "Klassenarbeit",
+        class_ids: ["a"],
+        groups: [{ name: "Aufgabe 1", items: [{ name: "a", max_points: 2.5 }], max_points: 2.5 }],
+        grades: [
+          { name: "6", from_points: 0, to_points: 1.5 },
+          { name: "1", from_points: 2, to_points: 2.5 },
+        ],
+        max_points: 2.5,
+        created_at: "2026-09-15T06:39:51Z",
+      };
+    }
+
+    it("legt eine Prüfung an und schickt Punkte als Zahlen", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      render(<App />);
+
+      await openExams(user);
+      await user.click(
+        (await screen.findAllByRole("button", { name: "Neue Prüfung" }))[0] as HTMLElement,
+      );
+      await user.type(screen.getByRole("textbox", { name: "Name der Prüfung" }), "Klassenarbeit");
+      await user.click(screen.getByRole("checkbox", { name: "7a (2025)" }));
+      await user.type(screen.getByRole("textbox", { name: "Gruppe 1 Name" }), "Aufgabe 1");
+      await user.type(screen.getByRole("textbox", { name: "Gruppe 1 Punkt 1 Name" }), "a");
+      // Deutsches Komma, wie man Halbpunkte tippt.
+      await user.type(
+        screen.getByRole("textbox", { name: "Gruppe 1 Punkt 1 Höchstpunkte" }),
+        "2,5",
+      );
+      await user.type(screen.getByRole("textbox", { name: "Note 1 ab" }), "2");
+      await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+      await waitFor(() => expect(commands("exam_create")).toHaveLength(1));
+      const input = commands("exam_create")[0]?.args.input as ExamInput;
+      expect(input.class_ids).toEqual(["a"]);
+      expect(input.groups).toEqual([
+        { name: "Aufgabe 1", items: [{ name: "a", max_points: 2.5 }] },
+      ]);
+      // Sechs vorbelegte Noten; nur die 6 beginnt bei 0, die 1 bei dem, was getippt wurde.
+      expect(input.grades).toHaveLength(6);
+      expect(input.grades[0]).toEqual({ name: "1", from_points: 2 });
+      expect(input.grades[5]).toEqual({ name: "6", from_points: 0 });
+    });
+
+    it("zeigt Fehler zu Schema und Matrix, wie Rust sie meldet", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      render(<App />);
+
+      await openExams(user);
+      await user.click(
+        (await screen.findAllByRole("button", { name: "Neue Prüfung" }))[0] as HTMLElement,
+      );
+      nextError = {
+        code: "validation_failed",
+        message: "x",
+        fields: [
+          { field: "groups", message: "Gruppe 1: Name darf nicht leer sein" },
+          { field: "grades", message: "die niedrigste Note muss bei 0 Punkten beginnen" },
+        ],
+      };
+      await user.click(screen.getByRole("button", { name: "Speichern" }));
+
+      expect(await screen.findByText("Gruppe 1: Name darf nicht leer sein")).toBeTruthy();
+      expect(screen.getByText("die niedrigste Note muss bei 0 Punkten beginnen")).toBeTruthy();
+    });
+
+    it("exportiert nach dem Speichern an den gewählten Ort", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      exams = [savedExam()];
+      render(<App />);
+
+      await openExams(user);
+      await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
+      await user.click(screen.getByRole("button", { name: "Als Excel exportieren" }));
+
+      await waitFor(() => expect(commands("exam_export")).toHaveLength(1));
+      expect(commands("exam_export")[0]?.args).toEqual({
+        id: "e1",
+        path: "/tmp/Klassenarbeit.xlsx",
+      });
+      expect(await screen.findByText("Gespeichert: /tmp/Klassenarbeit.xlsx")).toBeTruthy();
+      // Ohne Änderungen wird vor dem Export nicht gespeichert.
+      expect(commands("exam_update")).toHaveLength(0);
+    });
+
+    it("exportiert nichts, wenn der Dialog abgebrochen wird", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      exams = [savedExam()];
+      savePath = null;
+      render(<App />);
+
+      await openExams(user);
+      await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
+      await user.click(screen.getByRole("button", { name: "Als Excel exportieren" }));
+
+      await waitFor(() => expect(commands("plugin:dialog|save")).toHaveLength(1));
+      expect(commands("exam_export")).toHaveLength(0);
+    });
+
+    it("zeigt die berechneten Werte nur für den gespeicherten Stand", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      exams = [savedExam()];
+      render(<App />);
+
+      await openExams(user);
+      await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
+      expect(screen.getByText("max. 2,5")).toBeTruthy();
+      expect(screen.getByText("1,5")).toBeTruthy();
+
+      await user.type(screen.getByRole("textbox", { name: "Gruppe 1 Punkt 1 Höchstpunkte" }), "0");
+      // Der Entwurf weicht ab — Rust hat dafür noch nichts gerechnet.
+      expect(screen.queryByText("max. 2,5")).toBeNull();
+      expect(screen.queryByText("1,5")).toBeNull();
+    });
+
+    it("löscht eine Prüfung erst nach der Rückfrage", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      exams = [savedExam()];
+      render(<App />);
+
+      await openExams(user);
+      await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
+      await user.click(screen.getByRole("button", { name: "Prüfung löschen" }));
+      expect(commands("exam_delete")).toHaveLength(0);
+
+      await user.click(screen.getByRole("button", { name: "Endgültig löschen" }));
+      await waitFor(() => expect(commands("exam_delete")[0]?.args).toEqual({ id: "e1" }));
     });
   });
 });

@@ -43,6 +43,21 @@ accent: string, };
  */
 export type ErrorCode = "not_found" | "validation_failed" | "ambiguous_id" | "config_invalid" | "internal_error";
 
+export type Exam = { id: string, name: string, class_ids: Array<string>, groups: Array<Group>, 
+/**
+ * Aufsteigend nach „ab“: die schlechteste Note zuerst.
+ */
+grades: Array<Grade>, 
+/**
+ * Gesamtpunktzahl. Berechnet.
+ */
+max_points: number, created_at: string, };
+
+/**
+ * Was von außen hereinkommt — ungeprüft.
+ */
+export type ExamInput = { name: string, class_ids: Array<string>, groups: Array<GroupInput>, grades: Array<GradeInput>, };
+
 /**
  * Eine Meldung, die zu genau einem Eingabefeld gehört.
  *
@@ -50,6 +65,26 @@ export type ErrorCode = "not_found" | "validation_failed" | "ambiguous_id" | "co
  * `body`). `message` ist deutsch und für Menschen.
  */
 export type FieldError = { field: string, message: string, };
+
+export type Grade = { name: string, from_points: number, 
+/**
+ * Berechnet, siehe Moduldoku.
+ */
+to_points: number, };
+
+export type GradeInput = { name: string, from_points: number, };
+
+export type Group = { name: string, items: Array<Item>, 
+/**
+ * Summe der Punkte der Gruppe. Berechnet.
+ */
+max_points: number, };
+
+export type GroupInput = { name: string, items: Array<ItemInput>, };
+
+export type Item = { name: string, max_points: number, };
+
+export type ItemInput = { name: string, max_points: number, };
 
 export type Student = { id: string, class_id: string, last_name: string, first_name: string, };
 

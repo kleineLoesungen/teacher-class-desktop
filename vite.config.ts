@@ -27,7 +27,7 @@ export default defineConfig({
     // Das Webview ist bekannt: WebKit auf macOS und Linux. Kein Grund, für
     // alte Browser zurückzuübersetzen.
     target: "safari16",
-    // Mermaid ist groß und wird erst geladen, wenn eine Notiz ein Diagramm
+    // Mermaid ist groß und wird erst geladen, wenn ein Text ein Diagramm
     // enthält (siehe ui/src/lib/mermaid.ts). Die Warnung über große Stücke
     // betrifft genau diese nachgeladenen Teile.
     chunkSizeWarningLimit: 4000,

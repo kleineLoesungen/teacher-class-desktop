@@ -17,6 +17,8 @@
 use serde::Serialize;
 use tauri::State;
 use teacher_class_core::class::{self, Class, ClassInput};
+use teacher_class_core::exam::{self, Exam, ExamInput};
+use teacher_class_core::export;
 use teacher_class_core::student::{self, Student, StudentInput};
 use teacher_class_core::{Config, Paths};
 use ts_rs::TS;
@@ -83,6 +85,42 @@ pub async fn student_update(
 #[tauri::command]
 pub async fn student_delete(state: State<'_, AppState>, id: Uuid) -> ApiResult<()> {
     state.with(|app| student::delete(app.conn(), id))
+}
+
+// --- Prüfungen -------------------------------------------------------------
+
+#[tauri::command]
+pub async fn exam_list(state: State<'_, AppState>) -> ApiResult<Vec<Exam>> {
+    state.with(|app| exam::list(app.conn()))
+}
+
+/// Schema und Matrix kommen als Ganzes; Fehler tragen `fields` für `name`,
+/// `classes`, `groups` und `grades`.
+#[tauri::command]
+pub async fn exam_create(state: State<'_, AppState>, input: ExamInput) -> ApiResult<Exam> {
+    state.with(|app| exam::create(app.conn(), input))
+}
+
+/// Ersetzt Name, Klassen, Schema und Matrix der Prüfung `id`.
+#[tauri::command]
+pub async fn exam_update(
+    state: State<'_, AppState>,
+    id: Uuid,
+    input: ExamInput,
+) -> ApiResult<Exam> {
+    state.with(|app| exam::update(app.conn(), id, input))
+}
+
+#[tauri::command]
+pub async fn exam_delete(state: State<'_, AppState>, id: Uuid) -> ApiResult<()> {
+    state.with(|app| exam::delete(app.conn(), id))
+}
+
+/// Schreibt die Prüfung `id` als `.xlsx` nach `path`. Den Pfad liefert der
+/// Speichern-Dialog der Oberfläche.
+#[tauri::command]
+pub async fn exam_export(state: State<'_, AppState>, id: Uuid, path: String) -> ApiResult<()> {
+    state.with(|app| export::write_xlsx(app.conn(), id, std::path::Path::new(&path)))
 }
 
 // --- Einstellungen ---------------------------------------------------------

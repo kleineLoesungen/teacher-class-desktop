@@ -284,9 +284,9 @@ fn abhaengigkeiten_bleiben_getrennt() {
     );
 }
 
-/// Plattform-Fallunterscheidungen gibt es in diesem Kit nicht.
+/// Plattform-Fallunterscheidungen gibt es in diesem Projekt nicht.
 ///
-/// Das Kit zielt auf macOS, Linux **und** Windows, wird aber fast nur auf
+/// Die App zielt auf macOS, Linux **und** Windows, wird aber fast nur auf
 /// macOS entwickelt. Ein `#[cfg(target_os = ...)]` fiele deshalb erst dem
 /// Benutzer auf der anderen Plattform auf — oder niemandem.
 ///

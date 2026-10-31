@@ -1,6 +1,6 @@
 //! Startet die Desktop-Anwendung. Alles Weitere steht in `lib.rs`.
 //!
-//! Die Zeile darunter ist der einzige Windows-Sonderfall im ganzen Kit — und
+//! Die Zeile darunter ist der einzige Windows-Sonderfall im ganzen Projekt — und
 //! keine Plattform-Fallunterscheidung im Sinne von
 //! `crates/core/tests/layering.rs`: Sie hängt an `debug_assertions`, nicht am
 //! Betriebssystem, und auf macOS und Linux tut sie schlicht nichts.

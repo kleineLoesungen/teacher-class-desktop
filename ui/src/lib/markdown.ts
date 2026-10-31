@@ -2,7 +2,7 @@
 //
 // Die einzige Stelle, an der HTML aus Benutzertext entsteht. Der Weg ist
 // immer: marked erzeugt HTML, DOMPurify entfernt alles Ausführbare, erst dann
-// kommt es ins Dokument. Ein `<img onerror=…>` in einer Notiz darf nichts tun
+// kommt es ins Dokument. Ein `<img onerror=…>` in einem Text darf nichts tun
 // können — im Webview hätte ein Skript Zugriff auf alle IPC-Befehle.
 //
 // crates/core/tests/layering.rs verbietet `innerHTML` in den Komponenten und

@@ -198,10 +198,10 @@ Entwicklungsbau bleibt es absichtlich — dort steht das Protokoll aus
 
 ---
 
-## Was dieses Kit nicht mitbringt
+## Was die App nicht mitbringt
 
 * **Kein Auto-Update.** `tauri-plugin-updater` braucht einen
-  Signaturschlüssel und einen Ort, an dem die Update-Beschreibung liegt. Gehört
-  nicht in einen Startpunkt.
+  Signaturschlüssel und einen Ort, an dem die Update-Beschreibung liegt. Kommt
+  frühestens, wenn Releases regelmäßig erscheinen.
 * **Kein Mobil.** Tauri kann iOS und Android; die Symbole dafür löscht
   `just icons` absichtlich.

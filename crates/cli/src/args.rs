@@ -64,6 +64,10 @@ pub enum Command {
     #[command(subcommand)]
     Student(StudentCommand),
 
+    /// Prüfungen verwalten und als Excel exportieren.
+    #[command(subcommand)]
+    Exam(ExamCommand),
+
     /// Einstellungen anzeigen und ändern.
     #[command(subcommand)]
     Config(ConfigCommand),
@@ -152,6 +156,77 @@ pub enum StudentCommand {
         /// Nicht nachfragen.
         #[arg(short = 'y', long)]
         yes: bool,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ExamCommand {
+    /// Neue Prüfung anlegen.
+    ///
+    /// Beispiel:
+    ///   exam add "Klassenarbeit 1" --class a1b2c3d4 \
+    ///     --group "Aufgabe 1: a=4; b=2.5" --group "Aufgabe 2: a=13.5" \
+    ///     --grade 6=0 --grade 3=10 --grade 1=17
+    ///
+    /// Punkte sind ganz oder halb. Bei den Noten wird nur „ab“ angegeben;
+    /// „bis“ berechnet sich. Die niedrigste Note beginnt bei 0.
+    Add {
+        /// Name der Prüfung.
+        name: String,
+
+        /// Kennung einer Klasse oder ein eindeutiges Ende davon. Mehrfach
+        /// möglich.
+        #[arg(long, required = true, value_name = "KLASSE")]
+        class: Vec<String>,
+
+        /// Eine Gruppe: `Name: Punkt=Höchstpunkte; Punkt=Höchstpunkte`.
+        #[arg(
+            long,
+            required = true,
+            value_name = "GRUPPE",
+            value_parser = crate::commands::exam::parse_group
+        )]
+        group: Vec<teacher_class_core::exam::GroupInput>,
+
+        /// Eine Note: `Note=ab-Punkte`.
+        #[arg(
+            long,
+            required = true,
+            value_name = "NOTE=AB",
+            value_parser = crate::commands::exam::parse_grade
+        )]
+        grade: Vec<teacher_class_core::exam::GradeInput>,
+    },
+
+    /// Alle Prüfungen auflisten.
+    #[command(alias = "ls")]
+    List,
+
+    /// Schema und Bewertungsmatrix einer Prüfung anzeigen.
+    Show {
+        /// Kennung oder ein eindeutiges Ende davon.
+        id: String,
+    },
+
+    /// Eine Prüfung löschen.
+    #[command(alias = "delete")]
+    Rm {
+        /// Kennung oder ein eindeutiges Ende davon.
+        id: String,
+
+        /// Nicht nachfragen.
+        #[arg(short = 'y', long)]
+        yes: bool,
+    },
+
+    /// Eine Prüfung als Excel-Datei (.xlsx) exportieren.
+    Export {
+        /// Kennung oder ein eindeutiges Ende davon.
+        id: String,
+
+        /// Zieldatei, muss auf .xlsx enden.
+        #[arg(long, value_name = "DATEI")]
+        out: PathBuf,
     },
 }
 

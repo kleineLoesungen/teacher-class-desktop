@@ -20,6 +20,32 @@ Betriebssystems läuft. Ziel: **macOS, Linux und Windows**. Browserpakete wie
 
 ---
 
+## Die Fachlichkeit in Kürze
+
+Eine Desktop-App, die Lehrkräften die Korrektur von Prüfungen erleichtert.
+Ausführlich im README („Was die App kann"). Was beim Ändern zählt:
+
+* **Klasse** = `name` (nur Buchstaben und Zahlen, höchstens 24 Zeichen) +
+  `year` (vierstellig). Angezeigt `7a (2025)`; Name und Jahr sind zusammen
+  eindeutig. Die 24 Zeichen kommen vom Excel-Blattnamen (31 Zeichen).
+* **Schüler** = `Nachname, Vorname`, gehört fest zu einer Klasse. Mehrere
+  werden als Text angelegt (`student::add_many`), alle oder keiner.
+* **Prüfung** = Name, Klassen, **Schema** (Gruppen → Punkte mit Höchstpunktzahl)
+  und **Bewertungsmatrix** (Noten mit „ab“). Halbpunkte sind erlaubt und
+  werden als ganze Halbpunkte gespeichert. Gruppensummen, Gesamtpunkte und das
+  „bis“ jeder Note **berechnet `core`** — die Oberfläche rechnet nicht nach.
+  Eine Prüfung wird immer als Ganzes geschrieben (`ExamInput`).
+* **Excel-Export** (`crates/core/src/export.rs`) schreibt **Formeln**, keine
+  Ergebnisse: Blatt „Bewertung“, Blatt „Ausdruck“ (Schülerauswahl, zum
+  Drucken), ein Blatt je Klasse, dazu das verborgene „Listen“. Die Matrix
+  steht aufsteigend, weil die Note per `MATCH(…, 1)` gesucht wird. Gerechnet
+  haben die Formeln nur Excel oder LibreOffice, nie ein Test — wer den Export
+  ändert, öffnet die Datei einmal dort.
+* **Speichern-Dialog:** `tauri-plugin-dialog` (nur `dialog:allow-save`) liefert
+  den Pfad, `exam_export` schreibt die Datei. Kein `tauri-plugin-fs`.
+
+---
+
 ## Wo was liegt
 
 ```
@@ -51,6 +77,9 @@ Nur dort. npm-Versionen stehen **exakt** (ohne `^`) in `package.json`.
 | Paket | Version | Grund |
 |---|---|---|
 | **tauri** / **@tauri-apps/api** / **@tauri-apps/cli** | **2.12** | Rust-Kiste und npm-Pakete müssen in derselben Nebenversion bleiben, sonst meldet `tauri dev` „version mismatch". Plugins (`tauri-plugin-opener` ↔ `@tauri-apps/plugin-opener`) ebenso paarweise. |
+| **tauri-plugin-dialog** / **@tauri-apps/plugin-dialog** | **2.8.4** | Speichern-Dialog für den Excel-Export; beide Seiten paarweise, wie beim Opener. Berechtigung nur `dialog:allow-save`. |
+| **rust_xlsxwriter** | **0.102** | Schreibt die `.xlsx` mit Formeln. Vor 1.0 ändert sich die API von Nebenversion zu Nebenversion — Anheben heißt `crates/core/tests/export.rs` und die Datei in Excel prüfen. |
+| **zip** (nur Tests) | **9.2** | Liest die erzeugte `.xlsx`, um Formeln als Text zu prüfen. |
 | **ts-rs** | **12** | Erzeugt `ui/src/bindings.ts`. Die API hat sich zwischen 10, 11 und 12 geändert (`Config`-Argument). |
 | **mermaid** | **12.2** | Lädt nach (`import("mermaid")`). Die alte `mermaid.init()`/`contentLoaded`-API existiert nicht mehr — `parse` und `render` benutzen. |
 | **DOMPurify** | **3.4.17** | Darunter liegen gemeldete XSS-Lücken. Diese Kiste ist die einzige Bereinigung zwischen Benutzertext und Webview — hier ist „alte Fassung" kein Schönheitsfehler. |
@@ -90,8 +119,8 @@ und wird zur Laufzeit verweigert.
    zurückgeben, sonst meldet der Compiler einen schwer lesbaren
    Lebensdauerfehler.
 
-3. **Argumentnamen werden zu camelCase.** Rust `fn note_update(note_id: Uuid)`
-   heißt in JavaScript `invoke("note_update", { noteId })`. Ein falscher Name
+3. **Argumentnamen werden zu camelCase.** Rust `fn exam_update(exam_id: Uuid)`
+   heißt in JavaScript `invoke("exam_update", { examId })`. Ein falscher Name
    ergibt zur Laufzeit „missing required key". Die Befehle hier haben deshalb
    einwortige Argumente (`id`, `input`, `order`, `config`). Befehlsnamen
    selbst bleiben snake_case.
@@ -141,7 +170,7 @@ und wird zur Laufzeit verweigert.
     nur das Programm, nicht `tests/`. Ohne Manifest aktiviert Windows Common
     Controls v6 nicht, und **jedes Testbinär, das Tauri wirklich benutzt,
     stirbt beim Laden** mit `STATUS_ENTRYPOINT_NOT_FOUND` (0xc0000139) —
-    bevor ein einziger Test läuft. Das Kit hängt es deshalb in
+    bevor ein einziger Test läuft. Das Projekt hängt es deshalb in
     `crates/desktop/build.rs` selbst an alle Ziele. Nicht entfernen, solange
     tauri-apps/tauri#13419 offen ist.
 
@@ -157,7 +186,7 @@ ls crates/desktop/gen/schemas/          # alle Berechtigungen, nach dem ersten B
 
 ## Drei Systeme, ein Codepfad
 
-Das Kit zielt auf macOS, Linux und Windows — entwickelt wird fast nur auf
+Die App zielt auf macOS, Linux und Windows — entwickelt wird fast nur auf
 macOS. Ein Unterschied, der nur auf Windows auffällt, fällt deshalb **niemandem**
 auf. Die Regel ist darum nicht „Windows mitdenken", sondern
 **Unterschiede gar nicht erst einbauen**.
@@ -214,8 +243,8 @@ Batch-Dateien und brauchen `shell: true`, `cargo` nicht. Das steht einmal in
 ## Sprache im Code
 
 * **Bezeichner englisch** — Typen, Funktionen, Felder, Tabellen, Befehle,
-  Komponenten, CSS-Klassen: `NoteInput`, `note_update`, `NoteEditor`,
-  `.note-item`.
+  Komponenten, CSS-Klassen: `ExamInput`, `exam_update`, `ExamEditor`,
+  `.class-item`.
 * **Kommentare, Doku, Oberflächentexte und Testnamen deutsch.**
   `fn ein_titel_aus_leerzeichen_gilt_als_leer()`,
   `it("zeigt einen Eingabefehler am Feld, nicht oben")`.
@@ -249,7 +278,7 @@ Den Code verschieben, nicht den Test lockern.
 
 Der Grund ist nicht Sauberkeit: **Alles, was in `core` steht, gilt für die
 Kommandozeile und die Oberfläche gleichermaßen.** Eine Prüfung in TypeScript
-fehlt der CLI. Genau das ist der Fehler, den dieses Kit verhindern soll.
+fehlt der CLI. Genau das ist der Fehler, den dieses Projekt verhindern soll.
 
 ### Prüfung gehört in die Fachlogik — nicht nach TypeScript
 
@@ -263,7 +292,8 @@ pub fn create(conn: &Connection, input: ClassInput) -> Result<Class> {
 
 ```tsx
 // ❌ in einer Komponente
-if (draft.title.trim() === "") setError("Titel fehlt");
+if (draft.name.trim() === "") setError("Name fehlt");
+if (parsePoints(item.max) % 0.5 !== 0) setError("nur halbe Punkte");
 ```
 
 Die Oberfläche schickt ab und zeigt an, was zurückkommt. Eine *zusätzliche*
@@ -337,7 +367,7 @@ Namen werden nie umbenannt, nur ergänzt.
 
 ## Kurzkennungen: hinten, nicht vorn
 
-Die Kennungen sind UUIDv7. Die **beginnt mit dem Zeitstempel** — zwei Notizen
+Die Kennungen sind UUIDv7. Die **beginnt mit dem Zeitstempel** — zwei Prüfungen
 aus derselben Sekunde teilen sich die ersten zwölf Zeichen. Darum zeigt
 `teacher-class class list` die **letzten** acht Zeichen, und `class::resolve_id` sucht
 per Endstück. Ist ein Endstück nicht eindeutig, gibt es `Error::Ambiguous` —
@@ -351,7 +381,7 @@ nie einen zufälligen Treffer.
 * `TEACHER_CLASS_DATA_DIR` und `TEACHER_CLASS_CONFIG_DIR` überschreiben die Verzeichnisse
   — für CLI **und** Desktop (`just dev-sandbox`, `just sandbox`). In
   Rust-Tests stattdessen `Paths::under(tempdir)`.
-* Wo die Dateien landen, entscheidet `directories`, nicht das Kit:
+* Wo die Dateien landen, entscheidet `directories`, nicht die App:
 
   | | macOS | Linux | Windows |
   |---|---|---|---|
@@ -376,6 +406,8 @@ Bitte nicht „nachrüsten":
 | Tauri 1-APIs, `allowlist` | Tauri 2, capabilities | siehe oben |
 | SQL-Plugin (`tauri-plugin-sql`) | `teacher_class_core` | SQL aus dem Webview umgeht die Prüfung in core — und die CLI sähe es nie |
 | `tauri-plugin-store` für Einstellungen | `config.toml` über `core` | Die CLI muss dieselben Einstellungen lesen |
+| `tauri-plugin-fs` zum Schreiben der Excel-Datei | `exam_export` → `core::export` | Die CLI muss ebenso exportieren; der Dialog liefert nur den Pfad |
+| Excel im Webview erzeugen (SheetJS o. Ä.) | `rust_xlsxwriter` in `core` | Eine Fassung des Exports, für Oberfläche und CLI |
 | Next.js, Remix, SSR | Vite + React | Es gibt keinen Server |
 | Redux, Zustand, MobX | `useState` in `App.tsx` | Zu klein dafür |
 | Tailwind, styled-components | `theme.css` + `app.css` | Farben an einer Stelle |
@@ -394,14 +426,18 @@ Bitte nicht „nachrüsten":
 
 | Wo | Was |
 |---|---|
-| `crates/core/tests/class.rs` | Die fachlichen Regeln (Klassen, Schüler). **Hier liegt der Schwerpunkt.** |
+| `crates/core/tests/class.rs` | Die fachlichen Regeln für Klassen und Schüler. **Hier liegt der Schwerpunkt.** |
+| `crates/core/tests/exam.rs` | Prüfungen: Halbpunkte, Matrix („bis“ berechnet, niedrigste Note bei 0), Ersetzen als Ganzes |
+| `crates/core/tests/export.rs` | Excel-Datei: Blätter, Reihenfolge, Formeln **als Text** (gerechnet wird nicht) |
 | `crates/core/tests/config.rs` | Einstellungen lesen, schreiben, ablehnen |
 | `crates/core/tests/layering.rs` | Der Schichtwächter — Rust **und** TypeScript, dazu der Plattform-Wächter |
-| `crates/cli/tests/cli.rs` | Ausgabeformat, Rückgabewerte, Schnappschüsse |
+| `crates/cli/tests/cli.rs` | Ausgabeformat, Rückgabewerte, Schnappschüsse (Klassen, Schüler) |
+| `crates/cli/tests/exam.rs` | Dasselbe für `exam add/list/show/rm/export` |
 | `crates/desktop/tests/ipc_contract.rs` | Befehle über `tauri::test` ohne Fenster; Befehlsliste Rust ↔ api.ts |
 | `crates/desktop/tests/bindings.rs` | `ui/src/bindings.ts` ist aktuell |
 | `ui/src/App.test.tsx` | Oberfläche durchklicken, Rust durch `mockIPC` ersetzt |
 | `ui/src/lib/lib.test.ts` | Markdown-Bereinigung, Verweise, Farben, Fehlerhülle |
+| `ui/src/lib/exam.test.ts` | Prüfungsentwurf: Komma als Dezimaltrenner, Unlesbares wird -1 |
 
 **Eine Regel wird einmal geprüft — in `core`.** Die Attrappe in
 `App.test.tsx` hat keine eigenen Regeln; sie lehnt nur ab, was der Test ihr
@@ -503,7 +539,9 @@ Deshalb:
 
 ## Eine neue Ressource anlegen
 
-`class` ist die Vorlage. Der Weg von der Tabelle bis in beide Schalen:
+`class` ist die Vorlage für eine einfache Ressource, `exam` für eine mit
+Unterstruktur, die als Ganzes geschrieben wird. Der Weg von der Tabelle bis in
+beide Schalen:
 
 1. `crates/core/migrations/000X_….sql` — neue Datei, `STRICT`.
 2. `crates/core/src/db.rs` — in `MIGRATIONS` eintragen.

@@ -15,6 +15,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { save } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type {
   ApiError as ApiErrorData,
@@ -23,6 +24,8 @@ import type {
   ClassInput,
   Config,
   ErrorCode,
+  Exam,
+  ExamInput,
   FieldError,
   Student,
   StudentInput,
@@ -48,6 +51,11 @@ export class ApiError extends Error {
   /** Die Meldung zu einem Feld, falls es eine gibt. */
   fieldMessage(field: string): string | undefined {
     return this.fields.find((f) => f.field === field)?.message;
+  }
+
+  /** Alle Meldungen zu einem Feld — `groups` und `grades` haben oft mehrere. */
+  fieldMessages(field: string): string[] {
+    return this.fields.filter((f) => f.field === field).map((f) => f.message);
   }
 
   /**
@@ -88,6 +96,31 @@ export const api = {
     add: (classId: string, text: string) => call<Student[]>("student_add", { id: classId, text }),
     update: (id: string, input: StudentInput) => call<Student>("student_update", { id, input }),
     remove: (id: string) => call<null>("student_delete", { id }),
+  },
+
+  exams: {
+    list: () => call<Exam[]>("exam_list"),
+    create: (input: ExamInput) => call<Exam>("exam_create", { input }),
+    update: (id: string, input: ExamInput) => call<Exam>("exam_update", { id, input }),
+    remove: (id: string) => call<null>("exam_delete", { id }),
+    /** Schreibt die Excel-Datei nach `path` (aus `pickExportPath`). */
+    export: (id: string, path: string) => call<null>("exam_export", { id, path }),
+  },
+
+  /**
+   * Öffnet den Speichern-Dialog des Systems. `null`, wenn abgebrochen.
+   * Braucht `dialog:allow-save` in crates/desktop/capabilities/.
+   */
+  pickExportPath: async (fileName: string): Promise<string | null> => {
+    try {
+      return await save({
+        title: "Excel-Datei speichern",
+        defaultPath: fileName,
+        filters: [{ name: "Excel-Arbeitsmappe", extensions: ["xlsx"] }],
+      });
+    } catch (raw) {
+      throw ApiError.from(raw);
+    }
   },
 
   config: {
