@@ -26,6 +26,32 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* Schlanke Scrollleisten (WebKit und WebView2 kennen diese Schreibweise). */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* Zahlen stehen in Spalten bündig. */
+.points-input,
+.points-sum,
+.tile-total,
+.class-excerpt,
+.grade-table td {
+  font-variant-numeric: tabular-nums;
+}
+
 /* Oberflächentexte sind nicht markierbar, Inhalte schon. */
 .sidebar,
 .editor-head,
@@ -78,8 +104,13 @@ button {
   border: 1px solid var(--border);
   background: var(--surface);
   border-radius: var(--radius);
-  padding: var(--space-1) var(--space-3);
+  padding: 5px var(--space-3);
   cursor: default;
+  box-shadow: var(--shadow-sm);
+  transition:
+    background var(--ease),
+    border-color var(--ease),
+    filter var(--ease);
 }
 
 button:hover:not(:disabled) {
@@ -91,19 +122,21 @@ button:disabled {
 }
 
 button.primary {
-  background: var(--accent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, white), var(--accent));
   border-color: var(--accent);
   color: var(--on-accent);
+  font-weight: 500;
 }
 
 button.primary:hover:not(:disabled) {
-  background: var(--accent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, white), var(--accent));
   filter: brightness(1.08);
 }
 
 button.ghost {
   border-color: transparent;
   background: transparent;
+  box-shadow: none;
 }
 
 button.danger {
@@ -118,7 +151,18 @@ textarea {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
-  padding: var(--space-1) var(--space-2);
+  padding: 5px var(--space-2);
+  transition:
+    border-color var(--ease),
+    box-shadow var(--ease);
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
 input[type="color"] {
@@ -155,11 +199,11 @@ input[type="color"] {
   flex-direction: column;
   min-height: 0;
   border-right: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--surface-2);
 }
 
 .brand {
-  font-weight: 600;
+  font-weight: 700;
   padding: var(--space-3) var(--space-4) 0;
 }
 
@@ -204,13 +248,18 @@ input[type="color"] {
   text-align: left;
   border: none;
   background: transparent;
+  box-shadow: none;
   padding: var(--space-2) var(--space-3);
   margin-bottom: 2px;
 }
 
+.class-item:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+/* Aktiver Eintrag: Pille mit getönter Akzentfläche. */
 .class-item[aria-current="true"] {
-  background: var(--surface-2);
-  box-shadow: inset 3px 0 0 var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
 .class-title {
@@ -218,6 +267,10 @@ input[type="color"] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.class-item[aria-current="true"] .class-title {
+  color: var(--accent);
 }
 
 .class-excerpt,
@@ -245,6 +298,16 @@ input[type="color"] {
   background: var(--danger-bg);
   color: var(--danger);
   border-bottom: 1px solid var(--border);
+}
+
+.empty-icon {
+  width: 56px;
+  height: 56px;
+  margin-bottom: var(--space-3);
+  color: var(--accent);
+  padding: 14px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .empty {
@@ -292,26 +355,24 @@ input[type="color"] {
 
 .segmented {
   display: flex;
+  gap: 2px;
   border: 0;
   margin: 0;
-  padding: 0;
+  padding: 3px;
+  background: var(--surface-2);
+  border-radius: var(--radius);
 }
 
 .segmented button {
-  border-radius: 0;
-  margin-left: -1px;
-}
-
-.segmented button:first-of-type {
-  border-radius: var(--radius) 0 0 var(--radius);
-}
-
-.segmented button:last-of-type {
-  border-radius: 0 var(--radius) var(--radius) 0;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  padding-block: 2px;
 }
 
 .segmented button[aria-pressed="true"] {
-  background: var(--surface-2);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
   font-weight: 600;
 }
 
@@ -420,10 +481,14 @@ input[type="color"] {
 
 .view-tabs button {
   flex: 1;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 
 .view-tabs button[aria-pressed="true"] {
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
   font-weight: 600;
 }
 
@@ -473,8 +538,10 @@ input[type="color"] {
   flex-direction: column;
   gap: var(--space-1);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-3);
 }
 
 .item-row {
@@ -597,7 +664,21 @@ input[type="color"] {
   inset: 0;
   display: grid;
   place-items: center;
-  background: color-mix(in srgb, var(--bg) 60%, transparent);
+  background: color-mix(in srgb, var(--scrim) 40%, transparent);
+  animation: fade-in var(--anim) ease;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
 }
 
 .dialog {
@@ -606,9 +687,10 @@ input[type="color"] {
   overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
   padding: var(--space-6);
+  animation: dialog-in var(--anim) ease;
 }
 
 .dialog h2 {
@@ -690,6 +772,40 @@ input[type="color"] {
   justify-content: space-between;
   gap: var(--space-2);
   text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+.student-pick button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.student-pick button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  font-weight: 600;
+}
+
+/* Schmaler Fortschrittsbalken unter der Gruppenüberschrift. */
+.progress {
+  display: block;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.progress > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width var(--anim) ease;
+}
+
+.grade-badge {
+  display: inline-block;
+  padding: 1px var(--space-3);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
 }
 
 .tile {
@@ -706,6 +822,11 @@ input[type="color"] {
   padding-left: var(--space-4);
 }
 
+.criterion + .criterion {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-2);
+}
+
 .note-input {
   resize: vertical;
   width: 100%;
@@ -714,5 +835,6 @@ input[type="color"] {
 .tile-total {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   margin: 0;
 }

@@ -38,6 +38,17 @@ function draftOf(result: StudentResult, gi: number, ii: number): CellDraft {
   };
 }
 
+/** Schmaler Balken; die Zahlen stehen daneben, deshalb für Bildschirmleser stumm.
+ *  Der Anteil ist reine Darstellung, keine Fachregel. */
+function Progress({ value, max }: { value: number; max: number }) {
+  const share = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0;
+  return (
+    <span className="progress" aria-hidden="true">
+      <span style={{ width: `${share}%` }} />
+    </span>
+  );
+}
+
 function StudentTile({
   exam,
   result,
@@ -110,6 +121,7 @@ function StudentTile({
                 {formatPoints(result.groups[gi]?.points ?? 0)} / {formatPoints(group.max_points)}
               </span>
             </div>
+            <Progress value={result.groups[gi]?.points ?? 0} max={group.max_points} />
             {group.items.map((item, ii) => {
               const n = ii + 1;
               const draft = draftFor(gi, ii);
@@ -153,7 +165,7 @@ function StudentTile({
         <strong>
           Gesamt: {formatPoints(result.total)} / {formatPoints(exam.max_points)}
         </strong>
-        <strong>Note: {result.grade ?? "–"}</strong>
+        <strong className="grade-badge">Note: {result.grade ?? "–"}</strong>
       </p>
     </section>
   );
