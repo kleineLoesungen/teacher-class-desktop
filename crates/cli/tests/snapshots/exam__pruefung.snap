@@ -4,13 +4,14 @@ expression: text
 ---
 Klassenarbeit 1  ([id])
 Klassen: 7a (2025)
+Begründungen: nein
 
 Prüfungsschema
-  Aufgabe 1  (max. 6.5)
-    a                    4
-    b                    2.5
-  Aufgabe 2  (max. 13.5)
-    a                    13.5
+  1. Aufgabe 1  (max. 6.5)
+    1. a                 4
+    2. b                 2.5
+  2. Aufgabe 2  (max. 13.5)
+    1. a                 13.5
   Gesamt: 20
 
 Bewertungsmatrix

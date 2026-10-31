@@ -1,0 +1,7 @@
+---
+source: crates/cli/tests/exam.rs
+expression: text
+---
+ID        NAME           PUNKTE  NOTE   (max. 20)
+[id]  Beispiel, Eva       0  –
+[id]  Muster, Max      17.5  1

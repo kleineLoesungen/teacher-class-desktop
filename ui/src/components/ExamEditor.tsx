@@ -7,7 +7,7 @@
 // aktualisiert. Solange der Entwurf geändert ist, steht dort ein Strich.
 
 import type { Class, Exam } from "../bindings";
-import { type ExamDraft, formatPoints } from "../lib/exam";
+import { type ExamDraft, emptyItemDraft, formatPoints } from "../lib/exam";
 import { classLabel } from "../lib/format";
 import { FieldMessage } from "./FieldMessage";
 
@@ -24,6 +24,7 @@ type Props = {
   onSave: () => void;
   onDelete: () => void;
   onExport: () => void;
+  onGrade: () => void;
 };
 
 function Messages({ id, messages }: { id: string; messages: string[] }) {
@@ -75,6 +76,9 @@ export function ExamEditor(props: Props) {
           <>
             <button type="button" className="ghost" onClick={props.onDelete}>
               Prüfung löschen
+            </button>
+            <button type="button" onClick={props.onGrade}>
+              Bewerten
             </button>
             <button type="button" onClick={props.onExport}>
               Als Excel exportieren
@@ -150,7 +154,7 @@ export function ExamEditor(props: Props) {
                   // biome-ignore lint/suspicious/noArrayIndexKey: Punkte haben keine Kennung, nur eine Stelle
                   <div key={ii} className="row item-row">
                     <input
-                      className="grow"
+                      className="item-name"
                       aria-label={`Gruppe ${g} Punkt ${n} Name`}
                       placeholder="Punkt, z. B. 1a"
                       value={item.name}
@@ -159,6 +163,20 @@ export function ExamEditor(props: Props) {
                           ...group,
                           items: group.items.map((x, i) =>
                             i === ii ? { ...x, name: e.target.value } : x,
+                          ),
+                        })
+                      }
+                    />
+                    <input
+                      className="grow"
+                      aria-label={`Gruppe ${g} Punkt ${n} Beschreibung`}
+                      placeholder="Beschreibung (optional)"
+                      value={item.description}
+                      onChange={(e) =>
+                        setGroup(gi, {
+                          ...group,
+                          items: group.items.map((x, i) =>
+                            i === ii ? { ...x, description: e.target.value } : x,
                           ),
                         })
                       }
@@ -196,7 +214,7 @@ export function ExamEditor(props: Props) {
                 className="ghost"
                 aria-label={`Punkt zu Gruppe ${g} hinzufügen`}
                 onClick={() =>
-                  setGroup(gi, { ...group, items: [...group.items, { name: "", max: "" }] })
+                  setGroup(gi, { ...group, items: [...group.items, emptyItemDraft()] })
                 }
               >
                 + Punkt
@@ -210,7 +228,7 @@ export function ExamEditor(props: Props) {
             onClick={() =>
               onChange({
                 ...draft,
-                groups: [...draft.groups, { name: "", items: [{ name: "", max: "" }] }],
+                groups: [...draft.groups, { name: "", items: [emptyItemDraft()] }],
               })
             }
           >
@@ -221,6 +239,20 @@ export function ExamEditor(props: Props) {
           </span>
         </div>
         <Messages id="groups-error" messages={fieldMessages("groups")} />
+
+        <h2>Begründungen</h2>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={draft.with_notes}
+            onChange={(e) => onChange({ ...draft, with_notes: e.target.checked })}
+          />
+          Zu jedem Prüfkriterium eine Begründung pflegen
+        </label>
+        <p className="muted hint">
+          Mit Begründungen enthält der Excel-Export statt einer Matrix eine Bewertungskachel je
+          Schüler, eine Seite pro Schüler zum Drucken.
+        </p>
 
         <h2>Bewertungsmatrix</h2>
         <p className="muted hint">
@@ -293,8 +325,8 @@ export function ExamEditor(props: Props) {
 
         {!isNew && (
           <p className="muted hint">
-            Der Excel-Export enthält das Blatt „Bewertung“, ein Blatt je Klasse und das Blatt
-            „Ausdruck“ mit der Punkteaufschlüsselung je Schüler zum Drucken oder als PDF.
+            Der Excel-Export enthält das Blatt „Bewertung“ und ein Blatt je Klasse, jeweils mit den
+            in der App eingetragenen Punkten{draft.with_notes ? " und Begründungen" : ""}.
           </p>
         )}
       </div>

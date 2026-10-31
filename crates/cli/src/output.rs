@@ -12,6 +12,7 @@
 
 use teacher_class_core::class::Class;
 use teacher_class_core::exam::Exam;
+use teacher_class_core::grading::StudentResult;
 use teacher_class_core::student::Student;
 use teacher_class_core::{Config, Paths, ids};
 use uuid::Uuid;
@@ -109,12 +110,24 @@ impl Out {
         }
         println!("{}  ({})", exam.name, Self::short_id(exam.id));
         println!("Klassen: {}", labels.join(", "));
+        println!(
+            "Begründungen: {}",
+            if exam.with_notes { "ja" } else { "nein" }
+        );
         println!();
         println!("Prüfungsschema");
-        for group in &exam.groups {
-            println!("  {}  (max. {})", group.name, group.max_points);
-            for item in &group.items {
-                println!("    {:<20} {}", item.name, item.max_points);
+        for (gi, group) in exam.groups.iter().enumerate() {
+            println!("  {}. {}  (max. {})", gi + 1, group.name, group.max_points);
+            for (ii, item) in group.items.iter().enumerate() {
+                let label = format!("{}. {}", ii + 1, item.name);
+                if item.description.is_empty() {
+                    println!("    {:<20} {}", label, item.max_points);
+                } else {
+                    println!(
+                        "    {:<20} {:<6} {}",
+                        label, item.max_points, item.description
+                    );
+                }
             }
         }
         println!("  Gesamt: {}", exam.max_points);
@@ -125,6 +138,37 @@ impl Out {
             println!(
                 "  {:<12} {:>6}  {:>6}",
                 grade.name, grade.from_points, grade.to_points
+            );
+        }
+    }
+
+    /// Die Bewertung der Schüler einer Klasse.
+    pub fn results(&self, exam: &Exam, results: &[StudentResult]) {
+        if self.json {
+            self.print(results);
+            return;
+        }
+        if results.is_empty() {
+            println!("Keine Schüler in dieser Klasse.");
+            return;
+        }
+        let width = results
+            .iter()
+            .map(|r| r.student.label().chars().count())
+            .max()
+            .unwrap_or(4)
+            .clamp(4, 40);
+        println!(
+            "{:<8}  {:<width$}  {:>6}  NOTE   (max. {})",
+            "ID", "NAME", "PUNKTE", exam.max_points
+        );
+        for r in results {
+            println!(
+                "{:<8}  {:<width$}  {:>6}  {}",
+                Self::short_id(r.student.id),
+                r.student.label(),
+                r.total,
+                r.grade.as_deref().unwrap_or("–")
             );
         }
     }

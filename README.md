@@ -6,8 +6,10 @@ erleichtert. Läuft auf **macOS, Linux und Windows**.
 Man pflegt Klassen und Schüler, legt eine Prüfung mit **Prüfungsschema** und
 **Bewertungsmatrix** an und exportiert sie als **Excel-Datei**. Darin trägt man
 die Punkte je Schüler ein; Summen und Noten rechnen **Formeln**. Ändert man die
-Bewertungsmatrix, ändern sich die Noten. Je Schüler gibt es einen **Ausdruck**
-mit Punkteaufschlüsselung und Bewertungsmatrix.
+Bewertungsmatrix, ändern sich die Noten. Bewertet werden kann auch **in der
+App** (Punkte und, wenn gewünscht, eine Begründung je Prüfkriterium); der Export
+enthält dann alles. Mit Begründungen gibt es **eine Bewertungskachel je
+Schüler**, eine Druckseite pro Schüler.
 
 Technisch: **Tauri 2**, Oberfläche in **React und TypeScript**, Fachlogik in
 **Rust** mit eingebetteter **SQLite**. Dieselbe Fachlogik bedient auch eine
@@ -32,30 +34,58 @@ Eine Prüfung gilt für eine oder mehrere Klassen und besteht aus:
 
 * **Prüfungsschema:** Gruppen mit Namen; darin **Punkte** (Aufgaben) mit Namen
   und einer Höchstpunktzahl. Ganze und halbe Punkte sind erlaubt (`2,5`). Die
-  Höchstpunktzahl einer Gruppe und der ganzen Prüfung wird berechnet.
+  Höchstpunktzahl einer Gruppe und der ganzen Prüfung wird berechnet. Zu jedem
+  Punkt (Prüfkriterium) kann man eine **Beschreibung** hinterlegen — optional.
+* **Begründungen:** Beim Anlegen wählt man, ob zu jedem Prüfkriterium eine
+  Begründung gepflegt wird. Das ändert die Form des Exports (siehe unten).
 * **Bewertungsmatrix:** Noten frei benennbar, üblich `1` bis `6`. Je Note trägt
   man nur das **„ab“** ein (Punkte). Das **„bis“** wird berechnet — eine halbe
   Punktstufe unter dem „ab“ der nächsten Note. Dadurch gibt es weder Lücken
   noch Überschneidungen. Die niedrigste Note beginnt bei 0.
 
+### Bewerten in der App
+
+In der Prüfung öffnet **„Bewerten“** die Bewertung einer Klasse: Schüler
+wählen, je Prüfkriterium die erreichten Punkte eintragen (ganz oder halb, `2,5`)
+und — wenn die Prüfung Begründungen vorsieht — eine Begründung oder einen
+Hinweis. Gespeichert wird, sobald ein Feld verlassen wird. Gruppensummen,
+Gesamtpunkte und die Note berechnet die Fachlogik; „nicht eingetragen“ ist
+etwas anderes als 0, und solange nichts eingetragen ist, gibt es keine Note.
+
+Ändert man die Prüfung später, bleiben die Einträge, soweit sie noch passen
+(gleiche Stelle im Schema): Fällt ein Punkt weg, verschwindet sein Eintrag;
+sinkt seine Höchstpunktzahl unter die vergebenen Punkte, werden die Punkte
+zurückgenommen, die Begründung bleibt. Schaltet man die Begründungen ab,
+entfallen sie.
+
 ### Excel-Export
 
 **„Als Excel exportieren“** in der Prüfung öffnet einen Speichern-Dialog.
-Die `.xlsx`-Datei enthält:
+Die `.xlsx`-Datei enthält alles, was in der App eingetragen ist, und lässt sich
+in Excel weiter bearbeiten:
 
 | Blatt | Inhalt |
 |---|---|
-| **Bewertung** | Prüfungsschema und Bewertungsmatrix. Hier ändert man „ab“ und Höchstpunkte; alles andere folgt per Formel. |
-| **Ausdruck** | Eine Seite für einen Schüler, der oben aus einer Liste gewählt wird: Punkte je Aufgabe, Summen je Gruppe, Gesamtpunkte, Note und die Bewertungsmatrix. In Excel drucken oder als PDF speichern. |
-| **je Klasse** | Blattname `7a (2025)`. Schüler in den Zeilen, Punkte des Schemas in den Spalten, Summe je Gruppe, Gesamtpunkte, zuletzt die **Note** aus der Bewertungsmatrix. Solange nichts eingetragen ist, bleibt die Note leer. |
-| *Listen* | Verborgene Hilfsliste für die Schülerauswahl auf „Ausdruck“. |
+| **Bewertung** | Prüfungsschema (mit Beschreibungen) und Bewertungsmatrix. Hier ändert man „ab“ und Höchstpunkte; alles andere folgt per Formel. |
+| **je Klasse** | Blattname `7a (2025)`. Die Form hängt von den Begründungen ab, siehe unten. |
 
-Die App schreibt nur die leere Vorlage; die vergebenen Punkte stehen allein
-in Excel. Ein Wiedereinlesen ist denkbar, aber nicht gebaut.
+**Ohne Begründungen** ist das Klassenblatt eine **Matrix**: Schüler in den
+Zeilen, Punkte des Schemas in den Spalten, Summe je Gruppe, Gesamtpunkte,
+zuletzt die **Note** aus der Bewertungsmatrix. Solange nichts eingetragen ist,
+bleibt die Note leer.
 
-Der **Ausdruck** ist ein Blatt mit Auswahl, kein Blatt je Schüler: Ein
-Stapeldruck aller Schüler auf einmal geht damit nicht, dafür bleibt die Datei
-übersichtlich und ohne Makros (`.xlsx`).
+**Mit Begründungen** ist es **eine Bewertungskachel je Schüler**, untereinander
+auf demselben Blatt: Aufgabe, Beschreibung, Punkte, Höchstpunkte und
+Begründung, je Gruppe eine Summenzeile, darunter Gesamtpunkte, Note und die
+Bewertungsmatrix. Vor jeder Kachel steht ein Seitenumbruch; das Blatt ist auf
+A4 hochkant mit festem Druckmaßstab eingestellt. **Drucken:** In Excel das
+Klassenblatt drucken oder als PDF speichern — jeder Schüler ist genau eine Seite
+(einzelne Schüler über „Seiten von … bis …“). Der Druckmaßstab ist bewusst fest
+und nicht „auf eine Seite anpassen“, weil Excel dabei die Seitenumbrüche
+ignoriert. Sehr lange Beschreibungen oder Begründungen können eine Kachel über
+eine Seite hinaus verlängern.
+
+Der Export ist einseitig: Änderungen in Excel gelangen nicht zurück in die App.
 
 ### Kommandozeile
 
@@ -67,6 +97,8 @@ teacher-class exam add "Klassenarbeit 1" --class <KLASSE> \
     --group "Aufgabe 1: a=4; b=2,5" --group "Aufgabe 2: a=13,5" \
     --grade 6=0 --grade 3=10 --grade 1=17
 teacher-class exam show <PRÜFUNG>
+teacher-class exam score <PRÜFUNG> <SCHÜLER> 1 1 --points 2,5
+teacher-class exam results <PRÜFUNG> --class <KLASSE>
 teacher-class exam export <PRÜFUNG> --out Klassenarbeit.xlsx
 ```
 

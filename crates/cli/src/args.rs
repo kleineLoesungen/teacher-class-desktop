@@ -170,6 +170,9 @@ pub enum ExamCommand {
     ///
     /// Punkte sind ganz oder halb. Bei den Noten wird nur „ab“ angegeben;
     /// „bis“ berechnet sich. Die niedrigste Note beginnt bei 0.
+    ///
+    /// Zu jedem Punkt kann eine Beschreibung folgen, abgetrennt mit `|`:
+    ///   --group "Aufgabe 1: a=4|Rechenweg angeben; b=2.5"
     Add {
         /// Name der Prüfung.
         name: String,
@@ -179,7 +182,7 @@ pub enum ExamCommand {
         #[arg(long, required = true, value_name = "KLASSE")]
         class: Vec<String>,
 
-        /// Eine Gruppe: `Name: Punkt=Höchstpunkte; Punkt=Höchstpunkte`.
+        /// Eine Gruppe: `Name: Punkt=Höchstpunkte|Beschreibung; Punkt=Höchstpunkte`.
         #[arg(
             long,
             required = true,
@@ -196,6 +199,49 @@ pub enum ExamCommand {
             value_parser = crate::commands::exam::parse_grade
         )]
         grade: Vec<teacher_class_core::exam::GradeInput>,
+
+        /// Zu jedem Punkt eine Begründung pflegen. Der Excel-Export hat dann
+        /// eine Bewertungskachel je Schüler statt einer Matrix.
+        #[arg(long)]
+        notes: bool,
+    },
+
+    /// Punkte und Begründung eines Schülers zu einem Prüfkriterium eintragen.
+    ///
+    /// Gruppe und Punkt zählen ab 1, wie in `exam show`. Ohne `--points` werden
+    /// die Punkte gelöscht; ohne `--note` die Begründung.
+    ///
+    /// Beispiel:  exam score 3f9a2b1c 7d41e0aa 1 2 --points 2.5 --note "Rechenweg fehlt"
+    Score {
+        /// Kennung der Prüfung oder ein eindeutiges Ende davon.
+        id: String,
+
+        /// Kennung des Schülers oder ein eindeutiges Ende davon.
+        student: String,
+
+        /// Nummer der Gruppe (ab 1).
+        group: u32,
+
+        /// Nummer des Punktes in der Gruppe (ab 1).
+        item: u32,
+
+        /// Erreichte Punkte, ganz oder halb.
+        #[arg(long, value_parser = crate::commands::exam::parse_points)]
+        points: Option<f64>,
+
+        /// Begründung. Nur für Prüfungen mit `--notes`.
+        #[arg(long, default_value = "")]
+        note: String,
+    },
+
+    /// Die Bewertung der Schüler einer Klasse zeigen.
+    Results {
+        /// Kennung der Prüfung oder ein eindeutiges Ende davon.
+        id: String,
+
+        /// Kennung der Klasse oder ein eindeutiges Ende davon.
+        #[arg(long, value_name = "KLASSE")]
+        class: String,
     },
 
     /// Alle Prüfungen auflisten.

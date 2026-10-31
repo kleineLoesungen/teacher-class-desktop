@@ -94,11 +94,19 @@ ExamInput  ──exam::create/update──▶  Tabellen exams, exam_classes,
   `INDEX(Noten, MATCH(Gesamtpunkte, ab, 1))` auf das Blatt „Bewertung“. Ändert
   die Lehrkraft dort ein „ab“, folgen alle Klassenblätter. Die Matrix steht
   deshalb aufsteigend nach „ab“ — `MATCH(…, 1)` verlangt das.
-* **Der Ausdruck ist ein Blatt mit Auswahl.** Die Auswahlliste liegt auf dem
-  verborgenen Blatt „Listen“ (Beschriftung, Klassenblatt, Zeile). „Ausdruck“
-  holt die Werte mit `INDIRECT` aus dem Klassenblatt. Ein Blatt je Schüler
-  wäre bei 90 Schülern unübersichtlich, und ein Stapeldruck bräuchte ein Makro
-  (`.xlsm`).
+* **Bewertet wird in `grading.rs`, nicht in der Oberfläche.** Einträge
+  (`exam_scores`: Punkte in Halbpunkten, `NULL` = nicht bewertet, plus
+  Begründung) hängen an Prüfung, Schüler und der **Stelle** des Punktes im
+  Schema (Gruppe, Punkt), nicht an einer Kennung: `exam::update` schreibt die
+  Prüfung als Ganzes neu, die Kennungen der Punkte wechseln dabei. Danach
+  räumt `grading::prune` auf — was nicht mehr passt, entfällt. Summen und Note
+  berechnet `grading::results`; die Oberfläche und der Export zeigen das nur.
+* **Die Form des Klassenblatts folgt `with_notes`.** Ohne Begründungen eine
+  Matrix (Schüler in Zeilen), mit Begründungen eine Bewertungskachel je Schüler
+  untereinander, vor jeder ein Seitenumbruch — ein Schüler, eine Druckseite,
+  ohne Makro (`.xlsx`). Ein Blatt je Schüler wäre bei 90 Schülern
+  unübersichtlich. Ein Blatt „Ausdruck“ mit Schülerauswahl und eine versteckte
+  Hilfsliste gibt es nicht mehr.
 * **Der Speichern-Dialog gehört zur Oberfläche.** `tauri-plugin-dialog` liefert
   den Pfad, `exam_export` schreibt die Datei und verlangt die Endung `.xlsx`.
   Dazu steht `dialog:allow-save` in `capabilities/default.json`.

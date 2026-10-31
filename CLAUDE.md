@@ -35,9 +35,17 @@ Ausführlich im README („Was die App kann"). Was beim Ändern zählt:
   werden als ganze Halbpunkte gespeichert. Gruppensummen, Gesamtpunkte und das
   „bis“ jeder Note **berechnet `core`** — die Oberfläche rechnet nicht nach.
   Eine Prüfung wird immer als Ganzes geschrieben (`ExamInput`).
-* **Excel-Export** (`crates/core/src/export.rs`) schreibt **Formeln**, keine
-  Ergebnisse: Blatt „Bewertung“, Blatt „Ausdruck“ (Schülerauswahl, zum
-  Drucken), ein Blatt je Klasse, dazu das verborgene „Listen“. Die Matrix
+* **Bewertung** (`crates/core/src/grading.rs`): Punkte (Halbpunkte, `NULL` =
+  nicht bewertet) und — nur bei Prüfungen mit `with_notes` — eine Begründung
+  je Schüler und Prüfkriterium. Das Prüfkriterium ist über seine **Stelle**
+  (Gruppe, Punkt) bezeichnet; `exam::update` räumt danach mit `grading::prune`
+  auf. Summen und Note **berechnet `core`**, auch hier rechnet die Oberfläche
+  nicht nach. Ein Punkt hat eine optionale `description`.
+* **Excel-Export** (`crates/core/src/export.rs`) schreibt **Formeln** für alles
+  Gerechnete und die eingetragenen Punkte/Begründungen als Werte: Blatt
+  „Bewertung“ und ein Blatt je Klasse — als Matrix, oder bei `with_notes` als
+  Bewertungskachel je Schüler mit Seitenumbruch davor. Einen „Ausdruck“ mit
+  Schülerauswahl und das Blatt „Listen“ gibt es nicht mehr. Die Matrix
   steht aufsteigend, weil die Note per `MATCH(…, 1)` gesucht wird. Gerechnet
   haben die Formeln nur Excel oder LibreOffice, nie ein Test — wer den Export
   ändert, öffnet die Datei einmal dort.
@@ -428,6 +436,7 @@ Bitte nicht „nachrüsten":
 |---|---|
 | `crates/core/tests/class.rs` | Die fachlichen Regeln für Klassen und Schüler. **Hier liegt der Schwerpunkt.** |
 | `crates/core/tests/exam.rs` | Prüfungen: Halbpunkte, Matrix („bis“ berechnet, niedrigste Note bei 0), Ersetzen als Ganzes |
+| `crates/core/tests/grading.rs` | Bewertung: Halbpunkte, Bereich, Note an der Grenze, Begründung nur mit `with_notes`, Aufräumen beim Ändern der Prüfung |
 | `crates/core/tests/export.rs` | Excel-Datei: Blätter, Reihenfolge, Formeln **als Text** (gerechnet wird nicht) |
 | `crates/core/tests/config.rs` | Einstellungen lesen, schreiben, ablehnen |
 | `crates/core/tests/layering.rs` | Der Schichtwächter — Rust **und** TypeScript, dazu der Plattform-Wächter |

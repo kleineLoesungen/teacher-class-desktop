@@ -19,6 +19,7 @@ use tauri::State;
 use teacher_class_core::class::{self, Class, ClassInput};
 use teacher_class_core::exam::{self, Exam, ExamInput};
 use teacher_class_core::export;
+use teacher_class_core::grading::{self, ScoreInput, StudentResult};
 use teacher_class_core::student::{self, Student, StudentInput};
 use teacher_class_core::{Config, Paths};
 use ts_rs::TS;
@@ -121,6 +122,31 @@ pub async fn exam_delete(state: State<'_, AppState>, id: Uuid) -> ApiResult<()> 
 #[tauri::command]
 pub async fn exam_export(state: State<'_, AppState>, id: Uuid, path: String) -> ApiResult<()> {
     state.with(|app| export::write_xlsx(app.conn(), id, std::path::Path::new(&path)))
+}
+
+// --- Bewertung -------------------------------------------------------------
+
+/// Die Bewertung aller Schüler der Klasse `class` in der Prüfung `id`:
+/// Punkte, Begründungen, Summen und Note — berechnet von core.
+#[tauri::command]
+pub async fn exam_results(
+    state: State<'_, AppState>,
+    id: Uuid,
+    class: Uuid,
+) -> ApiResult<Vec<StudentResult>> {
+    state.with(|app| grading::results(app.conn(), id, class))
+}
+
+/// Trägt Punkte und Begründung zu einem Prüfkriterium ein und liefert die neu
+/// berechnete Bewertung des Schülers. Fehler tragen `fields` für `points`,
+/// `note` und `item`.
+#[tauri::command]
+pub async fn exam_score(
+    state: State<'_, AppState>,
+    id: Uuid,
+    input: ScoreInput,
+) -> ApiResult<StudentResult> {
+    state.with(|app| grading::set(app.conn(), id, input))
 }
 
 // --- Einstellungen ---------------------------------------------------------

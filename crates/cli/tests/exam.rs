@@ -195,6 +195,125 @@ fn export_schreibt_eine_xlsx_datei() {
     assert_eq!(out.code, 4, "{}", out.stderr);
 }
 
+/// Prüfung mit Beschreibung und Begründungen; gibt (Prüfung, Max) zurück.
+fn seed_graded(ctx: &Ctx, class: &str) -> (String, String) {
+    let exam = Ctx::id_of(
+        &ctx.run(&[
+            "exam",
+            "add",
+            "Klassenarbeit 1",
+            "--class",
+            class,
+            "--group",
+            "Aufgabe 1: a=4|Rechenweg angeben; b=2,5",
+            "--group",
+            "Aufgabe 2: a=13.5",
+            "--grade",
+            "6=0",
+            "--grade",
+            "3=10",
+            "--grade",
+            "1=17",
+            "--notes",
+        ])
+        .ok(),
+    );
+    let list = ctx.run(&["student", "list", class]).ok().stdout;
+    let max = list
+        .lines()
+        .find(|l| l.contains("Muster, Max"))
+        .and_then(|l| l.split_whitespace().next())
+        .expect("Max in der Liste")
+        .to_string();
+    (exam, max)
+}
+
+#[test]
+fn die_beschreibung_steht_in_der_pruefungsansicht() {
+    let ctx = Ctx::new();
+    let class = ctx.seed_class();
+    let (exam, _) = seed_graded(&ctx, &class);
+    snapshot(
+        "pruefung_mit_beschreibung",
+        &ctx.run(&["exam", "show", &exam]).ok().stdout,
+    );
+}
+
+#[test]
+fn bewerten_traegt_ein_und_die_ergebnisse_zeigen_summe_und_note() {
+    let ctx = Ctx::new();
+    let class = ctx.seed_class();
+    let (exam, max) = seed_graded(&ctx, &class);
+
+    ctx.run(&[
+        "exam",
+        "score",
+        &exam,
+        &max,
+        "1",
+        "1",
+        "--points",
+        "4",
+        "--note",
+        "Rechenweg ok",
+    ])
+    .ok();
+    ctx.run(&["exam", "score", &exam, &max, "2", "1", "--points", "13,5"])
+        .ok();
+
+    snapshot(
+        "ergebnisse",
+        &ctx.run(&["exam", "results", &exam, "--class", &class])
+            .ok()
+            .stdout,
+    );
+
+    let json = ctx
+        .run(&["exam", "results", &exam, "--class", &class, "--json"])
+        .ok()
+        .stdout;
+    let results: serde_json::Value = serde_json::from_str(&json).unwrap();
+    let max = results
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["student"]["last_name"] == "Muster")
+        .unwrap();
+    assert_eq!(max["total"], 17.5);
+    assert_eq!(max["grade"], "1");
+    assert_eq!(max["groups"][0]["scores"][0]["note"], "Rechenweg ok");
+}
+
+#[test]
+fn ungueltige_punkte_sind_ein_eingabefehler() {
+    let ctx = Ctx::new();
+    let class = ctx.seed_class();
+    let (exam, max) = seed_graded(&ctx, &class);
+    let out = ctx.run(&["exam", "score", &exam, &max, "1", "1", "--points", "5"]);
+    assert_eq!(out.code, 4, "{}", out.stderr);
+    // Gruppe 0 gibt es auf der Kommandozeile nicht (sie zählt ab 1).
+    let out = ctx.run(&["exam", "score", &exam, &max, "0", "1", "--points", "1"]);
+    assert_eq!(out.code, 4, "{}", out.stderr);
+}
+
+#[test]
+fn begruendungen_ohne_notes_werden_abgelehnt() {
+    let ctx = Ctx::new();
+    let class = ctx.seed_class();
+    let exam = ctx.seed_exam(&class);
+    let list = ctx.run(&["student", "list", &class]).ok().stdout;
+    let max = list
+        .lines()
+        .find(|l| l.contains("Muster, Max"))
+        .and_then(|l| l.split_whitespace().next())
+        .unwrap()
+        .to_string();
+    let out = ctx.run(&[
+        "exam", "score", &exam, &max, "1", "1", "--points", "1", "--note", "x",
+    ]);
+    assert_eq!(out.code, 4, "{}", out.stderr);
+}
+
 #[test]
 fn loeschen_verlangt_bestaetigung() {
     let ctx = Ctx::new();

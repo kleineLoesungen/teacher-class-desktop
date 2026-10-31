@@ -22,6 +22,7 @@ fn item(name: &str, max: f64) -> ItemInput {
     ItemInput {
         name: name.into(),
         max_points: max,
+        ..Default::default()
     }
 }
 
@@ -48,7 +49,42 @@ fn beispiel(class_ids: Vec<Uuid>) -> ExamInput {
             },
         ],
         grades: vec![grade("1", 17.0), grade("3", 10.0), grade("6", 0.0)],
+        with_notes: false,
     }
+}
+
+#[test]
+fn eine_beschreibung_ist_optional_und_wird_gespeichert() {
+    let conn = db::open_in_memory().unwrap();
+    let c = klasse(&conn, "7a");
+    let mut input = beispiel(vec![c]);
+    input.groups[0].items[0].description = "  Rechenweg angeben  ".into();
+    let e = exam::create(&conn, input).unwrap();
+    assert_eq!(e.groups[0].items[0].description, "Rechenweg angeben");
+    assert_eq!(e.groups[0].items[1].description, "");
+    assert!(!e.with_notes);
+}
+
+#[test]
+fn eine_zu_lange_beschreibung_wird_am_feld_abgelehnt() {
+    let conn = db::open_in_memory().unwrap();
+    let c = klasse(&conn, "7a");
+    let mut input = beispiel(vec![c]);
+    input.groups[0].items[0].description = "x".repeat(exam::DESCRIPTION_MAX + 1);
+    let err = exam::create(&conn, input).unwrap_err();
+    assert_eq!(felder(&err), ["groups"]);
+}
+
+#[test]
+fn begruendungen_werden_bei_der_pruefung_festgelegt() {
+    let conn = db::open_in_memory().unwrap();
+    let c = klasse(&conn, "7a");
+    let mut input = beispiel(vec![c]);
+    input.with_notes = true;
+    let e = exam::create(&conn, input.clone()).unwrap();
+    assert!(e.with_notes);
+    input.with_notes = false;
+    assert!(!exam::update(&conn, e.id, input).unwrap().with_notes);
 }
 
 #[test]

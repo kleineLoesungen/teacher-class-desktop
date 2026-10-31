@@ -8,6 +8,7 @@ use std::io::{Cursor, Read};
 
 use teacher_class_core::class::{self, ClassInput};
 use teacher_class_core::exam::{self, ExamInput, GradeInput, GroupInput, ItemInput};
+use teacher_class_core::grading::{self, ScoreInput};
 use teacher_class_core::{Error, db, export, student};
 
 struct Xlsx(zip::ZipArchive<Cursor<Vec<u8>>>);
@@ -32,6 +33,7 @@ fn beispiel(class_ids: Vec<uuid::Uuid>) -> ExamInput {
     let item = |name: &str, max: f64| ItemInput {
         name: name.into(),
         max_points: max,
+        ..Default::default()
     };
     let grade = |name: &str, from: f64| GradeInput {
         name: name.into(),
@@ -51,6 +53,7 @@ fn beispiel(class_ids: Vec<uuid::Uuid>) -> ExamInput {
             },
         ],
         grades: vec![grade("1", 17.0), grade("3", 10.0), grade("6", 0.0)],
+        with_notes: false,
     }
 }
 
@@ -65,7 +68,7 @@ fn die_datei_hat_die_erwarteten_blaetter_in_reihenfolge() {
 
     let mut x = Xlsx::open(export::build(&conn, e.id).unwrap());
     let wb = x.text("xl/workbook.xml");
-    let order: Vec<_> = ["Bewertung", "Ausdruck", "7a (2025)", "7b (2024)", "Listen"]
+    let order: Vec<_> = ["Bewertung", "7a (2025)", "7b (2024)"]
         .iter()
         .map(|name| {
             wb.find(&format!("name=\"{name}\""))
@@ -73,7 +76,10 @@ fn die_datei_hat_die_erwarteten_blaetter_in_reihenfolge() {
         })
         .collect();
     assert!(order.windows(2).all(|w| w[0] < w[1]), "Reihenfolge: {wb}");
-    assert!(wb.contains("state=\"hidden\""), "Listen ist verborgen");
+    // Weder Ausdruck noch Hilfsliste.
+    assert!(!wb.contains("Ausdruck"), "{wb}");
+    assert!(!wb.contains("Listen"), "{wb}");
+    assert!(!wb.contains("state=\"hidden\""), "{wb}");
 }
 
 #[test]
@@ -84,8 +90,8 @@ fn das_klassenblatt_rechnet_summen_und_note_per_formel() {
     let e = exam::create(&conn, beispiel(vec![a.id])).unwrap();
 
     let mut x = Xlsx::open(export::build(&conn, e.id).unwrap());
-    // Blatt 1 Bewertung, 2 Ausdruck, 3 die Klasse.
-    let sheet = x.text("xl/worksheets/sheet3.xml");
+    // Blatt 1 Bewertung, 2 die Klasse.
+    let sheet = x.text("xl/worksheets/sheet2.xml");
     // Summe der ersten Gruppe (B..C) in Spalte D, Zeile 4.
     assert!(sheet.contains("<f>SUM(B4:C4)</f>"), "{sheet}");
     // Gesamtpunkte: Summe der Gruppensummen D und F.
@@ -104,32 +110,106 @@ fn die_bewertung_hat_summen_und_bis_als_formeln() {
     let e = exam::create(&conn, beispiel(vec![a.id])).unwrap();
 
     let mut x = Xlsx::open(export::build(&conn, e.id).unwrap());
-    // Ohne Schüler gibt es keinen „Ausdruck“: Bewertung, dann die Klasse.
     let sheet = x.text("xl/worksheets/sheet1.xml");
     assert!(sheet.contains("<f>SUM(C6:C7)</f>"), "{sheet}");
     assert!(
         sheet.contains("-0.5</f>"),
         "bis = nächstes ab - 0,5: {sheet}"
     );
-    let wb = x.text("xl/workbook.xml");
-    assert!(!wb.contains("Ausdruck"), "ohne Schüler kein Ausdruck");
 }
 
 #[test]
-fn der_ausdruck_holt_die_werte_des_gewaehlten_schuelers() {
+fn die_beschreibung_steht_auf_dem_blatt_bewertung() {
     let conn = db::open_in_memory().unwrap();
     let a = class::create(&conn, ClassInput::new("7a", 2025)).unwrap();
-    student::add_many(&conn, a.id, "Muster, Max").unwrap();
+    let mut input = beispiel(vec![a.id]);
+    input.groups[0].items[0].description = "Rechenweg angeben".into();
+    let e = exam::create(&conn, input).unwrap();
+
+    let mut x = Xlsx::open(export::build(&conn, e.id).unwrap());
+    let strings = x.text("xl/sharedStrings.xml");
+    assert!(strings.contains("Beschreibung"), "{strings}");
+    assert!(strings.contains("Rechenweg angeben"), "{strings}");
+}
+
+#[test]
+fn eingetragene_punkte_stehen_im_klassenblatt() {
+    let conn = db::open_in_memory().unwrap();
+    let a = class::create(&conn, ClassInput::new("7a", 2025)).unwrap();
+    let s = student::add_many(&conn, a.id, "Muster, Max").unwrap();
     let e = exam::create(&conn, beispiel(vec![a.id])).unwrap();
+    grading::set(
+        &conn,
+        e.id,
+        ScoreInput {
+            student_id: s[0].id,
+            group: 0,
+            item: 1,
+            points: Some(2.5),
+            note: String::new(),
+        },
+    )
+    .unwrap();
 
     let mut x = Xlsx::open(export::build(&conn, e.id).unwrap());
     let sheet = x.text("xl/worksheets/sheet2.xml");
-    assert!(sheet.contains("INDIRECT"), "{sheet}");
+    // Zweiter Punkt der ersten Gruppe: Spalte C, Zeile 4.
+    assert!(sheet.contains("<v>2.5</v>"), "{sheet}");
+}
+
+#[test]
+fn mit_begruendungen_gibt_es_eine_kachel_je_schueler_mit_seitenumbruch() {
+    let conn = db::open_in_memory().unwrap();
+    let a = class::create(&conn, ClassInput::new("7a", 2025)).unwrap();
+    let s = student::add_many(&conn, a.id, "Muster, Max\nBeispiel, Eva").unwrap();
+    let mut input = beispiel(vec![a.id]);
+    input.with_notes = true;
+    input.groups[0].items[0].description = "Rechenweg angeben".into();
+    let e = exam::create(&conn, input).unwrap();
+    grading::set(
+        &conn,
+        e.id,
+        ScoreInput {
+            student_id: s[0].id,
+            group: 0,
+            item: 0,
+            points: Some(3.0),
+            note: "Vorzeichenfehler".into(),
+        },
+    )
+    .unwrap();
+
+    let mut x = Xlsx::open(export::build(&conn, e.id).unwrap());
+    let wb = x.text("xl/workbook.xml");
+    assert!(wb.contains("name=\"7a (2025)\""), "{wb}");
+    let sheet = x.text("xl/worksheets/sheet2.xml");
+    // Keine Matrix mehr, sondern Kacheln: ein Umbruch vor der zweiten.
+    assert_eq!(sheet.matches("<brk ").count(), 1, "{sheet}");
+    // Beide Schüler untereinander, in der Reihenfolge der Liste.
+    let strings = x.text("xl/sharedStrings.xml");
+    assert!(strings.contains("Beispiel, Eva"), "{strings}");
+    assert!(strings.contains("Muster, Max"), "{strings}");
+    assert!(strings.contains("Vorzeichenfehler"), "{strings}");
+    assert!(strings.contains("Rechenweg angeben"), "{strings}");
+    // Summen und Note bleiben Formeln auf die Bewertung.
+    assert!(sheet.contains("INDEX(Bewertung!$A$"), "{sheet}");
     assert!(
-        sheet.contains("<dataValidation"),
-        "Auswahl des Schülers: {sheet}"
+        sheet.contains("<v>3</v>"),
+        "Punkte stehen als Zahl: {sheet}"
     );
-    assert!(sheet.contains("Listen!$A$1:$A$1"), "{sheet}");
+}
+
+#[test]
+fn eine_klasse_ohne_schueler_ergibt_auch_mit_begruendungen_ein_blatt() {
+    let conn = db::open_in_memory().unwrap();
+    let a = class::create(&conn, ClassInput::new("7a", 2025)).unwrap();
+    let mut input = beispiel(vec![a.id]);
+    input.with_notes = true;
+    let e = exam::create(&conn, input).unwrap();
+
+    let mut x = Xlsx::open(export::build(&conn, e.id).unwrap());
+    let strings = x.text("xl/sharedStrings.xml");
+    assert!(strings.contains("Keine Schüler"), "{strings}");
 }
 
 #[test]
