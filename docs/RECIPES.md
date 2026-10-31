@@ -235,11 +235,11 @@ den ganzen Weg halten, sondern auf einen Blockierfaden ausweichen:
 #[tauri::command]
 pub async fn import_folder(state: State<'_, AppState>, path: String) -> ApiResult<usize> {
     // Einlesen ohne Sperre …
-    let files = tauri::async_runtime::spawn_blocking(move || starter_core::import::read(&path))
+    let files = tauri::async_runtime::spawn_blocking(move || teacher_class_core::import::read(&path))
         .await
         .map_err(|e| ApiError::internal(e.to_string()))??;
     // … schreiben mit Sperre, kurz.
-    state.with(|app| starter_core::import::store(app.conn(), files))
+    state.with(|app| teacher_class_core::import::store(app.conn(), files))
 }
 ```
 
@@ -345,7 +345,7 @@ In Rust-Tests **nicht** über Umgebungsvariablen, sondern
 
 Sollte durch WAL und `busy_timeout` nicht vorkommen. Wenn doch:
 
-* Läuft noch eine zweite Ausgabe? `pgrep -l starter`
-* Liegt das Datenverzeichnis auf einem Netzlaufwerk? Dann `STARTER_DATA_DIR`
+* Läuft noch eine zweite Ausgabe? `pgrep -l teacher-class`
+* Liegt das Datenverzeichnis auf einem Netzlaufwerk? Dann `TEACHER_CLASS_DATA_DIR`
   auf eine lokale Platte.
 * Hält ein Befehl die Sperre sehr lange? Siehe „Etwas im Hintergrund".

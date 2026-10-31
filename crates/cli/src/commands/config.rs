@@ -1,5 +1,5 @@
 use anyhow::{Result, bail};
-use starter_core::{App, Config, Theme};
+use teacher_class_core::{App, Config, Theme};
 
 use crate::args::ConfigCommand;
 use crate::output::Out;

@@ -24,7 +24,7 @@ Betriebssystems läuft. Ziel: **macOS, Linux und Windows**. Browserpakete wie
 
 ```
 crates/core/       Fachlogik und Prüfung. SQLite. Kennt weder clap noch tauri.
-crates/cli/        Kommandozeile `starter`. Dünn.
+crates/cli/        Kommandozeile `teacher-class`. Dünn.
 crates/desktop/    Tauri-Schale. Dünn. tauri.conf.json, capabilities/, icons/.
 ui/src/api.ts      Die EINZIGE Stelle, die mit Rust spricht.
 ui/src/App.tsx     Zustand der Oberfläche. Die einzige Komponente, die api benutzt.
@@ -106,7 +106,7 @@ und wird zur Laufzeit verweigert.
    Fenstertitel setzen braucht `core:window:allow-set-title`. Eigene Befehle
    aus `commands.rs` sind ohne Eintrag erlaubt.
 
-6. **Der Fehlertyp muss `Serialize` sein.** `starter_core::Error` ist es
+6. **Der Fehlertyp muss `Serialize` sein.** `teacher_class_core::Error` ist es
    absichtlich nicht. Befehle geben `ApiResult<T>` zurück; `ApiError` hat
    dieselbe Form wie `error` im JSON der CLI (`code`, `message`, `fields`).
 
@@ -128,8 +128,8 @@ und wird zur Laufzeit verweigert.
    `api.openExternal` öffnet im Standardbrowser.
 
 9. **Pfade kommen aus `core`, nicht aus Tauri.** `app.path().app_data_dir()`
-   liefert `~/Library/Application Support/de.kleineloesungen.starter` — die
-   CLI sucht in `…/starter`. Beide Schalen benutzen `starter_core::Paths`,
+   liefert `~/Library/Application Support/de.example.teacher-class` — die
+   CLI sucht in `…/teacher-class`. Beide Schalen benutzen `teacher_class_core::Paths`,
    sonst sehen sie verschiedene Datenbanken.
 
 10. **`ui/dist` muss existieren, bevor Rust kompiliert.** `generate_context!`
@@ -277,7 +277,7 @@ Vorabprüfung für schnellere Rückmeldung ist erlaubt, ersetzt aber nie die in
 ```
 Komponente ──onSave()──▶ App.tsx ──api.notes.update(id, draft)──▶ invoke("note_update", {id, input})
                                                                           │
-     ◀── Note  oder  ApiError { code, message, fields? } ◀── commands.rs ─┴─▶ starter_core
+     ◀── Note  oder  ApiError { code, message, fields? } ◀── commands.rs ─┴─▶ teacher_class_core
 ```
 
 **Typen werden nicht doppelt geschrieben.** Rust-Typen, die über IPC gehen,
@@ -339,7 +339,7 @@ Namen werden nie umbenannt, nur ergänzt.
 
 Die Kennungen sind UUIDv7. Die **beginnt mit dem Zeitstempel** — zwei Notizen
 aus derselben Sekunde teilen sich die ersten zwölf Zeichen. Darum zeigt
-`starter note list` die **letzten** acht Zeichen, und `note::resolve_id` sucht
+`teacher-class note list` die **letzten** acht Zeichen, und `note::resolve_id` sucht
 per Endstück. Ist ein Endstück nicht eindeutig, gibt es `Error::Ambiguous` —
 nie einen zufälligen Treffer.
 
@@ -348,15 +348,15 @@ nie einen zufälligen Treffer.
 ## Pfade, Zeit, Daten
 
 * **Die Fallunterscheidung macOS/Linux steht nur in `crates/core/src/paths.rs`.**
-* `STARTER_DATA_DIR` und `STARTER_CONFIG_DIR` überschreiben die Verzeichnisse
+* `TEACHER_CLASS_DATA_DIR` und `TEACHER_CLASS_CONFIG_DIR` überschreiben die Verzeichnisse
   — für CLI **und** Desktop (`just dev-sandbox`, `just sandbox`). In
   Rust-Tests stattdessen `Paths::under(tempdir)`.
 * Wo die Dateien landen, entscheidet `directories`, nicht das Kit:
 
   | | macOS | Linux | Windows |
   |---|---|---|---|
-  | Daten | `~/Library/Application Support/starter` | `~/.local/share/starter` | `%APPDATA%\starter\data` |
-  | Konfig | dasselbe Verzeichnis | `~/.config/starter` | `%APPDATA%\starter\config` |
+  | Daten | `~/Library/Application Support/teacher-class` | `~/.local/share/teacher-class` | `%APPDATA%\teacher-class\data` |
+  | Konfig | dasselbe Verzeichnis | `~/.config/teacher-class` | `%APPDATA%\teacher-class\config` |
 * **Gespeichert wird in UTC**, als RFC-3339-Text.
 * **Eine veröffentlichte Migration wird nie geändert.** Neue Datei, nächste
   Nummer, in `crates/core/src/db.rs` eintragen.
@@ -374,7 +374,7 @@ Bitte nicht „nachrüsten":
 | `src-tauri/` | `crates/desktop/` | Eine Kiste unter vielen, dieselben Regeln |
 | Electron | Tauri | 150 MB Chromium je Anwendung |
 | Tauri 1-APIs, `allowlist` | Tauri 2, capabilities | siehe oben |
-| SQL-Plugin (`tauri-plugin-sql`) | `starter_core` | SQL aus dem Webview umgeht die Prüfung in core — und die CLI sähe es nie |
+| SQL-Plugin (`tauri-plugin-sql`) | `teacher_class_core` | SQL aus dem Webview umgeht die Prüfung in core — und die CLI sähe es nie |
 | `tauri-plugin-store` für Einstellungen | `config.toml` über `core` | Die CLI muss dieselben Einstellungen lesen |
 | Next.js, Remix, SSR | Vite + React | Es gibt keinen Server |
 | Redux, Zustand, MobX | `useState` in `App.tsx` | Zu klein dafür |

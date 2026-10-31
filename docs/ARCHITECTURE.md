@@ -94,7 +94,7 @@ Frage gegenstandslos.
 
 ### Warum eine eigene Fehlerhülle
 
-`starter_core::Error` enthält `rusqlite::Error` und Pfade — nicht
+`teacher_class_core::Error` enthält `rusqlite::Error` und Pfade — nicht
 serialisierbar und nicht für die Oberfläche gedacht. `ApiError` hat genau die
 Form von `error` im JSON der Kommandozeile:
 
