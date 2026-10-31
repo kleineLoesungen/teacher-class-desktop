@@ -47,19 +47,20 @@ just setup    # npm-Pakete, Werkzeuge, einmal durchbauen
 just dev      # Desktop-Anwendung starten, lädt bei Änderungen neu
 ```
 
-Im leeren Fenster **„Beispiel mit Diagramm anlegen"** klicken — die Notiz
-enthält zwei Mermaid-Diagramme.
+Im leeren Fenster **„Neue Klasse"** klicken: Name (nur Buchstaben und Zahlen)
+und vierstelliges Jahr eintragen, speichern, danach Schüler als Text einfügen —
+eine Zeile `Nachname, Vorname` je Schüler.
 
 Und dieselbe Anwendung auf der Kommandozeile:
 
 ```bash
-just cli note list
-just cli note add "Einkauf" --body "Milch, Brot"
-just cli note list --json | jq '.[].title'
+just cli class add 7a 2025
+just cli class list
+just cli class list --json | jq '.[].name'
 ```
 
 Beides arbeitet auf **derselben** Datenbank. Wo die liegt, sagt `just cli paths`.
-Ohne die echten Daten anzufassen: `just dev-sandbox` und `just sandbox note list`.
+Ohne die echten Daten anzufassen: `just dev-sandbox` und `just sandbox class list`.
 
 ---
 
@@ -183,7 +184,8 @@ in deiner CI ausführen lassen.
 crates/
 ├── core/                    ← FACHLOGIK. Kennt weder clap noch tauri noch stdout.
 │   ├── migrations/            Nummerierte SQL-Dateien, ins Binary einkompiliert
-│   ├── src/note.rs            Beispielressource zum Kopieren
+│   ├── src/class.rs           Klassen (Vorlage zum Kopieren für neue Ressourcen)
+│   ├── src/student.rs         Schüler einer Klasse, Massen-Eintrag als Text
 │   ├── src/config.rs          Einstellungen, TOML
 │   ├── src/paths.rs           Die einzige Stelle mit macOS/Linux-Unterschieden
 │   └── tests/layering.rs      Der Wächter über die Schichtregel (Rust + TypeScript)
