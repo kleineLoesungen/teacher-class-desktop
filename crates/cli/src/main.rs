@@ -61,6 +61,10 @@ fn run(cli: Cli) -> Result<()> {
             let app = App::open(paths)?;
             commands::student::run(cmd, &app, &out)
         }
+        Command::Exam(cmd) => {
+            let app = App::open(paths)?;
+            commands::exam::run(cmd, &app, &out)
+        }
         Command::Config(cmd) => {
             let mut app = App::open(paths)?;
             commands::config::run(cmd, &mut app, &out)

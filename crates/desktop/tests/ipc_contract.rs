@@ -124,6 +124,106 @@ fn legt_an_listet_aendert_und_loescht() {
     assert!(list.as_array().unwrap().is_empty());
 }
 
+fn pruefung_json(class_id: &Value) -> Value {
+    json!({
+        "name": "Klassenarbeit",
+        "class_ids": [class_id],
+        "groups": [{ "name": "Aufgabe 1", "items": [
+            { "name": "a", "max_points": 4.0 }, { "name": "b", "max_points": 2.5 }
+        ]}],
+        "grades": [
+            { "name": "1", "from_points": 5.0 },
+            { "name": "6", "from_points": 0.0 }
+        ]
+    })
+}
+
+#[test]
+fn pruefungen_anlegen_aendern_exportieren_loeschen() {
+    let ctx = Ctx::new();
+    let class = ctx
+        .invoke(
+            "class_create",
+            json!({ "input": { "name": "7a", "year": 2025 } }),
+        )
+        .unwrap();
+    ctx.invoke(
+        "student_add",
+        json!({ "id": class["id"], "text": "Muster, Max" }),
+    )
+    .unwrap();
+
+    let created = ctx
+        .invoke(
+            "exam_create",
+            json!({ "input": pruefung_json(&class["id"]) }),
+        )
+        .unwrap();
+    assert_eq!(created["max_points"], 6.5);
+    // „bis“ wird in Rust berechnet und kommt fertig an.
+    assert_eq!(created["grades"][0]["name"], "6");
+    assert_eq!(created["grades"][0]["to_points"], 4.5);
+    let id = created["id"].as_str().unwrap().to_string();
+
+    let mut changed = pruefung_json(&class["id"]);
+    changed["name"] = json!("Test");
+    let updated = ctx
+        .invoke("exam_update", json!({ "id": id, "input": changed }))
+        .unwrap();
+    assert_eq!(updated["name"], "Test");
+    assert_eq!(
+        ctx.invoke("exam_list", json!({}))
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("pruefung.xlsx");
+    ctx.invoke(
+        "exam_export",
+        json!({ "id": id, "path": path.to_str().unwrap() }),
+    )
+    .unwrap();
+    assert_eq!(&std::fs::read(&path).unwrap()[..2], b"PK");
+
+    let err = ctx
+        .invoke(
+            "exam_export",
+            json!({ "id": id, "path": dir.path().join("x.txt").to_str().unwrap() }),
+        )
+        .unwrap_err();
+    assert_eq!(err["fields"][0]["field"], "path");
+
+    ctx.invoke("exam_delete", json!({ "id": id })).unwrap();
+    assert!(
+        ctx.invoke("exam_list", json!({}))
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[test]
+fn pruefungsfehler_kommen_am_feld_an() {
+    let ctx = Ctx::new();
+    let class = ctx
+        .invoke(
+            "class_create",
+            json!({ "input": { "name": "7a", "year": 2025 } }),
+        )
+        .unwrap();
+    let mut input = pruefung_json(&class["id"]);
+    input["grades"] = json!([{ "name": "1", "from_points": 2.0 }]);
+    let err = ctx
+        .invoke("exam_create", json!({ "input": input }))
+        .unwrap_err();
+    assert_eq!(err["fields"][0]["field"], "grades");
+}
+
 #[test]
 fn eingabefehler_kommen_mit_feldern_an() {
     let ctx = Ctx::new();

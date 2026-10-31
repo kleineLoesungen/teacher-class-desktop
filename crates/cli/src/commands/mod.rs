@@ -7,4 +7,5 @@
 pub mod class;
 pub mod config;
 pub mod confirm;
+pub mod exam;
 pub mod student;

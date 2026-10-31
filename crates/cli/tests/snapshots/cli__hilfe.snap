@@ -9,6 +9,7 @@ Usage: teacher-class [OPTIONS] <COMMAND>
 Commands:
   class        Klassen verwalten
   student      Schüler einer Klasse verwalten
+  exam         Prüfungen verwalten und als Excel exportieren
   config       Einstellungen anzeigen und ändern
   paths        Zeigt, wo die Anwendung ihre Dateien ablegt
   completions  Vervollständigung für die Shell ausgeben

@@ -50,6 +50,9 @@ pub fn configure<R: Runtime>(builder: tauri::Builder<R>, state: AppState) -> tau
         // Öffnet Verweise im Standardbrowser statt im Webview. Welche
         // Adressen erlaubt sind, steht in capabilities/default.json.
         .plugin(tauri_plugin_opener::init())
+        // Speichern-Dialog für den Excel-Export. Der Befehl `exam_export`
+        // schreibt die Datei; der Dialog liefert nur den Pfad.
+        .plugin(tauri_plugin_dialog::init())
         .manage(state)
         // NEUER BEFEHL? Hier eintragen UND in ui/src/api.ts.
         // tests/ipc_contract.rs vergleicht beide Listen.
@@ -62,6 +65,11 @@ pub fn configure<R: Runtime>(builder: tauri::Builder<R>, state: AppState) -> tau
             commands::student_add,
             commands::student_update,
             commands::student_delete,
+            commands::exam_list,
+            commands::exam_create,
+            commands::exam_update,
+            commands::exam_delete,
+            commands::exam_export,
             commands::config_get,
             commands::config_set,
             commands::app_info,

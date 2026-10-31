@@ -6,7 +6,7 @@
 // Drei Dinge, die hier absichtlich so sind:
 //
 // 1. **Nachgeladen.** Mermaid ist mehrere Megabyte groß. `import("mermaid")`
-//    lädt es erst, wenn eine Notiz tatsächlich ein Diagramm enthält — die
+//    lädt es erst, wenn ein Text tatsächlich ein Diagramm enthält — die
 //    Anwendung startet ohne es. Vite legt es als eigenes Stück ins Bündel,
 //    es kommt also trotzdem ohne Netz aus.
 // 2. **securityLevel "strict".** Ein Diagramm darf keine Klick-Handler und

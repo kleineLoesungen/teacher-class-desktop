@@ -43,7 +43,7 @@
     "active": true,
     "targets": ["app", "dmg", "deb", "appimage", "nsis", "msi"],
     "category": "Productivity",
-    "shortDescription": "Notizen mit Markdown und Diagrammen",
+    "shortDescription": "Prüfungen für Klassen anlegen und als Excel exportieren",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

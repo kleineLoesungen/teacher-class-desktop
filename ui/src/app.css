@@ -405,6 +405,103 @@ input[type="color"] {
   font-size: 12px;
 }
 
+/* --- Ansichten und Prüfungen ----------------------------------------------- */
+
+.view-tabs {
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3) 0;
+}
+
+.view-tabs button {
+  flex: 1;
+}
+
+.view-tabs button[aria-pressed="true"] {
+  background: var(--surface-2);
+  font-weight: 600;
+}
+
+.notice {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+
+.exam-body {
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.exam-body h2 {
+  margin-top: var(--space-4);
+}
+
+.check-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.group-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+}
+
+.item-row {
+  padding-left: var(--space-4);
+}
+
+.group-card > button.ghost {
+  align-self: flex-start;
+  margin-left: var(--space-4);
+}
+
+.points-input {
+  width: 84px;
+  text-align: right;
+}
+
+.points-sum {
+  white-space: nowrap;
+}
+
+.grade-table {
+  border-collapse: collapse;
+}
+
+.grade-table th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--muted);
+  padding: 0 var(--space-2) var(--space-1) 0;
+}
+
+.grade-table td {
+  padding: 2px var(--space-2) 2px 0;
+}
+
 /* --- Markdown ------------------------------------------------------------- */
 
 .markdown {

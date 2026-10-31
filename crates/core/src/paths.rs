@@ -17,8 +17,7 @@ use std::path::{Path, PathBuf};
 
 use crate::error::{Error, Result};
 
-/// Anwendungsname. Bestimmt Verzeichnisnamen und wird von
-/// `scripts/new-project.sh` ersetzt.
+/// Anwendungsname. Bestimmt die Verzeichnisnamen.
 pub const APP_NAME: &str = "teacher-class";
 
 /// Umgebungsvariablen, die die Verzeichnisse überschreiben.

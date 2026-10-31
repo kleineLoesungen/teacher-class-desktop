@@ -111,7 +111,7 @@ ein Bau auf einem System, das die anderen Formate nicht erzeugen kann, braucht
 sie trotzdem.
 
 `tauri icon` legt daneben noch Symbole für Android, iOS und den Microsoft Store
-an. Die wirft `scripts/tasks.mjs` wieder weg; dieses Kit liefert nichts davon
+an. Die wirft `scripts/tasks.mjs` wieder weg; die App liefert nichts davon
 aus. Die Farbe im Symbol ist dieselbe wie die Voreinstellung von `accent`.
 
 ## Bedienelemente brauchen Namen

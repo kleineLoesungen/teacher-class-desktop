@@ -1,18 +1,49 @@
 # Rezepte
 
-Konkrete Handgriffe mit Code zum Abschauen. `note` ist überall die Vorlage.
+Konkrete Handgriffe mit Code zum Abschauen. `class` (einfach) und `exam`
+(mit Unterstruktur und Export) sind überall die Vorlage. Die Beispiele sind
+Skizzen für mögliche Erweiterungen; was in der App schon steht, sagen die
+Quelldateien.
+
+---
+
+## Den Excel-Export ändern
+
+Der Export steht ganz in `crates/core/src/export.rs`; die Oberfläche und die
+Kommandozeile rufen nur `export::write_xlsx`. Der Aufbau:
+
+| Funktion | Schreibt |
+|---|---|
+| `write_grading` | Blatt „Bewertung“ und merkt sich, **wo** Schema und Matrix stehen (`GradingRefs`) |
+| `write_class` | Ein Klassenblatt; gibt die Spalten zurück (`ClassLayout`) |
+| `write_print` | Blatt „Ausdruck“, holt Werte aus dem Klassenblatt |
+
+Regeln, die sich bewährt haben:
+
+* **Formeln statt Werte.** Die Klassenblätter verweisen auf „Bewertung“
+  (`=Bewertung!$C$6`), damit eine Änderung dort überall ankommt.
+* **Zellen nie von Hand zählen.** Zeilen und Spalten kommen aus `GradingRefs`
+  und `ClassLayout`; Adressen aus `row_col_to_cell`. Sonst verschiebt eine
+  neue Spalte stillschweigend alle Formeln dahinter.
+* **Ein neues Blatt** in `build` anlegen und mit `push_worksheet` in der
+  gewünschten Reihenfolge anhängen.
+* **Test in `crates/core/tests/export.rs`**: Die erzeugte `.xlsx` ist ein ZIP;
+  der Test liest `xl/worksheets/sheetN.xml` und sucht die Formel als Text.
+  Das fängt verrutschte Adressen, aber keine falsche Rechnung.
+* **Danach einmal in Excel oder LibreOffice öffnen.** Ein Beispiel mit Halb­
+  punkten ausfüllen und prüfen, dass Summe und Note stimmen und der Ausdruck
+  auf eine Seite passt. Das kann kein Test ersetzen.
 
 ---
 
 ## Ein Browserpaket einbinden
 
-Der Grund, warum es dieses Kit gibt. Beispiel: Syntaxhervorhebung mit
-highlight.js in der Markdown-Vorschau.
+Beispiel: ein Diagramm der Notenverteilung mit Chart.js.
 
 ### 1. Installieren — exakt, nicht von einem CDN
 
 ```bash
-npm install --save-exact highlight.js
+npm install --save-exact chart.js
 ```
 
 `<script src="https://cdn…">` in `index.html` lädt nicht: Die CSP in
@@ -26,17 +57,18 @@ Paket — so gibt es genau eine Stelle, an der Einstellungen und Eigenheiten
 stehen.
 
 ```ts
-// ui/src/lib/highlight.ts
-// Nachgeladen wie Mermaid: nur wer Code in einer Notiz hat, bezahlt dafür.
-type Hljs = (typeof import("highlight.js"))["default"];
-let loading: Promise<Hljs> | undefined;
+// ui/src/lib/chart.ts
+// Nachgeladen wie Mermaid: nur wer ein Diagramm sieht, bezahlt dafür.
+type ChartModule = typeof import("chart.js/auto");
+let loading: Promise<ChartModule> | undefined;
 
-export async function highlightCode(root: HTMLElement): Promise<void> {
-  const blocks = root.querySelectorAll<HTMLElement>("pre > code:not(.language-mermaid)");
-  if (blocks.length === 0) return;
-  loading ??= import("highlight.js").then((m) => m.default);
-  const hljs = await loading;
-  for (const block of blocks) hljs.highlightElement(block);
+export async function drawDistribution(canvas: HTMLCanvasElement, counts: number[]) {
+  loading ??= import("chart.js/auto");
+  const { default: Chart } = await loading;
+  return new Chart(canvas, {
+    type: "bar",
+    data: { labels: counts.map((_, i) => String(i + 1)), datasets: [{ data: counts }] },
+  });
 }
 ```
 
@@ -47,16 +79,19 @@ Größen.
 ### 3. Aufrufen, wo gezeichnet wird
 
 ```tsx
-// ui/src/components/MarkdownView.tsx, im useEffect nach renderMarkdownInto
-void highlightCode(element);
+// in einer Komponente, im useEffect, sobald das <canvas> da ist
+void drawDistribution(canvasRef.current, counts);
 ```
+
+Die Zahlen für das Diagramm kommen aus `core` — die Oberfläche zählt keine
+Noten nach (siehe CLAUDE.md, „Prüfung gehört in die Fachlogik").
 
 ### 4. Farben des Pakets
 
-Pakete bringen oft eigenes CSS mit Farben mit. Das CSS importieren ist
-erlaubt (`import "highlight.js/styles/github.css"` in `main.tsx`) — der
-Farbwächter prüft nur `ui/src`, nicht `node_modules`. Wer es an hell/dunkel
-anpassen will, überschreibt die Farben in `theme.css` mit Variablen.
+Pakete bringen oft eigenes CSS oder eigene Farben mit. Hexfarben im eigenen
+Quelltext (`ui/src`) verbietet der Farbwächter; Farben holt man aus den
+Variablen: `getComputedStyle(document.documentElement).getPropertyValue("--accent")`.
+CSS aus `node_modules` zu importieren ist erlaubt.
 
 ### 5. Wenn das Paket etwas Ungewöhnliches braucht
 
@@ -74,19 +109,21 @@ Die Konsole des Webviews: in `just dev` Rechtsklick → **Element untersuchen**.
 
 ## Einen IPC-Befehl hinzufügen
 
-Beispiel: Notizen nach einem Wort durchsuchen.
+Beispiel: Schüler einer Klasse nach einem Namen durchsuchen.
 
 ### 1. Die Logik nach `core` — mit Test
 
 ```rust
-// crates/core/src/note.rs
-pub fn search(conn: &Connection, query: &str) -> Result<Vec<Note>> {
+// crates/core/src/student.rs
+pub fn search(conn: &Connection, class_id: Uuid, query: &str) -> Result<Vec<Student>> {
+    class::get(conn, class_id)?;
     let pattern = format!("%{}%", query.trim());
     let mut stmt = conn.prepare(
-        "SELECT id, title, body, created_at, updated_at FROM notes \
-         WHERE title LIKE ?1 OR body LIKE ?1 ORDER BY updated_at DESC",
+        "SELECT id, class_id, last_name, first_name FROM students \
+         WHERE class_id = ?1 AND (last_name LIKE ?2 OR first_name LIKE ?2) \
+         ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE",
     )?;
-    let rows = stmt.query_map([pattern], from_row)?;
+    let rows = stmt.query_map(rusqlite::params![class_id.to_string(), pattern], from_row)?;
     rows.collect::<std::result::Result<Vec<_>, _>>()?.into_iter().collect()
 }
 ```
@@ -99,8 +136,12 @@ Kommandozeile.
 ```rust
 // crates/desktop/src/commands.rs
 #[tauri::command]
-pub async fn note_search(state: State<'_, AppState>, query: String) -> ApiResult<Vec<Note>> {
-    state.with(|app| note::search(app.conn(), &query))
+pub async fn student_search(
+    state: State<'_, AppState>,
+    id: Uuid,
+    text: String,
+) -> ApiResult<Vec<Student>> {
+    state.with(|app| student::search(app.conn(), id, &text))
 }
 ```
 
@@ -110,7 +151,7 @@ pub async fn note_search(state: State<'_, AppState>, query: String) -> ApiResult
 // crates/desktop/src/lib.rs
 .invoke_handler(tauri::generate_handler![
     …
-    commands::note_search,
+    commands::student_search,
 ])
 ```
 
@@ -118,11 +159,15 @@ pub async fn note_search(state: State<'_, AppState>, query: String) -> ApiResult
 
 ```ts
 // ui/src/api.ts
-notes: {
+students: {
   …
-  search: (query: string) => call<Note[]>("note_search", { query }),
+  search: (classId: string, text: string) =>
+    call<Student[]>("student_search", { id: classId, text }),
 },
 ```
+
+Der Aufruf `call<…>("name"` muss in **einer Zeile** stehen, sonst findet ihn
+`jeder_befehl_steht_auf_beiden_seiten` nicht.
 
 ### 5. Prüfen
 
@@ -135,7 +180,9 @@ Einen Aufruf in `tests/ipc_contract.rs` ergänzen, der das JSON so schickt wie
 das Webview:
 
 ```rust
-let found = ctx.invoke("note_search", json!({ "query": "Milch" })).unwrap();
+let found = ctx
+    .invoke("student_search", json!({ "id": class_id, "text": "Muster" }))
+    .unwrap();
 ```
 
 ---
@@ -145,11 +192,11 @@ let found = ctx.invoke("note_search", json!({ "query": "Milch" })).unwrap();
 Wenn es sich nicht vermeiden lässt:
 
 ```rust
-pub async fn note_move(state: State<'_, AppState>, id: Uuid, target_folder: Uuid) -> …
+pub async fn exam_copy(state: State<'_, AppState>, id: Uuid, target_class: Uuid) -> …
 ```
 
 ```ts
-call<Note>("note_move", { id, targetFolder })   // camelCase!
+call<Exam>("exam_copy", { id, targetClass })   // camelCase!
 ```
 
 Oder in Rust die Übersetzung abschalten — dann gilt snake_case auch im JSON:
@@ -165,7 +212,8 @@ Oder in Rust die Übersetzung abschalten — dann gilt snake_case auch im JSON:
 ```rust
 #[derive(Debug, Clone, Serialize, ts_rs::TS)]
 pub struct Stats {
-    pub notes: i64,
+    #[ts(type = "number")]                  // i64 würde in TypeScript bigint
+    pub exams: i64,
     #[ts(type = "string")]                  // OffsetDateTime → RFC-3339-Text
     #[serde(with = "crate::timestamp::serde_rfc3339")]
     pub last_change: OffsetDateTime,
@@ -185,7 +233,8 @@ Zähler, die nie über 2⁵³ gehen: `#[ts(type = "number")]`.
 
 ## Ein Tauri-Plugin benutzen
 
-Beispiel: ein Dialog zum Speichern einer Datei (`tauri-plugin-dialog`).
+So ist der Speichern-Dialog für den Excel-Export eingebaut
+(`tauri-plugin-dialog`). Ein weiteres Plugin geht genauso.
 
 ```bash
 npm install --save-exact @tauri-apps/plugin-dialog
@@ -193,13 +242,13 @@ npm install --save-exact @tauri-apps/plugin-dialog
 
 ```toml
 # Cargo.toml, [workspace.dependencies] — dieselbe Nebenversion wie das npm-Paket
-tauri-plugin-dialog = "2.x.y"
+tauri-plugin-dialog = "2.8.4"
 # crates/desktop/Cargo.toml
 tauri-plugin-dialog.workspace = true
 ```
 
 ```rust
-// crates/desktop/src/lib.rs
+// crates/desktop/src/lib.rs, in configure()
 .plugin(tauri_plugin_dialog::init())
 ```
 
@@ -212,12 +261,16 @@ tauri-plugin-dialog.workspace = true
 // ui/src/api.ts — und NUR dort
 import { save } from "@tauri-apps/plugin-dialog";
 …
-chooseExportPath: () => save({ filters: [{ name: "Markdown", extensions: ["md"] }] }),
+pickExportPath: (fileName: string) =>
+  save({ defaultPath: fileName, filters: [{ name: "Excel-Arbeitsmappe", extensions: ["xlsx"] }] }),
 ```
 
-Das **Schreiben** der Datei gehört dann in einen eigenen Befehl mit der Logik
-in `core` — nicht in `tauri-plugin-fs` aus dem Webview. Sonst kann die
-Kommandozeile nicht exportieren.
+Das **Schreiben** der Datei steht in einem eigenen Befehl (`exam_export`) mit
+der Logik in `core` — nicht in `tauri-plugin-fs` aus dem Webview. Sonst kann die
+Kommandozeile nicht exportieren (`exam export --out`).
+
+Die Oberfläche ruft erst den Dialog, dann den Befehl. Im Test ersetzt
+`mockIPC` beides: der Dialog heißt dort `plugin:dialog|save`.
 
 Fehlt Schritt „capabilities", kompiliert alles, und der Aufruf scheitert zur
 Laufzeit mit „dialog.save not allowed". Die möglichen Namen stehen nach dem
@@ -251,12 +304,16 @@ Argument; im Frontend `new Channel<T>()` aus `@tauri-apps/api/core` — in
 
 ## Eine neue Ressource anlegen
 
-Beispiel: `task` mit Titel und Erledigt-Kennzeichen.
+Beispiel: `task` mit Titel und Erledigt-Kennzeichen. Vorlage für eine
+einfache Ressource ist `class.rs`; für eine mit Unterstruktur, die als Ganzes
+geschrieben wird, `exam.rs`.
 
-1. **Migration** `crates/core/migrations/0002_tasks.sql`, `STRICT`, eintragen
-   in `crates/core/src/db.rs`.
-2. **Modul** `note.rs` → `task.rs` kopieren, `#[derive(TS)]` an `Task` und
-   `TaskInput`, `pub mod task;` in `lib.rs`.
+1. **Migration** `crates/core/migrations/0004_tasks.sql` (die nächste freie
+   Nummer), `STRICT`, eintragen in `crates/core/src/db.rs`. Veröffentlichte
+   Migrationen werden nie geändert.
+2. **Modul** `class.rs` → `task.rs` kopieren, `#[derive(TS)]` an `Task` und
+   `TaskInput`, `pub mod task;` in `lib.rs`. Soll die Kurzkennung auflösbar sein:
+   Eintrag in `ids::Table`.
 3. **Tests** `crates/core/tests/task.rs` — zuerst.
 4. **CLI** `args.rs` + `commands/task.rs`, beide Ausgabefassungen.
 5. **Befehle** `task_list`, `task_create`, `task_toggle` in `commands.rs`,
@@ -316,9 +373,9 @@ gebaut wird.
 ```ts
 // ui/src/App.test.tsx
 mockIPC((cmd, args) => { … })            // ersetzt Rust
-render(<App previewDelayMs={0} />);
+render(<App />);
 await user.click(screen.getByRole("button", { name: "Speichern" }));
-expect(commands("note_create")[0]?.args).toEqual({ input: { … } });
+expect(commands("class_create")[0]?.args).toEqual({ input: { name: "7a", year: 2025 } });
 ```
 
 * Nach **Rolle und Namen** suchen, nicht nach CSS-Klassen.
@@ -332,8 +389,8 @@ expect(commands("note_create")[0]?.args).toEqual({ input: { … } });
 
 ```bash
 just dev-sandbox
-just sandbox note list
-rm -rf .local
+just sandbox class list
+# Wegwerfen: den Ordner .local/ löschen (`just clean` räumt zusätzlich target/ ab)
 ```
 
 In Rust-Tests **nicht** über Umgebungsvariablen, sondern

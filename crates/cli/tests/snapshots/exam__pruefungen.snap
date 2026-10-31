@@ -1,0 +1,6 @@
+---
+source: crates/cli/tests/exam.rs
+expression: text
+---
+ID        PRÜFUNG          KLASSEN  PUNKTE
+[id]  Klassenarbeit 1        1      20

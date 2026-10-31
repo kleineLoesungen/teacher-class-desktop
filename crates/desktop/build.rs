@@ -24,7 +24,7 @@ fn main() {
 /// Offene Tauri-Ausgabe dazu: tauri-apps/tauri#13419. Solange die nicht
 /// geschlossen ist, bleibt diese Funktion nötig.
 ///
-/// Dies ist die einzige Stelle im Kit, die nach dem Zielsystem fragt. Sie
+/// Dies ist die einzige Stelle im Projekt, die nach dem Zielsystem fragt. Sie
 /// steht deshalb in `PLATTFORM_AUSNAHMEN` in `crates/core/tests/layering.rs`:
 /// `/MANIFEST:EMBED` ist ein Schalter des MSVC-Linkers und hat auf den
 /// anderen Systemen keine Entsprechung.

@@ -1,21 +1,21 @@
-// Was rechts steht, solange keine Klasse ausgewählt ist.
+// Was rechts steht, solange nichts ausgewählt ist.
 
 type Props = {
-  hasClasses: boolean;
+  title: string;
+  text: string;
+  /** Beschriftung des Knopfes, z. B. „Neue Klasse“. */
+  action: string;
   onCreate: () => void;
 };
 
-export function EmptyState({ hasClasses, onCreate }: Props) {
+export function EmptyState({ title, text, action, onCreate }: Props) {
   return (
     <section className="empty">
-      <h1>{hasClasses ? "Keine Klasse ausgewählt" : "Willkommen"}</h1>
-      <p className="muted">
-        Lege Klassen mit ihren Schülern an. Darauf bauen später Prüfungen und der Excel-Export auf.
-        Dieselben Daten sieht die Kommandozeile: <code>just cli class list</code>
-      </p>
+      <h1>{title}</h1>
+      <p className="muted">{text}</p>
       <div className="actions">
         <button type="button" className="primary" onClick={onCreate}>
-          Neue Klasse
+          {action}
         </button>
       </div>
     </section>

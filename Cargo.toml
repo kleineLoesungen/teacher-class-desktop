@@ -14,13 +14,13 @@ members = ["crates/core", "crates/cli", "crates/desktop"]
 
 [workspace.package]
 version = "0.1.1"
-# Dieses Kit wird nicht auf crates.io veröffentlicht. Der Eintrag ist nicht nur
+# Diese App wird nicht auf crates.io veröffentlicht. Der Eintrag ist nicht nur
 # Vorsicht: ohne ihn hält `cargo deny` die Pfadabhängigkeiten im Arbeitsbereich
 # für Abhängigkeiten ohne Fassungsangabe und bricht ab.
 publish = false
 edition = "2024"
 license = "MIT"
-repository = "https://github.com/kleineLoesungen/teacher-class"
+repository = "https://github.com/kleineLoesungen/teacher-class-desktop"
 
 # Alle Versionen stehen hier, nur hier. Begründungen in CLAUDE.md.
 #
@@ -51,8 +51,14 @@ clap_mangen = "0.3.3"
 tauri = { version = "2.12.5", features = [] }
 tauri-build = { version = "2.7.4", features = [] }
 tauri-plugin-opener = "2.7.2"
+tauri-plugin-dialog = "2.8.4"
+
+# Excel-Export: schreibt .xlsx mit Formeln.
+rust_xlsxwriter = "0.102.0"
 
 # Nur für Tests.
+# Liest die erzeugte .xlsx (ein ZIP), um die Formeln als Text zu prüfen.
+zip = { version = "9.2.0", default-features = false, features = ["deflate"] }
 assert_cmd = "2.2.2"
 insta = { version = "1.48.0", features = ["json", "filters"] }
 predicates = "3"

@@ -47,6 +47,9 @@ pub enum Error {
     #[error("kein Heimatverzeichnis gefunden — ist HOME gesetzt?")]
     NoHomeDir,
 
+    #[error("Excel-Export fehlgeschlagen: {0}")]
+    Export(String),
+
     #[error("Datensatz beschädigt: {0}")]
     Corrupt(String),
 
@@ -163,6 +166,11 @@ impl Validator {
         if !ok {
             self.add(field, message);
         }
+    }
+
+    /// Wie viele Fehler bisher gesammelt wurden.
+    pub fn count(&self) -> usize {
+        self.fields.len()
     }
 
     pub fn finish(self) -> Result<()> {

@@ -18,6 +18,7 @@ pub const SHORT_ID_LEN: usize = 8;
 pub enum Table {
     Classes,
     Students,
+    Exams,
 }
 
 impl Table {
@@ -25,6 +26,7 @@ impl Table {
         match self {
             Table::Classes => "classes",
             Table::Students => "students",
+            Table::Exams => "exams",
         }
     }
 }

@@ -11,6 +11,7 @@
 //! * Zeitstempel in UTC als RFC-3339-Text (macht `teacher_class_core` schon).
 
 use teacher_class_core::class::Class;
+use teacher_class_core::exam::Exam;
 use teacher_class_core::student::Student;
 use teacher_class_core::{Config, Paths, ids};
 use uuid::Uuid;
@@ -67,6 +68,64 @@ impl Out {
         println!("{:<8}  NAME", "ID");
         for student in students {
             println!("{:<8}  {}", Self::short_id(student.id), student.label());
+        }
+    }
+
+    pub fn exams(&self, exams: &[Exam]) {
+        if self.json {
+            self.print(exams);
+            return;
+        }
+        if exams.is_empty() {
+            println!(
+                "Keine Prüfungen. Anlegen mit:  teacher-class exam add \"Name\" --class <KLASSE> \
+                 --group \"Aufgabe 1: a=4\" --grade 6=0 --grade 1=3"
+            );
+            return;
+        }
+        let width = exams
+            .iter()
+            .map(|e| e.name.chars().count())
+            .max()
+            .unwrap_or(7)
+            .clamp(7, 40);
+        println!("{:<8}  {:<width$}  KLASSEN  PUNKTE", "ID", "PRÜFUNG");
+        for exam in exams {
+            println!(
+                "{:<8}  {:<width$}  {:>7}  {:>6}",
+                Self::short_id(exam.id),
+                exam.name,
+                exam.class_ids.len(),
+                exam.max_points
+            );
+        }
+    }
+
+    /// Schema und Matrix einer Prüfung.
+    pub fn exam_detail(&self, exam: &Exam, labels: &[String]) {
+        if self.json {
+            self.print(exam);
+            return;
+        }
+        println!("{}  ({})", exam.name, Self::short_id(exam.id));
+        println!("Klassen: {}", labels.join(", "));
+        println!();
+        println!("Prüfungsschema");
+        for group in &exam.groups {
+            println!("  {}  (max. {})", group.name, group.max_points);
+            for item in &group.items {
+                println!("    {:<20} {}", item.name, item.max_points);
+            }
+        }
+        println!("  Gesamt: {}", exam.max_points);
+        println!();
+        println!("Bewertungsmatrix");
+        println!("  {:<12} {:>6}  {:>6}", "NOTE", "AB", "BIS");
+        for grade in &exam.grades {
+            println!(
+                "  {:<12} {:>6}  {:>6}",
+                grade.name, grade.from_points, grade.to_points
+            );
         }
     }
 

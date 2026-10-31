@@ -1,0 +1,20 @@
+---
+source: crates/cli/tests/exam.rs
+expression: text
+---
+Klassenarbeit 1  ([id])
+Klassen: 7a (2025)
+
+Prüfungsschema
+  Aufgabe 1  (max. 6.5)
+    a                    4
+    b                    2.5
+  Aufgabe 2  (max. 13.5)
+    a                    13.5
+  Gesamt: 20
+
+Bewertungsmatrix
+  NOTE             AB     BIS
+  6                 0     9.5
+  3                10    16.5
+  1                17      20
