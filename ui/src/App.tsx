@@ -298,6 +298,12 @@ export function App() {
     }
   }
 
+  /** Neue Prüfung verwerfen oder die Änderungen auf den gespeicherten Stand zurücksetzen. */
+  function cancelExam() {
+    if (examSelection.kind === "new") openExam({ kind: "none" }, emptyExamDraft());
+    else openExam(examSelection, examSaved);
+  }
+
   async function leaveCurrentExam(): Promise<boolean> {
     if (examSelection.kind === "none" || !examDirty) return true;
     return (await saveExam()) !== null;
@@ -567,6 +573,7 @@ export function App() {
               fieldMessages={dialog ? () => [] : (field) => fieldError?.fieldMessages(field) ?? []}
               onChange={setExamDraft}
               onSave={() => void saveExam()}
+              onCancel={cancelExam}
               onDelete={() => setDialog("delete-exam")}
               onExport={() => void exportExam()}
               onGrade={() => void openGrading()}

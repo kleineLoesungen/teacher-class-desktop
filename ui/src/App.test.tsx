@@ -511,6 +511,22 @@ describe("Oberfläche", () => {
       expect(input.grades[5]).toEqual({ name: "6", from_points: 0 });
     });
 
+    it("bricht eine neue Prüfung ab, ohne zu speichern", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      render(<App />);
+
+      await openExams(user);
+      await user.click(
+        (await screen.findAllByRole("button", { name: "Neue Prüfung" }))[0] as HTMLElement,
+      );
+      await user.type(screen.getByRole("textbox", { name: "Name der Prüfung" }), "Entwurf");
+      await user.click(screen.getByRole("button", { name: "Abbrechen" }));
+
+      expect(screen.queryByRole("textbox", { name: "Name der Prüfung" })).toBeNull();
+      expect(commands("exam_create")).toHaveLength(0);
+    });
+
     it("zeigt Summen und „bis“ schon vor dem Speichern, von Rust gerechnet", async () => {
       const user = userEvent.setup();
       classes = [cls("a", { name: "7a", year: 2025 })];

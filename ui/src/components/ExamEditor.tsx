@@ -22,6 +22,8 @@ type Props = {
   fieldMessages: (field: string) => string[];
   onChange: (draft: ExamDraft) => void;
   onSave: () => void;
+  /** Neue Prüfung abbrechen oder Änderungen an einer vorhandenen verwerfen. */
+  onCancel: () => void;
   onDelete: () => void;
   onExport: () => void;
   onGrade: () => void;
@@ -82,6 +84,11 @@ export function ExamEditor(props: Props) {
               Als Excel exportieren
             </button>
           </>
+        )}
+        {(isNew || dirty) && (
+          <button type="button" className="ghost" disabled={saving} onClick={props.onCancel}>
+            {isNew ? "Abbrechen" : "Änderungen verwerfen"}
+          </button>
         )}
         <button
           type="button"
