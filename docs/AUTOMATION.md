@@ -179,6 +179,35 @@ auf.
 
 ---
 
+## Was Claude darf
+
+Die Action erlaubt von Haus aus Lesen, Bearbeiten und Committen — aber
+**keine Shell-Befehle**. Ohne Freigabe könnte Claude also Code schreiben,
+ihn aber weder übersetzen noch prüfen.
+
+`claude-issue.yml` gibt deshalb die Werkzeugkette dieses Kits frei:
+
+```
+Bash(just:*)  Bash(cargo:*)  Bash(npm:*)  Bash(npx:*)  Bash(node:*)
+```
+
+Das ist die Voraussetzung dafür, dass `CLAUDE.md` von Claude verlangen kann,
+`just check` vor dem Pull Request laufen zu lassen. Ohne sie entstünde Code,
+den niemand übersetzt hat — und der Fehler fiele dir erst im PR auf.
+
+**Die drei Prüf-Agents bekommen das nicht.** `claude-review.yml` erlaubt
+Lesen und genau einen PR-Kommentar. Eine Durchsicht, die bauen und ändern
+darf, ist keine Durchsicht.
+
+Wer die Liste enger ziehen will, trifft auf einen Zielkonflikt: `npm run`
+allein genügt nicht, weil eine neue Abhängigkeit einzubinden ein
+dokumentierter Handgriff ist (`docs/RECIPES.md`). Vertretbar ist die Breite,
+weil nur der Repo-Inhaber auslösen kann, der Runner danach verschwindet und
+Claude mit Bearbeiten und Schreibrecht ohnehin beliebigen Code ablegen
+könnte.
+
+---
+
 ## Rückfragen
 
 Jeder Kommentar mit `@claude` startet einen neuen Lauf, der das Issue und

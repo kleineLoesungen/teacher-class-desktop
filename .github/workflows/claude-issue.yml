@@ -178,5 +178,25 @@ jobs:
           # dann für jeden lesbar, auch Dateiinhalte, die Claude liest.
           # Deshalb nur anlassbezogen einschalten, nicht dauerhaft.
           show_full_output: ${{ vars.CLAUDE_DEBUG == 'true' }}
+          # Ohne das kann Claude nichts bauen und nichts prüfen: Die Action
+          # erlaubt von Haus aus Lesen, Bearbeiten und Committen, aber KEINE
+          # Shell-Befehle. CLAUDE.md verlangt aber ausdrücklich, `just check`
+          # laufen zu lassen, bevor ein PR aufgeht — ohne diese Zeile ist das
+          # unmöglich, und es entstünde Code, den niemand übersetzt hat.
+          #
+          # `--allowedTools` ERGÄNZT die Vorgaben, es ersetzt sie nicht.
+          #
+          # Die Liste ist die Werkzeugkette dieses Kits, nicht mehr. Bewusst
+          # weit gefasst sind `npm:*` und `node:*`: Eine neue Abhängigkeit
+          # einzubinden ist ein dokumentierter Handgriff (docs/RECIPES.md),
+          # und `npm run` allein reichte dafür nicht. Das ist vertretbar,
+          # weil nur der Repo-Inhaber den Lauf auslösen kann, der Runner
+          # danach verschwindet — und weil Claude mit Bearbeiten und
+          # Schreibrecht ohnehin beliebigen Code ablegen könnte.
+          #
+          # Die drei Prüf-Agents in claude-review.yml bekommen das NICHT.
+          # Eine Durchsicht, die bauen darf, ist keine Durchsicht.
+          claude_args: >-
+            --allowedTools "Edit,Write,Bash(just:*),Bash(cargo:*),Bash(npm:*),Bash(npx:*),Bash(node:*)"
           # Kein --model: Für das Umsetzen darf das stärkere Modell ran.
           # Die Festlegung auf Sonnet gilt nur den Prüf-Agents.
