@@ -27,6 +27,26 @@ das sie erbt. `package.json` hat eine eigene Nummer, die niemand liest.
 
 ---
 
+## Über GitHub ausliefern — zwei Wege
+
+```bash
+git tag v0.2.0 && git push origin v0.2.0     # am Rechner
+```
+
+> **Actions → release → Run workflow**        ← vom Telefon aus
+
+Der zweite Weg nimmt **keine Eingaben**: Der Tag entsteht aus der
+Fassungsnummer in `Cargo.toml` und wird vom Workflow selbst angelegt. Die
+GitHub-App kann zwar Workflows starten, aber keinen Release anlegen — damit
+ist auch der letzte Schritt vom Telefon aus bedienbar.
+
+Beide Wege prüfen dasselbe: Beim Tag-Push muss der Tag zur Fassung in
+`Cargo.toml` passen, beim Start von Hand darf es den Tag noch nicht geben.
+Ergebnis ist in beiden Fällen ein Release-**Entwurf**. Einzelheiten in
+[AUTOMATION.md](AUTOMATION.md).
+
+---
+
 ## macOS
 
 ### Was im Bündel steckt

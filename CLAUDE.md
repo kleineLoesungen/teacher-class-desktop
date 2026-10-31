@@ -564,9 +564,10 @@ Schicht, die auf die nächste Runde wartet. Fertig heißt:
   sagt, was wohin gehört.
 * `just check` ist grün. Vollständig, nicht „bis auf".
 * Die Fassungsnummer unter `[workspace.package]` in der obersten `Cargo.toml`
-  ist angehoben, und die PR-Beschreibung endet mit der Zeile, die daraus eine
-  Auslieferung macht: `git tag vX.Y.Z && git push origin vX.Y.Z`. (Kollidieren
-  zwei PRs in dieser Zeile, löst der später gemergte sie auf — eine Zeile.)
+  ist angehoben, und die PR-Beschreibung sagt, wie daraus eine Auslieferung
+  wird: nach dem Merge entweder `git tag vX.Y.Z && git push origin vX.Y.Z`
+  oder, vom Telefon aus, *Actions → release → Run workflow*. (Kollidieren zwei
+  PRs in dieser Zeile, löst der später gemergte sie auf — eine Zeile.)
 
 **Was „fertig" nicht heißt:** Du erzeugst das Release nicht selbst. Der Tag
 ist der Augenblick, in dem ein Mensch entscheidet zu veröffentlichen, und er

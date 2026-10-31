@@ -10,7 +10,7 @@
 // Hierher kommt nur, was ohne Shell-Eigenheiten nicht auskommt.
 
 import { spawnSync } from "node:child_process";
-import { readdirSync, rmSync } from "node:fs";
+import { readdirSync, readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
@@ -75,6 +75,21 @@ const aufgaben = {
       }
     }
     console.log("Symbole erzeugt. icon.ico braucht Windows, icon.icns macOS.");
+  },
+
+  // Die Fassungsnummer, wie Tauri und die Workflows sie sehen: aus
+  // [workspace.package] der obersten Cargo.toml. `release.yml` baut daraus
+  // den Tag — deshalb braucht der Workflow keine Eingabe, in die sich eine
+  // Zahl vertippen ließe.
+  version: () => {
+    const toml = readFileSync(path.join(ROOT, "Cargo.toml"), "utf8");
+    const abschnitt = toml.split(/^\[/m).find((teil) => teil.startsWith("workspace.package]"));
+    const treffer = abschnitt?.match(/^version\s*=\s*"([^"]+)"/m);
+    if (!treffer) {
+      console.error("Keine Fassung unter [workspace.package] in Cargo.toml gefunden.");
+      process.exit(1);
+    }
+    console.log(treffer[1]);
   },
 
   clean: () => {

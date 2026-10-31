@@ -1,6 +1,13 @@
-# Baut die Auslieferungsdateien, sobald ein Tag v* geschoben wird.
+# Baut die Auslieferungsdateien. Zwei Wege führen hierher:
 #
-#   git tag v0.1.0 && git push origin v0.1.0
+#   git tag v0.1.0 && git push origin v0.1.0     # am Rechner
+#   Actions → release → Run workflow              # vom Telefon aus
+#
+# Der zweite Weg ist der Grund, warum dieser Workflow KEINE Eingaben hat: Die
+# GitHub-App kann Workflows starten, aber keinen Release anlegen — und eine
+# Pflichteingabe ohne Vorbelegung lässt sie den Knopf grau. Die Fassung steht
+# in `Cargo.toml`, nicht in einem Formular, in das sich eine Zahl vertippen
+# ließe. Der Tag entsteht daraus.
 #
 # Gebaut wird immer AUF dem Zielsystem — WiX (.msi) läuft nur auf Windows,
 # ein .dmg nur auf macOS. Deshalb drei Runner und keine Kreuzübersetzung.
@@ -18,12 +25,58 @@ name: release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  # Macht aus beiden Wegen denselben Tag — und prüft ihn.
+  vorbereiten:
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - id: tag
+        run: echo "tag=v$(node scripts/tasks.mjs version)" >> "$GITHUB_OUTPUT"
+
+      # Beim Tag-Push: Trägt der Tag dieselbe Zahl wie Cargo.toml? Genau hier
+      # ging es schon einmal auseinander — eine aus der Vorlage geerbte
+      # Fassung, ein von Hand getippter Tag, und die Dateinamen tragen die
+      # falsche Nummer. Das fällt sonst erst im fertigen Release auf.
+      - name: Tag und Fassung vergleichen
+        if: github.event_name == 'push'
+        run: |
+          if [ "${{ github.ref_name }}" != "${{ steps.tag.outputs.tag }}" ]; then
+            echo "::error title=Tag passt nicht zur Fassung::Der Tag ${{ github.ref_name }} steht gegen version = \"$(node scripts/tasks.mjs version)\" in Cargo.toml. Eines von beiden ist falsch."
+            exit 1
+          fi
+
+      # Vom Telefon aus gibt es keinen Tag — er entsteht hier, auf dem Zweig,
+      # der im Formular steht (in der Regel `main`).
+      #
+      # Dass dieser Push den Workflow nicht ein zweites Mal startet, ist kein
+      # Zufall: Was der GITHUB_TOKEN auslöst, löst keine weiteren Läufe aus.
+      # Hier ist das genau richtig — es gibt keine Schleife.
+      - name: Tag anlegen
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          tag="${{ steps.tag.outputs.tag }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "::error title=Tag ist vergeben::$tag gibt es schon. Erst die Fassung in Cargo.toml anheben."
+            exit 1
+          fi
+          git tag "$tag"
+          git push origin "$tag"
+          echo "::notice title=Tag angelegt::$tag"
+
   bundle:
+    needs: vorbereiten
     strategy:
       fail-fast: false
       matrix:
@@ -38,7 +91,12 @@ jobs:
             recipe: bundle
     runs-on: ${{ matrix.os }}
     steps:
+      # Ausdrücklich der Tag, nicht der Zweig: Beim Start von Hand zeigt
+      # `github.ref` auf `main`, das sich bis hierher weiterbewegt haben
+      # könnte. Gebaut wird, was im Release landet.
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.vorbereiten.outputs.tag }}
 
       - name: Systembibliotheken (Linux)
         if: runner.os == 'Linux'
@@ -77,7 +135,7 @@ jobs:
       # leer und werden stillschweigend übergangen.
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ needs.vorbereiten.outputs.tag }}
           draft: true
           files: |
             target/universal-apple-darwin/release/bundle/dmg/*.dmg

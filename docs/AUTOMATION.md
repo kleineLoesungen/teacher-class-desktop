@@ -176,11 +176,42 @@ was auch lokal grün sein muss.
 | `durchsicht.yml` *(`claude-review.yml`)* | jeder PR | die drei Agents |
 | `claude-issue.yml` | Issue und Issue-Kommentar vom Inhaber mit `@claude` | Umsetzung, PR |
 | `token-pruefen.yml` | von Hand | Sagt, ob der Token im Secret trägt |
-| `release.yml` | Tag `v*` | Bündel für alle drei Systeme als Release-**Entwurf** |
+| `release.yml` | Tag `v*` **oder** von Hand | Bündel für alle drei Systeme als Release-**Entwurf** |
 
 `check.yml` ist das Sicherheitsnetz für Windows und Linux: Entwickelt wird auf
 macOS, und ein Unterschied, der nur dort nicht auffällt, fiele sonst niemandem
 auf.
+
+---
+
+## Ausliefern vom Telefon
+
+**Die GitHub-App kann keinen Release anlegen.** Workflows starten kann sie.
+Deshalb hat `release.yml` einen zweiten Auslöser:
+
+> **Actions → release → Run workflow**
+
+Mehr ist nicht zu tun — der Workflow **nimmt keine Eingaben**. Die
+Fassungsnummer steht unter `[workspace.package]` in der obersten `Cargo.toml`,
+der Tag entsteht daraus (`0.2.0` → `v0.2.0`), und der Workflow legt ihn selbst
+an. Nichts zu tippen heißt: nichts zu vertippen. (Das ist nicht nur bequem —
+eine Pflichteingabe ohne Vorbelegung lässt die App den Knopf obendrein grau.)
+
+Gibt es den Tag schon, bricht der Lauf ab und sagt, was fehlt: die Fassung
+anheben. Ein Release zweimal aus demselben Stand zu bauen, ist fast nie das,
+was jemand wollte.
+
+Am Rechner bleibt der gewohnte Weg:
+
+```bash
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+Dabei prüft `release.yml`, ob der Tag zur Fassung in `Cargo.toml` passt, und
+bricht sonst ab. Genau dort gehen die beiden Zahlen sonst auseinander.
+
+Beide Wege enden gleich: ein **Entwurf** unter *Releases*, acht Dateien.
+Veröffentlichen bleibt ein Fingertipp von Hand — und den kann die App.
 
 ---
 
