@@ -62,17 +62,17 @@ verstehen.
 ```
 ui/src/api.ts                         crates/desktop/src/commands.rs
 ─────────────                         ──────────────────────────────
-api.notes.update(id, draft)
-  └▶ invoke("note_update",     ──▶    #[tauri::command]
-            { id, input })            async fn note_update(state, id: Uuid, input: NoteInput)
-                                        └▶ state.with(|app| note::update(app.conn(), id, input))
-  ◀── Note                     ◀──    Ok(Note)            → JSON
+api.classes.update(id, draft)
+  └▶ invoke("class_update",    ──▶    #[tauri::command]
+            { id, input })            async fn class_update(state, id: Uuid, input: ClassInput)
+                                        └▶ state.with(|app| class::update(app.conn(), id, input))
+  ◀── Class                    ◀──    Ok(Class)           → JSON
   ◀── throw ApiError           ◀──    Err(ApiError)       → abgelehntes Promise
 ```
 
 Vier Riegel halten diese Grenze zusammen:
 
-1. **Typen aus Rust.** `#[derive(TS)]` an `Note`, `NoteInput`, `Config`,
+1. **Typen aus Rust.** `#[derive(TS)]` an `Class`, `ClassInput`, `Student`, `Config`,
    `ApiError` … erzeugt `ui/src/bindings.ts`. `tests/bindings.rs` schlägt
    fehl, wenn die Datei veraltet ist. Danach zeigt `tsc`, wo die Oberfläche
    nicht mehr passt.
@@ -87,9 +87,9 @@ Vier Riegel halten diese Grenze zusammen:
 
 ### Warum `api.ts` Argumente einwortig hält
 
-Tauri übersetzt Rust-Argumentnamen in camelCase: `note_id` erwartet im JSON
-`noteId`. Das ist dokumentiert, wird aber zuverlässig vergessen — von Menschen
-und von Sprachmodellen. Einwortige Namen (`id`, `input`, `order`) machen die
+Tauri übersetzt Rust-Argumentnamen in camelCase: `class_id` erwartet im JSON
+`classId`. Das ist dokumentiert, wird aber zuverlässig vergessen — von Menschen
+und von Sprachmodellen. Einwortige Namen (`id`, `input`, `text`) machen die
 Frage gegenstandslos.
 
 ### Warum eine eigene Fehlerhülle
@@ -122,7 +122,7 @@ Komponente — dann weiß niemand mehr, wann was gespeichert wird.
 Deshalb:
 
 ```
-components/NoteEditor.tsx   Props rein: draft, fieldMessage, dark …
+components/ClassEditor.tsx  Props rein: draft, students, fieldMessage …
                             Rückrufe raus: onChange, onSave, onDelete …
 App.tsx                     hält den Zustand, ruft api, verteilt Fehler
 ```
@@ -134,7 +134,7 @@ egui-Kit, nur in der Sprache von React.
 ## Markdown und Mermaid
 
 ```
-Notiz.body ──marked──▶ HTML ──DOMPurify──▶ sicheres HTML ──▶ .markdown
+Text ──marked──▶ HTML ──DOMPurify──▶ sicheres HTML ──▶ .markdown
                                                               │
                               <pre><code class="language-mermaid"> gefunden?
                                                               │ ja
@@ -143,9 +143,9 @@ Notiz.body ──marked──▶ HTML ──DOMPurify──▶ sicheres HTML ─
 ```
 
 * **Bereinigt wird immer.** Im Webview hätte ein eingeschleustes Skript
-  Zugriff auf jeden IPC-Befehl — also auf `note_delete`.
+  Zugriff auf jeden IPC-Befehl — also auf `class_delete`.
 * **Mermaid wird nachgeladen.** Vite legt es als eigene Stücke ins Bündel.
-  Eine Notiz ohne Diagramm lädt es nie; die Anwendung startet ohne Wartezeit
+  Ein Text ohne Diagramm lädt es nie; die Anwendung startet ohne Wartezeit
   und ohne Netz.
 * **Veraltete Darstellungen werden verworfen.** Wer tippt, erzeugt alle
   150 ms eine neue; eine langsame alte darf eine schnelle neue nicht
