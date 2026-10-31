@@ -9,9 +9,14 @@ will.
  ───────                     ──────────────                      ───────
  Issue schreiben
  „@claude mach X"   ──────▶  claude-issue.yml
-                             Claude liest CLAUDE.md,
-                             ändert Code, lässt
-                             `just check` laufen,
+                             Claude liest CLAUDE.md
+                             und fragt, was offen
+                             ist                    ──────▶  antworten
+                                                              „@claude (a), (b)"
+                                     ┌────────────────────────────┘
+                                     ▼
+                             Claude baut es FERTIG,
+                             lässt `just check` laufen,
                              öffnet einen PR        ──────▶  PR kommt an
                                                              ▼
                                                       „Approve workflows
@@ -208,20 +213,28 @@ könnte.
 
 ---
 
-## Rückfragen
+## Erst klären, dann fertig bauen
 
 Jeder Kommentar mit `@claude` startet einen neuen Lauf, der das Issue und
 **alle** bisherigen Kommentare liest. Der Verlauf ist das Gespräch; du kannst
 also antworten wie in einem Chat, nur dass jede Antwort einen Lauf auslöst.
 
-`CLAUDE.md` weist Claude an, **selten** zu fragen: selbst entscheiden und die
-Entscheidung benennen, wo es eine vertretbare Voreinstellung gibt — und nur
-dann fragen, wenn die Antwort die Arbeit wirklich ändert. Dann aber mit zwei
-oder drei benannten Möglichkeiten und einer Empfehlung, damit ein Wort als
-Antwort genügt.
+`CLAUDE.md` schreibt Claude dafür zwei Schritte vor:
 
-**Eine Rückfrage kommt ohne Pull Request.** Ein PR, der in Wahrheit eine Frage
-ist, sieht nach Fortschritt aus, wo keiner ist.
+1. **Fragen.** Was offen ist, kommt in **einem** Kommentar — nummeriert, je
+   zwei oder drei benannte Möglichkeiten mit einer Empfehlung, sodass ein
+   Wort als Antwort genügt. Ohne Pull Request: Ein PR, der in Wahrheit eine
+   Frage ist, sieht nach Fortschritt aus, wo keiner ist.
+2. **Fertig bauen.** Was danach kommt, ist auslieferbar — beide Schalen,
+   Tests, Doku, `just check` grün, Fassungsnummer angehoben. Kein Gerüst und
+   kein „Teil 1 von 3".
+
+Gefragt wird nur, was die Arbeit wirklich ändert; alles Übrige entscheidet
+Claude selbst und schreibt die Entscheidung hin.
+
+**Passt es nicht in einen Lauf, ist das Issue zu groß** — dann sagt Claude das
+in Schritt 1 und schlägt einen Schnitt in zwei oder drei Issues vor, statt
+eine Hälfte zu liefern. Den Tag setzt weiterhin ein Mensch, nach dem Merge.
 
 ---
 

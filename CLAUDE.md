@@ -519,35 +519,70 @@ wendet nur die Änderung dieses Commits an.
 `git push` ist nicht freigegeben und wird auch nicht gebraucht; die Action
 committet und schiebt selbst.
 
-#### Rückfragen: selten, dafür gut
+#### Zwei Schritte — und der zweite ist fertig
 
-Jeder Kommentar mit `@claude` startet einen **neuen** Lauf, der das Issue
-und **alle** bisherigen Kommentare liest. Der Kommentarverlauf ist also das
-Gespräch — eine Rückfrage geht nicht verloren.
+**Erst klären, dann bauen.** Nicht unterwegs fragen. Und vor allem nicht die
+Hälfte bauen und den Rest als „nächsten Schritt" in die PR-Beschreibung
+schreiben.
 
-Sie kostet aber eine Runde, und am anderen Ende sitzt jemand am Telefon.
-Deshalb:
+##### Schritt 1 — alles Offene auf einmal fragen
 
-* **Entscheide selbst und sag, was du entschieden hast.** Für alles, wofür
-  es eine vertretbare Voreinstellung gibt. „Ich habe das Feld als `TEXT NOT
-  NULL` angelegt, weil …" ist besser als eine Rückfrage, die den Menschen
-  zwingt, dasselbe zu tippen.
-* **Frag nur, wenn die Antwort etwas anderes aus der Arbeit macht** — ein
-  anderes Datenmodell, ein anderer Ablauf, eine Entscheidung, die sich
-  später teuer rückgängig machen lässt.
-* **Wenn du fragst: nicht offen fragen.** Zwei oder drei benannte
-  Möglichkeiten mit einer Empfehlung, beantwortbar mit einem Wort. „Soll die
-  Klasse mehrere Lehrkräfte haben? (a) eine, (b) mehrere — ich würde (a)
-  nehmen, weil …"
-* **Eine Rückfrage ist kein Pull Request.** Öffne keinen, wenn du nicht
-  umgesetzt hast. Ein PR, der in Wahrheit eine Frage ist, verstopft die
-  Durchsicht und sieht nach Fortschritt aus, wo keiner ist.
-* **Teile Unfertiges mit.** Wenn du nur die Hälfte umsetzen konntest, schreib
-  in die PR-Beschreibung, was fehlt und warum — nicht in eine Rückfrage, die
-  alles blockiert.
-* **Öffne für Unfertiges einen Entwurfs-PR**, statt den Branch unkommentiert
-  liegen zu lassen. Dann ist er sichtbar, prüfbar und wiederauffindbar — und
-  der nächste Lauf weiß, woran er anknüpft.
+Lies das Issue und **alle** Kommentare darunter. Was dann noch offen ist,
+fragst du in **einem einzigen** Kommentar: nummeriert, je zwei oder drei
+benannte Möglichkeiten, eine Empfehlung mit Begründung, mit je einem Wort
+beantwortbar. „Darf ein Eintrag mehrere Schlagwörter tragen? (a) eines,
+(b) mehrere — ich würde (a) nehmen, weil …"
+
+* **Frag nur, was die Arbeit wirklich ändert** — ein anderes Datenmodell, ein
+  anderer Ablauf, eine Entscheidung, die sich später teuer zurücknehmen
+  lässt. Alles Übrige entscheidest du selbst und schreibst es hin: „Ich habe
+  das Feld als `TEXT NOT NULL` angelegt, weil …" ist besser als eine
+  Rückfrage, die den Menschen zwingt, dasselbe zu tippen.
+* **Ist nichts offen, sag das in einem Satz** und mach mit Schritt 2 weiter.
+* **Eine Rückfrage ist kein Pull Request.** Kein Branch, kein Entwurf, kein
+  „ich fange schon mal an". Du hörst auf und wartest.
+* **Eine Runde, nicht drei.** Eine zweite Frage ist nur berechtigt, wenn die
+  Antwort etwas aufgeworfen hat, das vorher niemand sehen konnte.
+
+Jeder Kommentar mit `@claude` startet einen **neuen** Lauf, der das Issue und
+alle Kommentare erneut liest. Die Antwort geht also nicht verloren — der
+Verlauf ist das Gespräch.
+
+##### Schritt 2 — fertig bauen, nicht anfangen
+
+Was dann kommt, ist **auslieferbar**: kein Gerüst, kein „Teil 1 von 3", keine
+Schicht, die auf die nächste Runde wartet. Fertig heißt:
+
+* Die Regeln liegen in `core`, mit Tests in `crates/core/tests/` — für jede
+  neue fachliche Regel, nicht nur für die erste.
+* **Beide Schalen können es.** CLI (beide Ausgabefassungen) *und* Desktop
+  (`commands.rs` → `generate_handler!` → `api.ts` → Oberfläche). Eine
+  Ressource, die nur die Oberfläche kennt, ist nicht fertig.
+* Kein `todo!()`, kein `unimplemented!()`, kein auskommentierter Rest, keine
+  Funktion, die einen festen Wert zurückgibt, bis jemand sie ausbaut.
+* Die Doku ist nachgezogen — die Tabelle in `.claude/agents/dokumentation.md`
+  sagt, was wohin gehört.
+* `just check` ist grün. Vollständig, nicht „bis auf".
+* Die Fassungsnummer unter `[workspace.package]` in der obersten `Cargo.toml`
+  ist angehoben, und die PR-Beschreibung endet mit der Zeile, die daraus eine
+  Auslieferung macht: `git tag vX.Y.Z && git push origin vX.Y.Z`. (Kollidieren
+  zwei PRs in dieser Zeile, löst der später gemergte sie auf — eine Zeile.)
+
+**Was „fertig" nicht heißt:** Du erzeugst das Release nicht selbst. Der Tag
+ist der Augenblick, in dem ein Mensch entscheidet zu veröffentlichen, und er
+steht **nach** dem Merge. `release.yml` baut dann auf allen drei Systemen und
+legt einen Entwurf an.
+
+##### Wenn das nicht in einen Lauf passt
+
+Dann war Schritt 1 unvollständig: Das Issue ist zu groß — und **das gehört in
+Schritt 1 gesagt**, mit einem Vorschlag, wie es in zwei oder drei Issues
+zerfällt, die *je für sich* fertig werden können. Ein halb umgesetzter PR ist
+keine Teillieferung, sondern Arbeit, die ein anderer zu Ende denken muss.
+
+Bleibt am Ende doch etwas liegen, weil ein Lauf abbricht oder das Kontingent
+reißt, dann **gehört es in die PR-Beschreibung** und der PR ist ein
+**Entwurf**. Das ist der Notausgang, nicht der Weg.
 
 ---
 
