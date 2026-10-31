@@ -15,7 +15,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { save } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type {
   ApiError as ApiErrorData,
@@ -135,6 +135,52 @@ export const api = {
   config: {
     get: () => call<Config>("config_get"),
     set: (config: Config) => call<Config>("config_set", { config }),
+  },
+
+  /**
+   * Speicherort der Datenbank. Läuft auch, wenn die Anwendung nicht geöffnet
+   * ist, weil am bisherigen Ort keine Datenbank liegt (`database_missing`).
+   */
+  db: {
+    /** Eine vorhandene Datenbankdatei als Speicherort nehmen. */
+    use: (path: string) => call<null>("db_use", { path }),
+    /** Eine neue Datenbank anlegen; eine vorhandene Datei wird abgelehnt. */
+    create: (path: string) => call<null>("db_create", { path }),
+    /** Zurück zum Standardort. */
+    reset: () => call<null>("db_reset"),
+  },
+
+  /**
+   * Öffnen-Dialog für eine vorhandene Datenbank. `null`, wenn abgebrochen.
+   * Braucht `dialog:allow-open` in crates/desktop/capabilities/.
+   */
+  pickDatabase: async (): Promise<string | null> => {
+    try {
+      return await open({
+        title: "Vorhandene Datenbank wählen",
+        multiple: false,
+        directory: false,
+        filters: [
+          { name: "Datenbank", extensions: ["sqlite3", "sqlite", "db"] },
+          { name: "Alle Dateien", extensions: ["*"] },
+        ],
+      });
+    } catch (raw) {
+      throw ApiError.from(raw);
+    }
+  },
+
+  /** Speichern-Dialog für den Ort einer neuen Datenbank. `null`, wenn abgebrochen. */
+  pickNewDatabase: async (): Promise<string | null> => {
+    try {
+      return await save({
+        title: "Neue Datenbank anlegen",
+        defaultPath: "teacher-class.sqlite3",
+        filters: [{ name: "Datenbank", extensions: ["sqlite3"] }],
+      });
+    } catch (raw) {
+      throw ApiError.from(raw);
+    }
   },
 
   appInfo: () => call<AppInfo>("app_info"),

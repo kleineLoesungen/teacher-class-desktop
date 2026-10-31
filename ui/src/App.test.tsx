@@ -46,6 +46,9 @@ let exams: Exam[];
 let results: StudentResult[];
 /** Was der Speichern-Dialog liefert; `null` = abgebrochen. */
 let savePath: string | null;
+/** Was der Öffnen-Dialog liefert; `null` = abgebrochen. */
+let openPath: string | null;
+let dbMissing: boolean;
 let calls: Call[];
 let config: Config;
 let nextError: ApiError | null;
@@ -56,6 +59,11 @@ function backend(cmd: string, args: Record<string, unknown> = {}): unknown {
     const error = nextError;
     nextError = null;
     throw new Rejection(error);
+  }
+  // Am gewählten Ort liegt keine Datenbank: alles außer der Wahl eines neuen
+  // Ortes wird abgelehnt, wie von Rust.
+  if (dbMissing && !cmd.startsWith("db_") && !cmd.startsWith("plugin:")) {
+    throw new Rejection({ code: "database_missing", message: "Keine Datenbank unter /stick/x" });
   }
   switch (cmd) {
     case "config_get":
@@ -156,6 +164,13 @@ function backend(cmd: string, args: Record<string, unknown> = {}): unknown {
     }
     case "plugin:dialog|save":
       return savePath;
+    case "plugin:dialog|open":
+      return openPath;
+    case "db_use":
+    case "db_create":
+    case "db_reset":
+      dbMissing = false;
+      return null;
     default:
       // Fenster-API und Plugins: annehmen, nichts tun.
       return null;
@@ -168,9 +183,11 @@ beforeEach(() => {
   exams = [];
   results = [];
   savePath = "/tmp/Klassenarbeit.xlsx";
+  openPath = "/stick/klassen.sqlite3";
+  dbMissing = false;
   calls = [];
   nextError = null;
-  config = { app_name: "Teacher Class", theme: "light", accent: "#3b6ea5" };
+  config = { app_name: "Teacher Class", theme: "light", accent: "#3b6ea5", db_file: null };
   mockWindows("main");
   mockIPC((cmd, args) => {
     try {
@@ -340,6 +357,77 @@ describe("Oberfläche", () => {
     await waitFor(() => {
       expect(document.documentElement.style.getPropertyValue("--accent")).toBe("#ffdd00");
       expect(document.documentElement.dataset.accentLight).toBe("true");
+    });
+  });
+
+  describe("Speicherort der Datenbank", () => {
+    it("fragt statt zu arbeiten, wenn am gewählten Ort keine Datenbank liegt", async () => {
+      dbMissing = true;
+      const user = userEvent.setup();
+      render(<App />);
+
+      expect(await screen.findByText("Keine Datenbank unter /stick/x")).toBeTruthy();
+      expect(screen.queryByText("Willkommen")).toBeNull();
+
+      await user.click(screen.getByRole("button", { name: "Vorhandene Datenbank wählen …" }));
+
+      await waitFor(() => expect(commands("db_use")[0]?.args).toEqual({ path: openPath }));
+      // Danach geht die Arbeitsfläche auf.
+      expect(await screen.findByText("Willkommen")).toBeTruthy();
+    });
+
+    it("legt eine neue Datenbank am gewählten Ort an", async () => {
+      dbMissing = true;
+      savePath = "/stick/neu.sqlite3";
+      const user = userEvent.setup();
+      render(<App />);
+
+      await user.click(await screen.findByRole("button", { name: "Neue Datenbank anlegen …" }));
+
+      await waitFor(() =>
+        expect(commands("db_create")[0]?.args).toEqual({ path: "/stick/neu.sqlite3" }),
+      );
+    });
+
+    it("bleibt stehen, wenn der Dialog abgebrochen wird", async () => {
+      dbMissing = true;
+      openPath = null;
+      const user = userEvent.setup();
+      render(<App />);
+
+      await user.click(
+        await screen.findByRole("button", { name: "Vorhandene Datenbank wählen …" }),
+      );
+
+      await waitFor(() => expect(screen.getByText("Keine Datenbank unter /stick/x")).toBeTruthy());
+      expect(commands("db_use")).toHaveLength(0);
+    });
+
+    it("zeigt die Ablehnung aus Rust am Feld", async () => {
+      dbMissing = true;
+      const user = userEvent.setup();
+      render(<App />);
+      await screen.findByText("Keine Datenbank unter /stick/x");
+      nextError = {
+        code: "validation_failed",
+        message: "db_file: Hier liegt keine Datei",
+        fields: [{ field: "db_file", message: "Hier liegt keine Datei" }],
+      };
+
+      await user.click(screen.getByRole("button", { name: "Standardort verwenden" }));
+
+      expect(await screen.findByText("Hier liegt keine Datei")).toBeTruthy();
+    });
+
+    it("wechselt in den Einstellungen zurück zum Standardort", async () => {
+      config = { ...config, db_file: "/stick/klassen.sqlite3" };
+      const user = userEvent.setup();
+      render(<App />);
+
+      await user.click(await screen.findByRole("button", { name: "Einstellungen" }));
+      await user.click(screen.getByRole("button", { name: "Standardort" }));
+
+      await waitFor(() => expect(commands("db_reset")).toHaveLength(1));
     });
   });
 

@@ -301,6 +301,75 @@ fn ein_fehler_beim_start_erreicht_jeden_befehl() {
 }
 
 #[test]
+fn fehlt_die_datenbank_am_gewaehlten_ort_laesst_sich_ein_anderer_waehlen() {
+    // Der Weg aus der Oberfläche: Start meldet `database_missing`, der
+    // Benutzer legt eine neue Datenbank an, danach geht alles wieder.
+    let dir = tempfile::tempdir().unwrap();
+    let base = Paths::under(dir.path());
+    let weg = dir.path().join("weg.sqlite3");
+    drop(App::create_database(&base, &weg).unwrap());
+    std::fs::remove_file(&weg).unwrap();
+
+    let err = App::open(base.clone()).err().unwrap();
+    let state = AppState::failed_with_paths(base, err.into());
+    let ctx = Ctx::with_state(dir, state);
+
+    let err = ctx.invoke("class_list", json!({})).unwrap_err();
+    assert_eq!(err["code"], "database_missing");
+
+    let neu = ctx._dir.path().join("neu.sqlite3");
+    ctx.invoke("db_create", json!({ "path": neu })).unwrap();
+
+    assert_eq!(ctx.invoke("class_list", json!({})).unwrap(), json!([]));
+    let info = ctx.invoke("app_info", json!({})).unwrap();
+    assert_eq!(info["db_file"], json!(neu.display().to_string()));
+    assert_eq!(
+        ctx.invoke("config_get", json!({})).unwrap()["db_file"],
+        json!(neu.display().to_string())
+    );
+}
+
+#[test]
+fn db_use_lehnt_eine_fehlende_datei_am_feld_ab() {
+    let ctx = Ctx::new();
+    let nix = ctx._dir.path().join("nix.sqlite3");
+
+    let err = ctx.invoke("db_use", json!({ "path": nix })).unwrap_err();
+
+    assert_eq!(err["code"], "validation_failed");
+    assert_eq!(err["fields"][0]["field"], "db_file");
+    // Die laufende Datenbank bleibt benutzbar.
+    assert!(ctx.invoke("class_list", json!({})).is_ok());
+}
+
+#[test]
+fn db_reset_geht_zurueck_zum_standardort() {
+    let ctx = Ctx::new();
+    let ziel = ctx._dir.path().join("x.sqlite3");
+    ctx.invoke("db_create", json!({ "path": ziel })).unwrap();
+
+    ctx.invoke("db_reset", json!({})).unwrap();
+
+    assert_eq!(
+        ctx.invoke("config_get", json!({})).unwrap()["db_file"],
+        Value::Null
+    );
+}
+
+#[test]
+fn config_set_aendert_den_speicherort_nicht() {
+    let ctx = Ctx::new();
+    let mut config = ctx.invoke("config_get", json!({})).unwrap();
+    config["db_file"] = json!(ctx._dir.path().join("y.sqlite3"));
+
+    let err = ctx
+        .invoke("config_set", json!({ "config": config }))
+        .unwrap_err();
+
+    assert_eq!(err["fields"][0]["field"], "db_file");
+}
+
+#[test]
 fn falscher_argumentname_wird_abgelehnt() {
     // Der häufigste Tauri-Fehler: Rust erwartet `input`, das Webview schickt
     // etwas anderes. Der Aufruf muss scheitern, nicht still leer anlegen.

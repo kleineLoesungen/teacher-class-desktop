@@ -111,7 +111,10 @@ ExamInput  ──exam::create/update──▶  Tabellen exams, exam_classes,
   Hilfsliste gibt es nicht mehr.
 * **Der Speichern-Dialog gehört zur Oberfläche.** `tauri-plugin-dialog` liefert
   den Pfad, `exam_export` schreibt die Datei und verlangt die Endung `.xlsx`.
-  Dazu steht `dialog:allow-save` in `capabilities/default.json`.
+  Dazu steht `dialog:allow-save` in `capabilities/default.json`. Dasselbe gilt
+  für den Speicherort der Datenbank: Der Dialog liefert den Pfad
+  (`dialog:allow-open` für eine vorhandene Datei), `db_use` und `db_create`
+  prüfen und öffnen sie.
 * **Blattnamen:** Excel erlaubt höchstens 31 Zeichen. Ein Klassenname darf
   deshalb höchstens 24 Zeichen haben (`Name (2025)` = 24 + 7).
 

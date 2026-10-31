@@ -49,8 +49,17 @@ Ausführlich im README („Was die App kann"). Was beim Ändern zählt:
   steht aufsteigend, weil die Note per `MATCH(…, 1)` gesucht wird. Gerechnet
   haben die Formeln nur Excel oder LibreOffice, nie ein Test — wer den Export
   ändert, öffnet die Datei einmal dort.
-* **Speichern-Dialog:** `tauri-plugin-dialog` (nur `dialog:allow-save`) liefert
-  den Pfad, `exam_export` schreibt die Datei. Kein `tauri-plugin-fs`.
+* **Speichern-Dialog:** `tauri-plugin-dialog` (`dialog:allow-save` und
+  `dialog:allow-open`) liefert den Pfad, `exam_export` schreibt die Datei. Kein
+  `tauri-plugin-fs`.
+* **Speicherort der Datenbank:** `Config::db_file` (leer = Standardort,
+  `Paths::default_db_file`). Gesetzt wird er **nur** über `App::use_database`,
+  `create_database` und `use_default_database` (CLI `db use|create|reset`,
+  Befehle `db_use`, `db_create`, `db_reset`) — `set_config` lehnt eine Änderung
+  ab. Fehlt die Datei am **gewählten** Ort, öffnet `App::open` nichts und legt
+  nichts an (`Error::DatabaseMissing`, Code `database_missing`); die
+  Oberfläche fragt dann (`DatabaseMissing.tsx`). Am Standardort wird weiter
+  automatisch angelegt. Neu anlegen überschreibt nie eine vorhandene Datei.
 
 ---
 
@@ -85,7 +94,7 @@ Nur dort. npm-Versionen stehen **exakt** (ohne `^`) in `package.json`.
 | Paket | Version | Grund |
 |---|---|---|
 | **tauri** / **@tauri-apps/api** / **@tauri-apps/cli** | **2.12** | Rust-Kiste und npm-Pakete müssen in derselben Nebenversion bleiben, sonst meldet `tauri dev` „version mismatch". Plugins (`tauri-plugin-opener` ↔ `@tauri-apps/plugin-opener`) ebenso paarweise. |
-| **tauri-plugin-dialog** / **@tauri-apps/plugin-dialog** | **2.8.4** | Speichern-Dialog für den Excel-Export; beide Seiten paarweise, wie beim Opener. Berechtigung nur `dialog:allow-save`. |
+| **tauri-plugin-dialog** / **@tauri-apps/plugin-dialog** | **2.8.4** | Speichern-Dialog für den Excel-Export; beide Seiten paarweise, wie beim Opener. Berechtigungen nur `dialog:allow-save` (Export, neue Datenbank) und `dialog:allow-open` (vorhandene Datenbank wählen). |
 | **rust_xlsxwriter** | **0.102** | Schreibt die `.xlsx` mit Formeln. Vor 1.0 ändert sich die API von Nebenversion zu Nebenversion — Anheben heißt `crates/core/tests/export.rs` und die Datei in Excel prüfen. |
 | **zip** (nur Tests) | **9.2** | Liest die erzeugte `.xlsx`, um Formeln als Text zu prüfen. |
 | **ts-rs** | **12** | Erzeugt `ui/src/bindings.ts`. Die API hat sich zwischen 10, 11 und 12 geändert (`Config`-Argument). |

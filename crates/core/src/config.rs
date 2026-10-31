@@ -23,6 +23,11 @@ pub struct Config {
     pub theme: Theme,
     /// Akzentfarbe als `#rrggbb`. Siehe docs/DESIGN.md.
     pub accent: String,
+    /// Ort der Datenbankdatei, absolut. Fehlt er, gilt der Standardort
+    /// (`Paths::db_file`). Geändert wird er nur über `App::use_database` und
+    /// Verwandte, nicht über `set_config` — sonst stünde hier ein Ort, an dem
+    /// die laufende Anwendung gar nicht arbeitet.
+    pub db_file: Option<String>,
 }
 
 impl Default for Config {
@@ -31,6 +36,7 @@ impl Default for Config {
             app_name: "Teacher Class".to_string(),
             theme: Theme::System,
             accent: "#3b6ea5".to_string(),
+            db_file: None,
         }
     }
 }
@@ -103,6 +109,13 @@ impl Config {
             "accent",
             "muss die Form #rrggbb haben, zum Beispiel #3b6ea5",
         );
+        if let Some(file) = &self.db_file {
+            v.require(
+                !file.trim().is_empty() && Path::new(file).is_absolute(),
+                "db_file",
+                "muss ein vollständiger Pfad zur Datenbankdatei sein",
+            );
+        }
         v.finish()
     }
 

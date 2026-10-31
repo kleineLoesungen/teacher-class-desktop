@@ -164,6 +164,7 @@ eine Fehlermeldung als Nutzdaten liest:
 | `not_found` | 3 | |
 | `ambiguous_id` | 5 | `matches` |
 | `config_invalid` | 1 | |
+| `database_missing` | 1 | Am gewählten Speicherort liegt keine Datenbank, siehe `db` |
 | `internal_error` | 1 | |
 
 ## In Skripten und Pipelines
@@ -197,11 +198,33 @@ teacher-class config reset
 
 Ein ungültiger Wert wird abgelehnt — der alte Stand bleibt unverändert stehen.
 
+## Speicherort der Datenbank
+
+Ohne Wahl liegt die Datenbank im Datenverzeichnis (siehe unten). Wer sie
+woanders haben will — auf einem USB-Stick, in einem synchronisierten Ordner —,
+wählt den Ort; er steht dann in der Einstellungsdatei (`db_file`), und die
+Oberfläche benutzt ihn ebenso.
+
+```bash
+teacher-class db use /media/stick/klassen.sqlite3      # vorhandene Datei nehmen
+teacher-class db create /media/stick/klassen.sqlite3   # neue, leere anlegen
+teacher-class db reset                                 # zurück zum Standardort
+```
+
+`db create` überschreibt nie eine vorhandene Datei (Rückgabewert 4), `db use`
+verlangt eine vorhandene (ebenso 4). `config set db_file` gibt es nicht; `config
+reset` lässt den Ort stehen.
+
+Liegt am gewählten Ort keine Datenbank mehr (Stick nicht eingesteckt), legt
+kein Befehl still eine neue an: Sie enden mit `database_missing` und
+Rückgabewert 1. `db use`, `db create` und `db reset` laufen trotzdem — sie sind
+der Ausweg. Am Standardort wird die Datenbank beim ersten Start angelegt.
+
 ## Wo liegt was
 
 ```bash
 teacher-class paths
-teacher-class paths --json | jq -r .db_file
+teacher-class paths --json | jq -r .db_file    # mit gewähltem Ort, falls es einen gibt
 ```
 
 | | macOS | Linux | Windows |

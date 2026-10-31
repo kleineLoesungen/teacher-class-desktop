@@ -23,16 +23,25 @@ pub use state::AppState;
 
 /// Startet die Anwendung. Kehrt erst zurück, wenn das letzte Fenster zu ist.
 pub fn run() {
-    let state = match Paths::resolve().and_then(App::open) {
-        Ok(app) => {
-            init_tracing(app.paths());
-            AppState::new(app)
-        }
+    let state = match Paths::resolve() {
         Err(err) => {
             init_tracing_stderr();
-            tracing::error!(error = %err, "Anwendung ließ sich nicht öffnen");
+            tracing::error!(error = %err, "Pfade ließen sich nicht bestimmen");
             AppState::failed(err.into())
         }
+        Ok(base) => match App::open(base.clone()) {
+            Ok(app) => {
+                init_tracing(app.paths());
+                AppState::new(app)
+            }
+            Err(err) => {
+                init_tracing_stderr();
+                tracing::error!(error = %err, "Anwendung ließ sich nicht öffnen");
+                // Mit den Pfaden: fehlt nur die Datenbank am gewählten Ort,
+                // kann die Oberfläche einen anderen Ort anbieten.
+                AppState::failed_with_paths(base, err.into())
+            }
+        },
     };
 
     configure(tauri::Builder::<Wry>::default(), state)
@@ -75,6 +84,9 @@ pub fn configure<R: Runtime>(builder: tauri::Builder<R>, state: AppState) -> tau
             commands::exam_score,
             commands::config_get,
             commands::config_set,
+            commands::db_use,
+            commands::db_create,
+            commands::db_reset,
             commands::app_info,
         ])
 }

@@ -49,8 +49,11 @@ fn run(cli: Cli) -> Result<()> {
     let paths = resolve_paths(&cli)?;
 
     match cli.command {
+        Command::Db(cmd) => commands::db::run(cmd, &paths, &out),
         Command::Paths => {
-            out.paths(&paths);
+            // Mit dem gewählten Ort der Datenbank, falls es einen gibt.
+            let config = teacher_class_core::Config::load(&paths.config_file())?;
+            out.paths(&paths.for_config(&config));
             Ok(())
         }
         Command::Class(cmd) => {

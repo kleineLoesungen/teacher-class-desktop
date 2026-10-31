@@ -181,6 +181,10 @@ impl Out {
         println!("app_name  {}", config.app_name);
         println!("theme     {:?}  ({})", config.theme, config.theme.label());
         println!("accent    {}", config.accent);
+        println!(
+            "db_file   {}",
+            config.db_file.as_deref().unwrap_or("(Standardort)")
+        );
     }
 
     pub fn paths(&self, paths: &Paths) {

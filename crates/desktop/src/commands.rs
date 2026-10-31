@@ -21,7 +21,7 @@ use teacher_class_core::exam::{self, Exam, ExamInput, Preview};
 use teacher_class_core::export;
 use teacher_class_core::grading::{self, ScoreInput, StudentResult};
 use teacher_class_core::student::{self, Student, StudentInput};
-use teacher_class_core::{Config, Paths};
+use teacher_class_core::{App, Config, Paths};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -171,6 +171,32 @@ pub async fn config_set(state: State<'_, AppState>, config: Config) -> ApiResult
         app.set_config(config)?;
         Ok(app.config().clone())
     })
+}
+
+// --- Speicherort der Datenbank ---------------------------------------------
+//
+// Diese drei laufen auch, wenn die Anwendung gar nicht geöffnet ist, weil am
+// gewählten Ort keine Datenbank liegt (`ErrorCode::DatabaseMissing`). Den Pfad
+// liefert der Dialog der Oberfläche; die Regeln stehen in `App`.
+
+/// Nimmt eine vorhandene Datenbankdatei als Speicherort. Fehler tragen
+/// `fields` für `db_file`.
+#[tauri::command]
+pub async fn db_use(state: State<'_, AppState>, path: String) -> ApiResult<()> {
+    state.switch(|base| App::use_database(base, std::path::Path::new(&path)))
+}
+
+/// Legt eine neue Datenbank an und nimmt sie als Speicherort. Eine vorhandene
+/// Datei wird abgelehnt.
+#[tauri::command]
+pub async fn db_create(state: State<'_, AppState>, path: String) -> ApiResult<()> {
+    state.switch(|base| App::create_database(base, std::path::Path::new(&path)))
+}
+
+/// Zurück zum Standardort.
+#[tauri::command]
+pub async fn db_reset(state: State<'_, AppState>) -> ApiResult<()> {
+    state.switch(App::use_default_database)
 }
 
 // --- Über die Anwendung ----------------------------------------------------
