@@ -2,7 +2,7 @@
 //!
 //! Ein Tauri-Befehl gibt `Result<T, E>` zurück; im Webview wird aus `Err(E)`
 //! ein abgelehntes Promise mit `E` als JSON. `E` muss deshalb `Serialize`
-//! sein — `starter_core::Error` ist es absichtlich nicht, denn darin stecken
+//! sein — `teacher_class_core::Error` ist es absichtlich nicht, denn darin stecken
 //! `rusqlite::Error` und Pfade.
 //!
 //! Die Form ist dieselbe wie `error` im JSON der Kommandozeile:
@@ -16,7 +16,7 @@
 //! Fehler `fields`, gehört die Meldung ans Feld. Sonst oben ins Fenster.
 
 use serde::Serialize;
-use starter_core::{ErrorCode, FieldError};
+use teacher_class_core::{ErrorCode, FieldError};
 use ts_rs::TS;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
@@ -43,15 +43,15 @@ impl ApiError {
     }
 }
 
-impl From<starter_core::Error> for ApiError {
-    fn from(err: starter_core::Error) -> Self {
+impl From<teacher_class_core::Error> for ApiError {
+    fn from(err: teacher_class_core::Error) -> Self {
         // Programmfehler landen zusätzlich im Protokoll. Eingabefehler nicht —
         // die sind Alltag und würden die Datei nur füllen.
         if err.code() == ErrorCode::InternalError {
             tracing::error!(error = %err, "Befehl fehlgeschlagen");
         }
         let matches = match &err {
-            starter_core::Error::Ambiguous { matches, .. } => Some(matches.clone()),
+            teacher_class_core::Error::Ambiguous { matches, .. } => Some(matches.clone()),
             _ => None,
         };
         Self {

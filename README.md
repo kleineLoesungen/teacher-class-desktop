@@ -1,4 +1,4 @@
-# Starter — Desktop-Anwendungen mit Tauri, Weboberfläche und Kommandozeile
+# Teacher Class — Desktop-Anwendungen mit Tauri, Weboberfläche und Kommandozeile
 
 Startpunkt für Desktop-Werkzeuge auf **macOS, Linux und Windows**, deren Oberfläche aus
 dem Web kommt: **React und TypeScript** im Webview des Betriebssystems, damit
@@ -80,7 +80,7 @@ just setup && just check
 **Lokal**, ohne Umweg über GitHub:
 
 ```bash
-git clone https://github.com/kleineLoesungen/vibe-starter-tauri notizbuch
+git clone https://github.com/kleineLoesungen/teacher-class notizbuch
 cd notizbuch
 node scripts/new-project.mjs notizbuch "Notizbuch"
 git remote remove origin        # zeigt sonst noch auf das Kit
@@ -92,13 +92,13 @@ Umgebungsvariablen, Datenverzeichnis, Fenstertitel, `package.json`,
 `tauri.conf.json`, Workflows.
 
 **Das Skript direkt nach dem Klonen ausführen.** Bis dahin heißt das Projekt
-noch „starter" und benutzt dasselbe Datenverzeichnis wie das Kit — zwei
+noch „teacher-class" und benutzt dasselbe Datenverzeichnis wie das Kit — zwei
 Projekte mit demselben Namen teilen sich unbemerkt eine Datenbank.
 
 ### Spätere Verbesserungen aus dem Kit holen
 
 ```bash
-git remote add kit https://github.com/kleineLoesungen/vibe-starter-tauri
+git remote add kit https://github.com/kleineLoesungen/teacher-class
 git fetch kit
 git log --oneline kit/main
 ```
@@ -188,7 +188,7 @@ crates/
 │   ├── src/paths.rs           Die einzige Stelle mit macOS/Linux-Unterschieden
 │   └── tests/layering.rs      Der Wächter über die Schichtregel (Rust + TypeScript)
 │
-├── cli/                     ← Kommandozeile `starter`. Dünn.
+├── cli/                     ← Kommandozeile `teacher-class`. Dünn.
 │
 └── desktop/                 ← Tauri-Schale. Dünn.
     ├── tauri.conf.json        Fenster, CSP, Bündel
@@ -212,7 +212,7 @@ ui/
 
 scripts/
 ├── new-project.mjs          Kit zu eigenem Projekt umbenennen
-├── package-cli.mjs          dist/starter-cli-<version>-<os>-<arch>.tar.gz
+├── package-cli.mjs          dist/teacher-class-cli-<version>-<os>-<arch>.tar.gz
 └── tasks.mjs                Was im Justfile keine schlichte Zeile wäre
 
 .claude/agents/              Architektur · Dokumentation · Sicherheit

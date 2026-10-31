@@ -1,4 +1,4 @@
-// Einstellungen. Dieselbe Datei, die `starter config set` schreibt.
+// Einstellungen. Dieselbe Datei, die `teacher-class config set` schreibt.
 //
 // Geprüft wird in Rust (Config::validate). Diese Ansicht zeigt nur an, was
 // von dort als Feldfehler zurückkommt.

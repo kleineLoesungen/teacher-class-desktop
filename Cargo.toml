@@ -20,7 +20,7 @@ version = "0.1.1"
 publish = false
 edition = "2024"
 license = "MIT"
-repository = "https://github.com/kleineLoesungen/vibe-starter-tauri"
+repository = "https://github.com/kleineLoesungen/teacher-class"
 
 # Alle Versionen stehen hier, nur hier. Begründungen in CLAUDE.md.
 #

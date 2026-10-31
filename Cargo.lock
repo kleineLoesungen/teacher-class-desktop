@@ -3583,62 +3583,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 
 [[package]]
-name = "starter-cli"
-version = "0.1.1"
-dependencies = [
- "anyhow",
- "assert_cmd",
- "clap",
- "clap_complete",
- "clap_mangen",
- "insta",
- "predicates",
- "serde",
- "serde_json",
- "starter-core",
- "tempfile",
- "time",
- "tracing",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
-name = "starter-core"
-version = "0.1.1"
-dependencies = [
- "directories",
- "rusqlite",
- "rusqlite_migration",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.20",
- "time",
- "toml 1.1.6+spec-1.1.0",
- "tracing",
- "ts-rs",
- "uuid",
-]
-
-[[package]]
-name = "starter-desktop"
-version = "0.1.1"
-dependencies = [
- "serde",
- "serde_json",
- "starter-core",
- "tauri",
- "tauri-build",
- "tauri-plugin-opener",
- "tempfile",
- "tracing",
- "tracing-subscriber",
- "ts-rs",
- "uuid",
-]
-
-[[package]]
 name = "static_vcruntime"
 version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4066,6 +4010,62 @@ dependencies = [
  "dunce",
  "embed-resource",
  "toml 1.1.6+spec-1.1.0",
+]
+
+[[package]]
+name = "teacher-class-cli"
+version = "0.1.1"
+dependencies = [
+ "anyhow",
+ "assert_cmd",
+ "clap",
+ "clap_complete",
+ "clap_mangen",
+ "insta",
+ "predicates",
+ "serde",
+ "serde_json",
+ "teacher-class-core",
+ "tempfile",
+ "time",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "teacher-class-core"
+version = "0.1.1"
+dependencies = [
+ "directories",
+ "rusqlite",
+ "rusqlite_migration",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.20",
+ "time",
+ "toml 1.1.6+spec-1.1.0",
+ "tracing",
+ "ts-rs",
+ "uuid",
+]
+
+[[package]]
+name = "teacher-class-desktop"
+version = "0.1.1"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-opener",
+ "teacher-class-core",
+ "tempfile",
+ "tracing",
+ "tracing-subscriber",
+ "ts-rs",
+ "uuid",
 ]
 
 [[package]]
