@@ -4,26 +4,32 @@
 Beide arbeiten auf derselben Datenbank.
 
 ```bash
-teacher-class note add "Einkauf" --body "Milch, Brot"
-teacher-class note list
-teacher-class note show 8a551a8d
-teacher-class note edit 8a551a8d --title "Großeinkauf"
-teacher-class note rm 8a551a8d --yes
+# Klassen: Name nur aus Buchstaben und Zahlen, dazu ein vierstelliges Jahr
+teacher-class class add 7a 2025
+teacher-class class list
+teacher-class class edit 8a551a8d --name 7b
+teacher-class class rm 8a551a8d --yes          # löscht auch die Schüler
+
+# Schüler: eine Zeile "Nachname, Vorname" je Schüler, alle oder keiner
+teacher-class student add 8a551a8d "Muster, Max
+Beispiel, Eva"
+teacher-class student list 8a551a8d
+teacher-class student rm bd10122c --yes
 ```
 
 ## Kennungen
 
 Die Kennung ist eine UUID. In der Bedienung genügt das **Endstück**, so wie
-`note list` es anzeigt:
+`class list` es anzeigt:
 
 ```
-ID        TITEL    GEÄNDERT
-8a551a8d  Zebra    15.09.2026 08:40
-bd10122c  Bauplan  15.09.2026 08:40
+ID        KLASSE     SCHÜLER
+8a551a8d  7a (2025)  3
+bd10122c  8b (2024)  0
 ```
 
 Warum das Ende und nicht der Anfang: Eine UUIDv7 beginnt mit dem Zeitstempel.
-Zwei Notizen aus derselben Sekunde sähen am Anfang gleich aus.
+Zwei Datensätze aus derselben Sekunde sähen am Anfang gleich aus.
 
 Ist ein Endstück nicht eindeutig, bricht der Befehl mit Rückgabewert 5 ab und
 zeigt die Treffer — nie wird einfach einer davon genommen.
@@ -34,10 +40,10 @@ zeigt die Treffer — nie wird einfach einer davon genommen.
 |---|---|---|
 | 0 | in Ordnung | |
 | 1 | allgemeiner Fehler | Platte voll, Datenbank nicht lesbar |
-| 2 | falscher Aufruf | `teacher-class note gibtsnicht` — vergibt clap selbst |
-| 3 | nicht gefunden | `teacher-class note show ffffffff` |
-| 4 | Eingabe ungültig | leerer Titel, `accent = "blau"` |
-| 5 | Kennung nicht eindeutig | `teacher-class note show a` bei mehreren Treffern |
+| 2 | falscher Aufruf | `teacher-class class gibtsnicht` — vergibt clap selbst |
+| 3 | nicht gefunden | `teacher-class student list ffffffff` |
+| 4 | Eingabe ungültig | Klassenname mit Leerzeichen, Schülerzeile ohne Komma, `accent = "blau"` |
+| 5 | Kennung nicht eindeutig | `teacher-class student list a` bei mehreren Treffern |
 
 Festgelegt in `crates/cli/src/exit.rs`, geprüft in `crates/cli/tests/cli.rs`.
 
@@ -47,7 +53,7 @@ Festgelegt in `crates/cli/src/exit.rs`, geprüft in `crates/cli/tests/cli.rs`.
 funktioniert:
 
 ```bash
-teacher-class note list --json | jq -r '.[] | "\(.id)\t\(.title)"'
+teacher-class class list --json | jq -r '.[] | "\(.id)\t\(.name) (\(.year))"'
 ```
 
 Zeitstempel stehen in UTC als RFC-3339-Text. Für Menschen rechnet die Ausgabe in
@@ -57,10 +63,10 @@ Ortszeit um, für Maschinen nie.
 [
   {
     "id": "01a0a3cb-177a-759b-ade1-12c4280a20d3",
-    "title": "Bauplan",
-    "body": "Regal",
-    "created_at": "2026-09-15T06:39:51.162336Z",
-    "updated_at": "2026-09-15T06:39:51.162336Z"
+    "name": "7a",
+    "year": 2025,
+    "student_count": 3,
+    "created_at": "2026-09-15T06:39:51.162336Z"
   }
 ]
 ```
@@ -75,9 +81,9 @@ eine Fehlermeldung als Nutzdaten liest:
   "error": {
     "code": "validation_failed",
     "fields": [
-      { "field": "title", "message": "darf nicht leer sein" }
+      { "field": "name", "message": "darf nicht leer sein" }
     ],
-    "message": "title: darf nicht leer sein"
+    "message": "name: darf nicht leer sein"
   }
 }
 ```
@@ -93,17 +99,17 @@ eine Fehlermeldung als Nutzdaten liest:
 ## In Skripten und Pipelines
 
 ```bash
-# Text aus einer Datei
-cat notiz.md | teacher-class note add "Aus der Datei" --body -
+# Schülerliste aus einer Datei (eine Zeile "Nachname, Vorname" je Schüler)
+cat schueler.txt | teacher-class student add 8a551a8d -
 
 # Ohne Terminal gibt es keine Rückfrage, sondern einen Fehler.
-teacher-class note rm 8a551a8d --yes
+teacher-class class rm 8a551a8d --yes
 
 # Eigene Verzeichnisse — der saubere Weg für Tests und CI
-TEACHER_CLASS_DATA_DIR=/tmp/t/data TEACHER_CLASS_CONFIG_DIR=/tmp/t/config teacher-class note list
+TEACHER_CLASS_DATA_DIR=/tmp/t/data TEACHER_CLASS_CONFIG_DIR=/tmp/t/config teacher-class class list
 ```
 
-`note rm` fragt nach, wenn stdin ein Terminal ist. Ist es keins, bricht der
+`class rm` und `student rm` fragen nach, wenn stdin ein Terminal ist. Ist es keins, bricht der
 Befehl ab und verweist auf `--yes`. Stillschweigend zu löschen, weil niemand
 antworten kann, wäre die falsche Voreinstellung.
 
@@ -115,7 +121,7 @@ Dieselbe Datei, die auch die Oberfläche liest und schreibt.
 teacher-class config show
 teacher-class config set theme dark          # system | light | dark
 teacher-class config set accent "#aa3344"    # #rrggbb
-teacher-class config set app_name "Notizbuch"
+teacher-class config set app_name "Korrekturhilfe"
 teacher-class config reset
 ```
 
@@ -141,9 +147,9 @@ teacher-class paths --json | jq -r .db_file
 Geht auf stderr, nie auf stdout.
 
 ```bash
-teacher-class -v note list          # info
-teacher-class -vv note list         # debug
-TEACHER_CLASS_LOG=teacher-class=trace teacher-class note list
+teacher-class -v class list          # info
+teacher-class -vv class list         # debug
+TEACHER_CLASS_LOG=teacher-class=trace teacher-class class list
 ```
 
 ## Vervollständigung und Handbuch
