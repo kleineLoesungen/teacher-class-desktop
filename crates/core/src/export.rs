@@ -488,16 +488,43 @@ fn write_class(
 
 /// Spaltenbreiten der Kachel: Aufgabe, Beschreibung, Punkte, Max., Begründung.
 const TILE_WIDTHS: [f64; 5] = [26.0, 32.0, 9.0, 9.0, 40.0];
-/// Druckmaßstab in Prozent: Die Kachel (rund 116 Zeichen breit) passt damit
-/// auf A4 hochkant. Ein fester Maßstab statt „auf eine Seite anpassen“, weil
-/// Excel bei Letzterem die Seitenumbrüche zwischen den Kacheln ignoriert.
+/// Größter Druckmaßstab in Prozent: Die Kachel (rund 116 Zeichen breit) passt
+/// damit auf A4 hochkant. Ein fester Maßstab statt „auf eine Seite anpassen“,
+/// weil Excel bei Letzterem die Seitenumbrüche zwischen den Kacheln ignoriert.
+/// Wird die höchste Kachel mit langen Begründungen für eine Seite zu hoch,
+/// sinkt der Maßstab für das ganze Blatt (bis [`TILE_MIN_SCALE`]).
 const TILE_PRINT_SCALE: u16 = 85;
+const TILE_MIN_SCALE: u16 = 40;
+/// Standardzeilenhöhe in Punkt.
+const ROW_POINTS: f64 = 15.0;
+/// Bedruckbare Höhe einer A4-Seite in Punkt (842 minus Ränder 0,5 + 0,5 Zoll),
+/// mit etwas Luft, weil die Höhe der Zeilen nur geschätzt ist.
+const PAGE_POINTS: f64 = 842.0 - 72.0 - 30.0;
 
-/// Zeilen, die `text` in einer Spalte von `width` Zeichen belegt (grob).
+/// Zeilen, die `text` in einer Spalte von `width` Zeichen belegt. Schätzt wie
+/// Excel: Wörter werden nicht getrennt, lange Wörter brechen an der Spalte.
 fn lines_needed(text: &str, width: f64) -> usize {
-    let per_line = (width * 0.9).max(1.0) as usize;
+    let per_line = (width * 0.85).max(1.0) as usize;
     text.lines()
-        .map(|l| l.chars().count().max(1).div_ceil(per_line))
+        .map(|line| {
+            let mut rows = 1;
+            let mut used = 0;
+            for word in line.split_whitespace() {
+                let len = word.chars().count();
+                if used > 0 && used + 1 + len <= per_line {
+                    used += 1 + len;
+                    continue;
+                }
+                if used > 0 {
+                    rows += 1;
+                }
+                // Ein zu langes Wort bricht an der Spaltengrenze um.
+                let extra = (len - 1) / per_line;
+                rows += extra;
+                used = len - extra * per_line;
+            }
+            rows
+        })
         .sum::<usize>()
         .max(1)
 }
@@ -526,18 +553,29 @@ fn write_tiles(
     // Jede Kachel beginnt auf einer neuen Seite.
     let mut breaks = Vec::new();
     let mut top: u32 = 0;
+    let mut tallest: f64 = 0.0;
     for res in results {
         if top > 0 {
             breaks.push(top);
         }
-        top = write_tile(ws, exam, g, class_label, res, top, st)?;
+        let (next, height) = write_tile(ws, exam, g, class_label, res, top, st)?;
+        tallest = tallest.max(height);
+        top = next;
     }
     ws.set_page_breaks(&breaks)?;
+    // Druckbereich: genau die Kacheln, nicht, was Excel sonst für benutzt hält.
+    ws.set_print_area(0, 0, top.saturating_sub(1), (TILE_WIDTHS.len() - 1) as u16)?;
+    // Lange Begründungen machen eine Kachel höher als eine Seite? Dann kleiner
+    // drucken, statt sie mitten in einer Gruppe umbrechen zu lassen.
+    let fitted = (PAGE_POINTS / tallest * 100.0).floor();
+    if fitted < f64::from(TILE_PRINT_SCALE) {
+        ws.set_print_scale(fitted.max(f64::from(TILE_MIN_SCALE)) as u16);
+    }
     Ok(())
 }
 
 /// Schreibt die Kachel eines Schülers ab Zeile `top`; gibt die Zeile zurück,
-/// ab der die nächste beginnt.
+/// ab der die nächste beginnt, und die geschätzte Höhe der Kachel in Punkt.
 fn write_tile(
     ws: &mut Worksheet,
     exam: &Exam,
@@ -546,8 +584,10 @@ fn write_tile(
     res: &StudentResult,
     top: u32,
     st: &Styles,
-) -> Result<u32> {
+) -> Result<(u32, f64)> {
     let mut r = top;
+    // Was höhere Zeilen über die Standardhöhe hinaus brauchen.
+    let mut extra: f64 = 0.0;
     ws.write_string_with_format(r, 0, &exam.name, &st.title)?;
     r += 1;
     ws.write_string_with_format(r, 0, "Schüler/in", &st.head)?;
@@ -634,7 +674,8 @@ fn write_tile(
             let lines = lines_needed(&item.description, TILE_WIDTHS[1])
                 .max(lines_needed(&score.note, TILE_WIDTHS[4]));
             if lines > 1 {
-                ws.set_row_height(r, 15.0 * lines as f64)?;
+                ws.set_row_height(r, ROW_POINTS * lines as f64)?;
+                extra += ROW_POINTS * (lines - 1) as f64;
             }
             r += 1;
         }
@@ -703,5 +744,7 @@ fn write_tile(
         )?;
         r += 1;
     }
-    Ok(r)
+    // Zehn Prozent Luft: Die Höhe ist geschätzt, Titel und Kopf sind größer.
+    let height = ((r - top) as f64 * ROW_POINTS + extra) * 1.1;
+    Ok((r, height))
 }

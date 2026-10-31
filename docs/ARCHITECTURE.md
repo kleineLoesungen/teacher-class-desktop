@@ -64,8 +64,10 @@ Die Faustregel: **Was auf beiden Wegen gleich sein muss, steht in `core`.**
 Was nur mit Darstellung zu tun hat — Farben, Anordnung, Eingabefelder —, steht
 in `ui/`. Auch **berechnete Werte** kommen aus `core`: Die Oberfläche rechnet
 weder Gruppensummen noch das „bis“ einer Note nach, sondern zeigt, was Rust
-nach dem Speichern liefert. Solange der Entwurf geändert ist, steht dort ein
-Strich.
+liefert. Beim Bearbeiten fragt `App.tsx` kurz nach der letzten Eingabe
+`exam_preview` (`exam::preview`): Das rechnet den *ungespeicherten* Entwurf
+durch, prüft und schreibt nichts, und lässt Ungültiges als leer (`None`) offen.
+Gespeichert werden muss dafür nicht.
 
 ## Prüfungen und Excel-Export
 

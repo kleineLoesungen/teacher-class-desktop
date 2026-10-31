@@ -296,6 +296,67 @@ impl ExamInput {
     }
 }
 
+// --- Vorschau --------------------------------------------------------------
+
+/// Die berechneten Werte eines noch nicht gespeicherten Entwurfs.
+///
+/// Anders als [`create`] lehnt die Vorschau nichts ab: Unlesbares oder
+/// Ungültiges ergibt `None` an genau dieser Stelle, alles Übrige wird
+/// trotzdem gerechnet. Geschrieben wird nichts.
+#[derive(Debug, Clone, PartialEq, Serialize, TS)]
+pub struct Preview {
+    /// Je Gruppe (in der Reihenfolge der Eingabe): Summe der gültigen Punkte.
+    pub group_max_points: Vec<f64>,
+    /// Summe aller gültigen Punkte.
+    pub max_points: f64,
+    /// Je Note (in der Reihenfolge der Eingabe): das „bis“, oder `None`, wenn
+    /// das „ab“ ungültig ist oder eine andere Note bei demselben „ab“ beginnt.
+    pub grade_to_points: Vec<Option<f64>>,
+}
+
+/// Rechnet den Entwurf durch, ohne ihn zu prüfen oder zu speichern.
+pub fn preview(input: &ExamInput) -> Preview {
+    let mut total: i64 = 0;
+    let group_max_points = input
+        .groups
+        .iter()
+        .map(|g| {
+            let sum: i64 = g
+                .items
+                .iter()
+                .filter(|i| i.max_points <= POINTS_MAX)
+                .filter_map(|i| to_half(i.max_points).filter(|h| *h > 0))
+                .sum();
+            total += sum;
+            from_half(sum)
+        })
+        .collect();
+
+    let froms: Vec<Option<i64>> = input
+        .grades
+        .iter()
+        .map(|g| to_half(g.from_points).filter(|h| *h >= 0))
+        .collect();
+    let grade_to_points = froms
+        .iter()
+        .map(|from| {
+            let from = (*from)?;
+            let same = froms.iter().flatten().filter(|o| **o == from).count();
+            if same > 1 {
+                return None;
+            }
+            let next = froms.iter().flatten().filter(|o| **o > from).min();
+            Some(from_half(next.map_or(total, |n| n - 1)))
+        })
+        .collect();
+
+    Preview {
+        group_max_points,
+        max_points: from_half(total),
+        grade_to_points,
+    }
+}
+
 // --- Lesen -----------------------------------------------------------------
 
 /// Neueste Prüfung zuerst.

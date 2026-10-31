@@ -362,6 +362,11 @@ input[type="color"] {
   min-height: 0;
   overflow-y: auto;
   padding: var(--space-4) var(--space-6);
+}
+
+/* Der Scrollbalken gehört an den Fensterrand: Der Container nimmt die ganze
+   Breite, nur der Inhalt ist begrenzt. */
+.class-body > * {
   max-width: 640px;
 }
 
@@ -434,10 +439,13 @@ input[type="color"] {
 }
 
 .exam-body {
-  max-width: 760px;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+}
+
+.exam-body > * {
+  max-width: 760px;
 }
 
 .exam-body h2 {

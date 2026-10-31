@@ -80,10 +80,12 @@ Begründung, je Gruppe eine Summenzeile, darunter Gesamtpunkte, Note und die
 Bewertungsmatrix. Vor jeder Kachel steht ein Seitenumbruch; das Blatt ist auf
 A4 hochkant mit festem Druckmaßstab eingestellt. **Drucken:** In Excel das
 Klassenblatt drucken oder als PDF speichern — jeder Schüler ist genau eine Seite
-(einzelne Schüler über „Seiten von … bis …“). Der Druckmaßstab ist bewusst fest
-und nicht „auf eine Seite anpassen“, weil Excel dabei die Seitenumbrüche
-ignoriert. Sehr lange Beschreibungen oder Begründungen können eine Kachel über
-eine Seite hinaus verlängern.
+(einzelne Schüler über „Seiten von … bis …“). Der Druckbereich ist auf die
+Kacheln gesetzt. Der Druckmaßstab ist bewusst fest und nicht „auf eine Seite
+anpassen“, weil Excel dabei die Seitenumbrüche ignoriert. Wird eine Kachel mit
+sehr langen Beschreibungen oder Begründungen höher als eine Seite, sinkt der
+Maßstab für das ganze Blatt (bis 40 %); die Höhe wird aus der Textlänge
+geschätzt, in Excel oder LibreOffice kann sie leicht abweichen.
 
 Der Export ist einseitig: Änderungen in Excel gelangen nicht zurück in die App.
 

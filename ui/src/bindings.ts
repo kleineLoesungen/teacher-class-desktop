@@ -109,6 +109,28 @@ description: string, max_points: number, };
 export type ItemInput = { name: string, description: string, max_points: number, };
 
 /**
+ * Die berechneten Werte eines noch nicht gespeicherten Entwurfs.
+ *
+ * Anders als [`create`] lehnt die Vorschau nichts ab: Unlesbares oder
+ * Ungültiges ergibt `None` an genau dieser Stelle, alles Übrige wird
+ * trotzdem gerechnet. Geschrieben wird nichts.
+ */
+export type Preview = { 
+/**
+ * Je Gruppe (in der Reihenfolge der Eingabe): Summe der gültigen Punkte.
+ */
+group_max_points: Array<number>, 
+/**
+ * Summe aller gültigen Punkte.
+ */
+max_points: number, 
+/**
+ * Je Note (in der Reihenfolge der Eingabe): das „bis“, oder `None`, wenn
+ * das „ab“ ungültig ist oder eine andere Note bei demselben „ab“ beginnt.
+ */
+grade_to_points: Array<number | null>, };
+
+/**
  * Der Eintrag zu einem Prüfkriterium.
  */
 export type Score = { 

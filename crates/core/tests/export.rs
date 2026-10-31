@@ -234,3 +234,40 @@ fn eine_unbekannte_pruefung_ist_nicht_gefunden() {
     let err = export::build(&conn, uuid::Uuid::now_v7()).unwrap_err();
     assert!(matches!(err, Error::NotFound));
 }
+
+#[test]
+fn lange_begruendungen_verkleinern_den_druck_und_setzen_den_druckbereich() {
+    let conn = db::open_in_memory().unwrap();
+    let a = class::create(&conn, ClassInput::new("7a", 2025)).unwrap();
+    let s = student::add_many(&conn, a.id, "Muster, Max\nBeispiel, Eva").unwrap();
+    let mut input = beispiel(vec![a.id]);
+    input.with_notes = true;
+    let e = exam::create(&conn, input).unwrap();
+    // Sehr lange Begründung: Die Kachel wird höher als eine Seite.
+    let lang = "Rechenweg fehlt vollständig und die Einheit ist falsch. ".repeat(35);
+    grading::set(
+        &conn,
+        e.id,
+        ScoreInput {
+            student_id: s[0].id,
+            group: 0,
+            item: 0,
+            points: Some(1.0),
+            note: lang,
+        },
+    )
+    .unwrap();
+
+    let mut x = Xlsx::open(export::build(&conn, e.id).unwrap());
+    let sheet = x.text("xl/worksheets/sheet2.xml");
+    assert_eq!(sheet.matches("<brk ").count(), 1, "{sheet}");
+    let scale = sheet
+        .split("scale=\"")
+        .nth(1)
+        .and_then(|r| r.split('"').next())
+        .and_then(|n| n.parse::<u32>().ok())
+        .expect("pageSetup scale");
+    assert!((40..85).contains(&scale), "Maßstab {scale}: {sheet}");
+    let wb = x.text("xl/workbook.xml");
+    assert!(wb.contains("_xlnm.Print_Area"), "{wb}");
+}

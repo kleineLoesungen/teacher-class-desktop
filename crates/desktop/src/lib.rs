@@ -68,6 +68,7 @@ pub fn configure<R: Runtime>(builder: tauri::Builder<R>, state: AppState) -> tau
             commands::exam_list,
             commands::exam_create,
             commands::exam_update,
+            commands::exam_preview,
             commands::exam_delete,
             commands::exam_export,
             commands::exam_results,

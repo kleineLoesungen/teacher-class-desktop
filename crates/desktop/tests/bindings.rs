@@ -13,7 +13,7 @@
 
 use teacher_class_core::class::{Class, ClassInput};
 use teacher_class_core::exam::{
-    Exam, ExamInput, Grade, GradeInput, Group, GroupInput, Item, ItemInput,
+    Exam, ExamInput, Grade, GradeInput, Group, GroupInput, Item, ItemInput, Preview,
 };
 use teacher_class_core::grading::{GroupResult, Score, ScoreInput, StudentResult};
 use teacher_class_core::student::{Student, StudentInput};
@@ -53,6 +53,7 @@ fn generate() -> String {
         decl::<GroupResult>(&cfg),
         decl::<Item>(&cfg),
         decl::<ItemInput>(&cfg),
+        decl::<Preview>(&cfg),
         decl::<Score>(&cfg),
         decl::<ScoreInput>(&cfg),
         decl::<Student>(&cfg),

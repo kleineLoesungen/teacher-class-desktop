@@ -130,6 +130,13 @@ function backend(cmd: string, args: Record<string, unknown> = {}): unknown {
         cmd === "exam_create" ? [exam, ...exams] : exams.map((e) => (e.id === exam.id ? exam : e));
       return exam;
     }
+    case "exam_preview":
+      // Feste Werte, damit die Anzeige geprüft wird; gerechnet hat Rust.
+      return {
+        group_max_points: [7.5],
+        max_points: 7.5,
+        grade_to_points: [7.5, 3.5, null, null, null, null],
+      };
     case "exam_delete":
       exams = exams.filter((e) => e.id !== args.id);
       return null;
@@ -416,6 +423,26 @@ describe("Oberfläche", () => {
       expect(input.grades[5]).toEqual({ name: "6", from_points: 0 });
     });
 
+    it("zeigt Summen und „bis“ schon vor dem Speichern, von Rust gerechnet", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      render(<App />);
+
+      await openExams(user);
+      await user.click(
+        (await screen.findAllByRole("button", { name: "Neue Prüfung" }))[0] as HTMLElement,
+      );
+      await user.type(
+        await screen.findByRole("textbox", { name: "Gruppe 1 Punkt 1 Höchstpunkte" }),
+        "7,5",
+      );
+
+      expect(await screen.findByText("Gesamtpunkte: 7,5")).toBeTruthy();
+      expect(screen.getByText("max. 7,5")).toBeTruthy();
+      expect(commands("exam_preview").length).toBeGreaterThan(0);
+      expect(commands("exam_create")).toHaveLength(0);
+    });
+
     it("zeigt Fehler zu Schema und Matrix, wie Rust sie meldet", async () => {
       const user = userEvent.setup();
       classes = [cls("a", { name: "7a", year: 2025 })];
@@ -474,7 +501,7 @@ describe("Oberfläche", () => {
       expect(commands("exam_export")).toHaveLength(0);
     });
 
-    it("zeigt die berechneten Werte nur für den gespeicherten Stand", async () => {
+    it("rechnet bei jeder Änderung des Entwurfs neu, ohne zu speichern", async () => {
       const user = userEvent.setup();
       classes = [cls("a", { name: "7a", year: 2025 })];
       exams = [savedExam()];
@@ -482,13 +509,14 @@ describe("Oberfläche", () => {
 
       await openExams(user);
       await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
-      expect(screen.getByText("max. 2,5")).toBeTruthy();
-      expect(screen.getByText("1,5")).toBeTruthy();
+      await screen.findByText("max. 7,5");
+      const before = commands("exam_preview").length;
 
       await user.type(screen.getByRole("textbox", { name: "Gruppe 1 Punkt 1 Höchstpunkte" }), "0");
-      // Der Entwurf weicht ab — Rust hat dafür noch nichts gerechnet.
-      expect(screen.queryByText("max. 2,5")).toBeNull();
-      expect(screen.queryByText("1,5")).toBeNull();
+      await waitFor(() => expect(commands("exam_preview").length).toBeGreaterThan(before));
+      const last = commands("exam_preview").at(-1)?.args.input as ExamInput;
+      expect(last.groups[0]?.items[0]?.max_points).toBe(2.5);
+      expect(commands("exam_update")).toHaveLength(0);
     });
 
     it("trägt Punkte beim Verlassen des Feldes ein und zeigt, was Rust berechnet", async () => {

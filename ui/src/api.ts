@@ -27,6 +27,7 @@ import type {
   Exam,
   ExamInput,
   FieldError,
+  Preview,
   ScoreInput,
   Student,
   StudentInput,
@@ -104,6 +105,7 @@ export const api = {
     list: () => call<Exam[]>("exam_list"),
     create: (input: ExamInput) => call<Exam>("exam_create", { input }),
     update: (id: string, input: ExamInput) => call<Exam>("exam_update", { id, input }),
+    preview: (input: ExamInput) => call<Preview>("exam_preview", { input }),
     remove: (id: string) => call<null>("exam_delete", { id }),
     /** Schreibt die Excel-Datei nach `path` (aus `pickExportPath`). */
     export: (id: string, path: string) => call<null>("exam_export", { id, path }),

@@ -17,6 +17,7 @@ import type {
   ClassInput,
   Config,
   Exam,
+  Preview,
   ScoreInput,
   Student,
   StudentResult,
@@ -59,6 +60,9 @@ export function App() {
   const [examSelection, setExamSelection] = useState<ExamSelection>({ kind: "none" });
   const [examDraft, setExamDraft] = useState<ExamDraft>(emptyExamDraft);
   const [examSaved, setExamSaved] = useState<ExamDraft>(emptyExamDraft);
+  // Die von Rust berechneten Werte des *Entwurfs* (Summen, „bis“), nicht des
+  // gespeicherten Stands. Wird beim Tippen nachgezogen.
+  const [examPreview, setExamPreview] = useState<Preview | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   // Bewertung: ist sie offen, ersetzt sie den Prüfungseditor.
   const [grading, setGrading] = useState<{ classId: string; studentId: string | null } | null>(
@@ -77,6 +81,31 @@ export function App() {
 
   const dirty = draft.name !== saved.name || draft.year !== saved.year;
   const examDirty = !sameDraft(examDraft, examSaved);
+
+  // Vorschau der berechneten Werte: kurz nach der letzten Eingabe bei Rust
+  // nachfragen. Nichts wird gespeichert, Fehler bleiben still — die Meldungen
+  // kommen beim Speichern.
+  useEffect(() => {
+    if (examSelection.kind === "none") {
+      setExamPreview(null);
+      return;
+    }
+    let current = true;
+    const timer = window.setTimeout(() => {
+      api.exams.preview(toExamInput(examDraft)).then(
+        (result) => {
+          if (current) setExamPreview(result ?? null);
+        },
+        () => {
+          if (current) setExamPreview(null);
+        },
+      );
+    }, 150);
+    return () => {
+      current = false;
+      window.clearTimeout(timer);
+    };
+  }, [examDraft, examSelection.kind]);
 
   /** Ein fehlgeschlagener Befehl: ans Feld oder nach oben. */
   const fail = useCallback((raw: unknown) => {
@@ -480,11 +509,7 @@ export function App() {
           ) : (
             <ExamEditor
               draft={examDraft}
-              exam={
-                examSelection.kind === "exam"
-                  ? (exams.find((e) => e.id === examSelection.id) ?? null)
-                  : null
-              }
+              preview={examPreview}
               classes={classes}
               isNew={examSelection.kind === "new"}
               dirty={examDirty}
