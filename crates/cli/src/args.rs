@@ -5,7 +5,7 @@
 //! Hilfetexte zu überfliegen, ohne Logik zu lesen.
 //!
 //! Hilfetexte sind deutsch, Bezeichner und Optionsnamen englisch — wie überall
-//! im Kit.
+//! in der App.
 
 use std::path::PathBuf;
 

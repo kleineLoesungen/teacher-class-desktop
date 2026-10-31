@@ -55,7 +55,7 @@ export function App() {
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
 
-  // Zwei Sorten Fehler, wie überall im Kit: mit Feldern an die Felder,
+  // Zwei Sorten Fehler, wie überall in der App: mit Feldern an die Felder,
   // ohne Felder als Meldung oben.
   const [fieldError, setFieldError] = useState<ApiError | null>(null);
   const [banner, setBanner] = useState<string | null>(null);

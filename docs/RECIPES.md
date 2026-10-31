@@ -330,7 +330,7 @@ ins Leere — beide prüft kein Test:
   Prüflisten werden dadurch nicht falsch, aber die Verweise laufen ins Nichts.
   Tragt dort die eigenen Regeln nach: fachliche Erfindungen, die kein Test
   abdeckt, und Ausgabeformate, die jemand kennen muss.
-* **`docs/` und `README.md`** erklären das Kit anhand von Notizen.
+* **`docs/` und `README.md`** beschreiben die App mit Klassen, Schülern und Prüfungen.
 
 **Claude darf die Agent-Dateien nicht selbst ändern** (siehe CLAUDE.md,
 „Was du nicht ändern darfst"). Es wird dir stattdessen im Pull Request
