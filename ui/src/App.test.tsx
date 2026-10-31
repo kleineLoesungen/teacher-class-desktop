@@ -80,7 +80,7 @@ beforeEach(() => {
   notes = [];
   calls = [];
   nextError = null;
-  config = { app_name: "Starter", theme: "light", accent: "#3b6ea5" };
+  config = { app_name: "Teacher Class", theme: "light", accent: "#3b6ea5" };
   mockWindows("main");
   mockIPC((cmd, args) => {
     try {

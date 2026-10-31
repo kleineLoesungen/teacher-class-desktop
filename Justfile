@@ -38,7 +38,7 @@ dev-sandbox:
 
 # Die Kommandozeile aufrufen:  just cli note add "Titel"
 cli *ARGS:
-    cargo run -q -p starter-cli -- {{ARGS}}
+    cargo run -q -p teacher-class-cli -- {{ARGS}}
 
 # Wie `just cli`, aber auf .local/ — dieselben Daten wie `just dev-sandbox`.
 sandbox *ARGS:

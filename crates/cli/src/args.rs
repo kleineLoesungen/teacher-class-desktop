@@ -13,11 +13,11 @@ use clap::{Args as ClapArgs, Parser, Subcommand, ValueEnum};
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "starter",
+    name = "teacher-class",
     version,
-    about = "Beispielanwendung des Starter-Kits",
+    about = "Beispielanwendung des Teacher Class-Kits",
     long_about = "Verwaltet Notizen. Dieselbe Fachlogik bedient die Oberfläche \
-                  `starter-desktop`.",
+                  `teacher-class-desktop`.",
     propagate_version = true
 )]
 pub struct Cli {
@@ -37,7 +37,7 @@ pub struct Cli {
         long,
         global = true,
         value_name = "VERZEICHNIS",
-        env = "STARTER_DATA_DIR"
+        env = "TEACHER_CLASS_DATA_DIR"
     )]
     pub data_dir: Option<PathBuf>,
 
@@ -46,7 +46,7 @@ pub struct Cli {
         long,
         global = true,
         value_name = "VERZEICHNIS",
-        env = "STARTER_CONFIG_DIR"
+        env = "TEACHER_CLASS_CONFIG_DIR"
     )]
     pub config_dir: Option<PathBuf>,
 
@@ -69,7 +69,7 @@ pub enum Command {
 
     /// Vervollständigung für die Shell ausgeben.
     ///
-    /// Beispiel: `starter completions zsh > ~/.zfunc/_starter`
+    /// Beispiel: `teacher-class completions zsh > ~/.zfunc/_teacher-class`
     Completions {
         #[arg(value_enum)]
         shell: Shell,
@@ -157,11 +157,11 @@ pub enum Order {
     Title,
 }
 
-impl From<Order> for starter_core::note::Order {
+impl From<Order> for teacher_class_core::note::Order {
     fn from(o: Order) -> Self {
         match o {
-            Order::Recent => starter_core::note::Order::Recent,
-            Order::Title => starter_core::note::Order::Title,
+            Order::Recent => teacher_class_core::note::Order::Recent,
+            Order::Title => teacher_class_core::note::Order::Title,
         }
     }
 }

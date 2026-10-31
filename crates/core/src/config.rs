@@ -28,7 +28,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            app_name: "Starter".to_string(),
+            app_name: "Teacher Class".to_string(),
             theme: Theme::System,
             accent: "#3b6ea5".to_string(),
         }

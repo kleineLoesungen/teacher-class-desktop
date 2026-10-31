@@ -16,9 +16,9 @@ dunklen Aussehen falsch ist. `crates/core/tests/layering.rs`
 Über die Einstellungen, in der Oberfläche oder auf der Kommandozeile:
 
 ```bash
-starter config set app_name "Notizbuch"
-starter config set theme dark          # system | light | dark
-starter config set accent "#aa3344"
+teacher-class config set app_name "Notizbuch"
+teacher-class config set theme dark          # system | light | dark
+teacher-class config set accent "#aa3344"
 ```
 
 Die Desktop-Anwendung liest die Einstellungen beim Start; nach einer Änderung
@@ -137,7 +137,7 @@ mehrdeutig. Deshalb heißt die Schaltfläche in der Löschrückfrage
 In `crates/desktop/tauri.conf.json`:
 
 ```json
-"windows": [{ "title": "Starter", "width": 1100, "height": 720,
+"windows": [{ "title": "Teacher Class", "width": 1100, "height": 720,
               "minWidth": 640, "minHeight": 420 }]
 ```
 

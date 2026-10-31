@@ -11,14 +11,14 @@
 //!
 //! **Neuer Typ über IPC?** Unten in `TYPES` eintragen, `#[derive(TS)]` am Typ.
 
-use starter_core::note::{Note, NoteInput, Order};
-use starter_core::{Config, ErrorCode, FieldError, Theme};
-use starter_desktop::ApiError;
-use starter_desktop::commands::AppInfo;
+use teacher_class_core::note::{Note, NoteInput, Order};
+use teacher_class_core::{Config, ErrorCode, FieldError, Theme};
+use teacher_class_desktop::ApiError;
+use teacher_class_desktop::commands::AppInfo;
 use ts_rs::TS;
 
 const TARGET: &str = "ui/src/bindings.ts";
-const UPDATE_ENV: &str = "STARTER_UPDATE_BINDINGS";
+const UPDATE_ENV: &str = "TEACHER_CLASS_UPDATE_BINDINGS";
 
 fn decl<T: TS>(cfg: &ts_rs::Config) -> String {
     let docs = T::docs()
