@@ -12,7 +12,7 @@ type Props = {
 
 export function ClassList({ classes, selectedId, onSelect, onCreate }: Props) {
   return (
-    <nav className="note-nav" aria-label="Klassen">
+    <nav className="class-nav" aria-label="Klassen">
       <div className="sidebar-head">
         <button type="button" className="primary grow" onClick={onCreate}>
           Neue Klasse
@@ -22,17 +22,17 @@ export function ClassList({ classes, selectedId, onSelect, onCreate }: Props) {
       {classes.length === 0 ? (
         <p className="muted sidebar-empty">Noch keine Klassen.</p>
       ) : (
-        <ul className="note-list">
+        <ul className="class-list">
           {classes.map((c) => (
             <li key={c.id}>
               <button
                 type="button"
-                className="note-item"
+                className="class-item"
                 aria-current={c.id === selectedId ? "true" : undefined}
                 onClick={() => onSelect(c.id)}
               >
-                <span className="note-title">{classLabel(c)}</span>
-                <span className="note-excerpt">{studentCountLabel(c.student_count)}</span>
+                <span className="class-title">{classLabel(c)}</span>
+                <span className="class-excerpt">{studentCountLabel(c.student_count)}</span>
               </button>
             </li>
           ))}
