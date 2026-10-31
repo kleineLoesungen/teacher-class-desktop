@@ -254,8 +254,8 @@ fehlt der CLI. Genau das ist der Fehler, den dieses Kit verhindern soll.
 ### Prüfung gehört in die Fachlogik — nicht nach TypeScript
 
 ```rust
-// ✅ crates/core/src/note.rs
-pub fn create(conn: &Connection, input: NoteInput) -> Result<Note> {
+// ✅ crates/core/src/class.rs
+pub fn create(conn: &Connection, input: ClassInput) -> Result<Class> {
     let input = input.clean()?;   // trimmt und prüft, wirft Error::Validation
     …
 }
@@ -275,9 +275,9 @@ Vorabprüfung für schnellere Rückmeldung ist erlaubt, ersetzt aber nie die in
 ## Die IPC-Grenze
 
 ```
-Komponente ──onSave()──▶ App.tsx ──api.notes.update(id, draft)──▶ invoke("note_update", {id, input})
+Komponente ──onSave()──▶ App.tsx ──api.classes.update(id, draft)──▶ invoke("class_update", {id, input})
                                                                           │
-     ◀── Note  oder  ApiError { code, message, fields? } ◀── commands.rs ─┴─▶ teacher_class_core
+     ◀── Class  oder  ApiError { code, message, fields? } ◀── commands.rs ─┴─▶ teacher_class_core
 ```
 
 **Typen werden nicht doppelt geschrieben.** Rust-Typen, die über IPC gehen,
@@ -339,7 +339,7 @@ Namen werden nie umbenannt, nur ergänzt.
 
 Die Kennungen sind UUIDv7. Die **beginnt mit dem Zeitstempel** — zwei Notizen
 aus derselben Sekunde teilen sich die ersten zwölf Zeichen. Darum zeigt
-`teacher-class note list` die **letzten** acht Zeichen, und `note::resolve_id` sucht
+`teacher-class class list` die **letzten** acht Zeichen, und `class::resolve_id` sucht
 per Endstück. Ist ein Endstück nicht eindeutig, gibt es `Error::Ambiguous` —
 nie einen zufälligen Treffer.
 
@@ -394,7 +394,7 @@ Bitte nicht „nachrüsten":
 
 | Wo | Was |
 |---|---|
-| `crates/core/tests/note.rs` | Die fachlichen Regeln. **Hier liegt der Schwerpunkt.** |
+| `crates/core/tests/class.rs` | Die fachlichen Regeln (Klassen, Schüler). **Hier liegt der Schwerpunkt.** |
 | `crates/core/tests/config.rs` | Einstellungen lesen, schreiben, ablehnen |
 | `crates/core/tests/layering.rs` | Der Schichtwächter — Rust **und** TypeScript, dazu der Plattform-Wächter |
 | `crates/cli/tests/cli.rs` | Ausgabeformat, Rückgabewerte, Schnappschüsse |
@@ -517,11 +517,11 @@ Deshalb:
 
 ## Eine neue Ressource anlegen
 
-`note` ist die Vorlage. Der Weg von der Tabelle bis in beide Schalen:
+`class` ist die Vorlage. Der Weg von der Tabelle bis in beide Schalen:
 
 1. `crates/core/migrations/000X_….sql` — neue Datei, `STRICT`.
 2. `crates/core/src/db.rs` — in `MIGRATIONS` eintragen.
-3. `crates/core/src/note.rs` kopieren, umbenennen; `#[derive(TS)]` an die
+3. `crates/core/src/class.rs` kopieren, umbenennen; `#[derive(TS)]` an die
    Typen, die über IPC gehen.
 4. `crates/core/src/lib.rs` — Modul veröffentlichen.
 5. Tests in `crates/core/tests/` — **zuerst**.
