@@ -3,12 +3,12 @@
 //
 //   node scripts/new-project.mjs notizbuch "Notizbuch"
 //
-// Ersetzt überall "starter" durch den neuen Namen: Kistennamen, Binaries,
+// Ersetzt überall "teacher-class" durch den neuen Namen: Kistennamen, Binaries,
 // Umgebungsvariablen, Datenverzeichnis, Bündelkennung, Fenstertitel,
 // package.json, tauri.conf.json, Workflows, Doku.
 //
 // DIREKT NACH DEM KLONEN AUSFÜHREN, vor jedem `just`-Befehl. Bis dahin heißt
-// der Klon noch "starter" und benutzt DASSELBE Datenverzeichnis wie das Kit —
+// der Klon noch "teacher-class" und benutzt DASSELBE Datenverzeichnis wie das Kit —
 // zwei Projekte mit demselben Namen teilen sich unbemerkt eine Datenbank.
 //
 // In Node statt in Bash, damit es auf Windows ohne Git Bash läuft. Das nimmt
@@ -22,7 +22,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
-const KIT = "starter";
+const KIT = "teacher-class";
 
 const [slug, displayArg] = process.argv.slice(2);
 
@@ -60,7 +60,7 @@ console.log(`Anzeigename:  ${display}`);
 console.log(`Umgebung:     ${upper}_DATA_DIR / ${upper}_CONFIG_DIR\n`);
 
 // Reihenfolge ist wichtig: spezifische Schreibweisen zuerst, damit das
-// allgemeine "starter" am Schluss nichts zerlegt, was schon ersetzt ist.
+// allgemeine "teacher-class" am Schluss nichts zerlegt, was schon ersetzt ist.
 //
 // Die Bündelkennung steht ganz vorn und nimmt den Kurznamen MIT Bindestrichen:
 // Tauri erlaubt dort nur Buchstaben, Ziffern, "-" und "." — ein Unterstrich
@@ -74,13 +74,13 @@ const park = `@@SCHWESTER${"KIT@@"}`;
 
 const ersetzungen = [
   [/vibe-starter-desktop/g, park],
-  [/de\.kleineloesungen\.starter/g, `de.example.${slug}`],
-  [/STARTER_/g, `${upper}_`],
-  [/starter_/g, `${underscore}_`],
-  [/vibe-starter-tauri/g, slug],
-  [/starter-/g, `${slug}-`],
-  [/Starter/g, display],
-  [/starter/g, slug],
+  [/de\.kleineloesungen\.teacher-class/g, `de.example.${slug}`],
+  [/TEACHER_CLASS_/g, `${upper}_`],
+  [/teacher_class_/g, `${underscore}_`],
+  [/teacher-class/g, slug],
+  [/teacher-class-/g, `${slug}-`],
+  [/Teacher Class/g, display],
+  [/teacher-class/g, slug],
   [new RegExp(park, "g"), "vibe-starter-desktop"],
 ];
 
@@ -119,7 +119,7 @@ for (const datei of dateien()) {
 }
 
 // Die Umbenennung verschiebt die alphabetische Reihenfolge der `use`-Zeilen:
-// "starter_core" sortiert vor "time" und "uuid", ein Name wie
+// "teacher_class_core" sortiert vor "time" und "uuid", ein Name wie
 // "vorlagentest_core" danach. Ohne diesen Lauf scheitert `just check` beim
 // allerersten Mal an einem reinen Formatierungsunterschied — der denkbar
 // schlechteste erste Eindruck für ein frisches Projekt.

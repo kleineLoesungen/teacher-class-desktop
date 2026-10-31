@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Baut dist/starter-cli-<version>-<os>-<arch>.tar.gz — die Kommandozeile zum
+// Baut dist/teacher-class-cli-<version>-<os>-<arch>.tar.gz — die Kommandozeile zum
 // Weitergeben, auf allen drei Systemen gleich.
 //
 // Warum getrennt vom Desktop-Bündel: Tauri nimmt keine zweite ausführbare
@@ -15,7 +15,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
-const NAME = "starter";
+const NAME = "teacher-class";
 
 function run(cmd, args, options = {}) {
   const ergebnis = spawnSync(cmd, args, { cwd: ROOT, stdio: "inherit", ...options });

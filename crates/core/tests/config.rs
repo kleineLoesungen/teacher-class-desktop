@@ -1,6 +1,6 @@
 //! Tests der Einstellungsdatei.
 
-use starter_core::{Config, Paths, Theme};
+use teacher_class_core::{Config, Paths, Theme};
 
 #[test]
 fn fehlende_datei_ergibt_die_voreinstellung() {
@@ -38,7 +38,7 @@ fn ein_unbekannter_schluessel_ist_ein_fehler() {
     std::fs::write(paths.config_file(), "app_nme = \"Tippfehler\"\n").unwrap();
 
     let err = Config::load(&paths.config_file()).unwrap_err();
-    assert!(matches!(err, starter_core::Error::ConfigParse { .. }));
+    assert!(matches!(err, teacher_class_core::Error::ConfigParse { .. }));
 }
 
 #[test]

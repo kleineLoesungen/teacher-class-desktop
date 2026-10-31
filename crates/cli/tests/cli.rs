@@ -2,7 +2,7 @@
 //!
 //! Geprüft wird, was ein Benutzer sieht: Ausgabe auf stdout, Meldung auf
 //! stderr, Rückgabewert. Die fachlichen Regeln stehen in den Tests von
-//! `starter-core` — hier geht es nur ums Durchreichen und ums Format.
+//! `teacher-class-core` — hier geht es nur ums Durchreichen und ums Format.
 //!
 //! # Schnappschüsse
 //!
@@ -32,13 +32,13 @@ const FILTERS: &[(&str, &str)] = &[
     (r"\d{4}-\d{2}-\d{2}T[0-9:.]+Z", "[zeit]"),
     // Wegwerfverzeichnisse heißen bei jedem Lauf anders — auf Windows mit
     // Backslashes und Laufwerksbuchstaben.
-    (r#"[/\\][^\s"]*[/\\]starter-test-[^\s"]*"#, "[tmp]"),
-    // Auf Windows heißt die Datei `starter.exe`, und clap nimmt die Zeile
+    (r#"[/\\][^\s"]*[/\\]teacher-class-test-[^\s"]*"#, "[tmp]"),
+    // Auf Windows heißt die Datei `teacher-class.exe`, und clap nimmt die Zeile
     // „Usage:" aus argv[0] — nicht aus `#[command(name = ...)]`. Das ist
     // kein Unterschied im Verhalten, nur im Dateinamen. Ohne diese Zeile
     // gölte jeder Schnappschuss mit Hilfetext nur auf zwei von drei
     // Systemen.
-    (r"starter\.exe", "starter"),
+    (r"teacher-class\.exe", "teacher-class"),
 ];
 
 struct Ctx {
@@ -50,7 +50,7 @@ struct Ctx {
 impl Ctx {
     fn new() -> Self {
         let dir = tempfile::Builder::new()
-            .prefix("starter-test-")
+            .prefix("teacher-class-test-")
             .tempdir()
             .unwrap();
         Self {
@@ -63,7 +63,7 @@ impl Ctx {
     fn run(&self, args: &[&str]) -> Output {
         // CARGO_BIN_EXE_* setzt cargo für Abnahmetests. Damit wird genau das
         // Binary getestet, das gerade gebaut wurde.
-        let out = Command::new(env!("CARGO_BIN_EXE_starter"))
+        let out = Command::new(env!("CARGO_BIN_EXE_teacher-class"))
             .args(args)
             .arg("--data-dir")
             .arg(&self.data)
@@ -73,7 +73,7 @@ impl Ctx {
             // wird damit zum Fehler, wie im Skript auch.
             .stdin(std::process::Stdio::null())
             .output()
-            .expect("starter startbar");
+            .expect("teacher-class startbar");
 
         Output {
             stdout: String::from_utf8(out.stdout).expect("stdout ist UTF-8"),
@@ -279,7 +279,7 @@ fn eine_kaputte_einstellung_wird_nicht_uebernommen() {
 fn text_kommt_auch_von_stdin() {
     use std::io::Write;
     let ctx = Ctx::new();
-    let mut child = Command::new(env!("CARGO_BIN_EXE_starter"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_teacher-class"))
         .args(["note", "add", "Aus der Pipe", "--body", "-", "--json"])
         .arg("--data-dir")
         .arg(&ctx.data)
@@ -304,10 +304,10 @@ fn text_kommt_auch_von_stdin() {
 
 #[test]
 fn completions_brauchen_keine_datenbank() {
-    // `starter completions zsh` muss auch dort laufen, wo das
+    // `teacher-class completions zsh` muss auch dort laufen, wo das
     // Datenverzeichnis nicht beschreibbar ist — sonst scheitert die
     // Installation über ein Paket.
-    let out = Command::new(env!("CARGO_BIN_EXE_starter"))
+    let out = Command::new(env!("CARGO_BIN_EXE_teacher-class"))
         .args(["completions", "zsh"])
         .arg("--data-dir")
         .arg("/nicht/beschreibbar")
@@ -320,5 +320,5 @@ fn completions_brauchen_keine_datenbank() {
         "{}",
         String::from_utf8_lossy(&out.stderr)
     );
-    assert!(String::from_utf8_lossy(&out.stdout).starts_with("#compdef starter"));
+    assert!(String::from_utf8_lossy(&out.stdout).starts_with("#compdef teacher-class"));
 }

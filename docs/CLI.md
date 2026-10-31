@@ -1,14 +1,14 @@
 # Die Kommandozeile
 
-`starter` ist die zweite Schale über derselben Fachlogik wie die Desktop-Anwendung.
+`teacher-class` ist die zweite Schale über derselben Fachlogik wie die Desktop-Anwendung.
 Beide arbeiten auf derselben Datenbank.
 
 ```bash
-starter note add "Einkauf" --body "Milch, Brot"
-starter note list
-starter note show 8a551a8d
-starter note edit 8a551a8d --title "Großeinkauf"
-starter note rm 8a551a8d --yes
+teacher-class note add "Einkauf" --body "Milch, Brot"
+teacher-class note list
+teacher-class note show 8a551a8d
+teacher-class note edit 8a551a8d --title "Großeinkauf"
+teacher-class note rm 8a551a8d --yes
 ```
 
 ## Kennungen
@@ -34,10 +34,10 @@ zeigt die Treffer — nie wird einfach einer davon genommen.
 |---|---|---|
 | 0 | in Ordnung | |
 | 1 | allgemeiner Fehler | Platte voll, Datenbank nicht lesbar |
-| 2 | falscher Aufruf | `starter note gibtsnicht` — vergibt clap selbst |
-| 3 | nicht gefunden | `starter note show ffffffff` |
+| 2 | falscher Aufruf | `teacher-class note gibtsnicht` — vergibt clap selbst |
+| 3 | nicht gefunden | `teacher-class note show ffffffff` |
 | 4 | Eingabe ungültig | leerer Titel, `accent = "blau"` |
-| 5 | Kennung nicht eindeutig | `starter note show a` bei mehreren Treffern |
+| 5 | Kennung nicht eindeutig | `teacher-class note show a` bei mehreren Treffern |
 
 Festgelegt in `crates/cli/src/exit.rs`, geprüft in `crates/cli/tests/cli.rs`.
 
@@ -47,7 +47,7 @@ Festgelegt in `crates/cli/src/exit.rs`, geprüft in `crates/cli/tests/cli.rs`.
 funktioniert:
 
 ```bash
-starter note list --json | jq -r '.[] | "\(.id)\t\(.title)"'
+teacher-class note list --json | jq -r '.[] | "\(.id)\t\(.title)"'
 ```
 
 Zeitstempel stehen in UTC als RFC-3339-Text. Für Menschen rechnet die Ausgabe in
@@ -94,13 +94,13 @@ eine Fehlermeldung als Nutzdaten liest:
 
 ```bash
 # Text aus einer Datei
-cat notiz.md | starter note add "Aus der Datei" --body -
+cat notiz.md | teacher-class note add "Aus der Datei" --body -
 
 # Ohne Terminal gibt es keine Rückfrage, sondern einen Fehler.
-starter note rm 8a551a8d --yes
+teacher-class note rm 8a551a8d --yes
 
 # Eigene Verzeichnisse — der saubere Weg für Tests und CI
-STARTER_DATA_DIR=/tmp/t/data STARTER_CONFIG_DIR=/tmp/t/config starter note list
+TEACHER_CLASS_DATA_DIR=/tmp/t/data TEACHER_CLASS_CONFIG_DIR=/tmp/t/config teacher-class note list
 ```
 
 `note rm` fragt nach, wenn stdin ein Terminal ist. Ist es keins, bricht der
@@ -112,11 +112,11 @@ antworten kann, wäre die falsche Voreinstellung.
 Dieselbe Datei, die auch die Oberfläche liest und schreibt.
 
 ```bash
-starter config show
-starter config set theme dark          # system | light | dark
-starter config set accent "#aa3344"    # #rrggbb
-starter config set app_name "Notizbuch"
-starter config reset
+teacher-class config show
+teacher-class config set theme dark          # system | light | dark
+teacher-class config set accent "#aa3344"    # #rrggbb
+teacher-class config set app_name "Notizbuch"
+teacher-class config reset
 ```
 
 Ein ungültiger Wert wird abgelehnt — der alte Stand bleibt unverändert stehen.
@@ -124,34 +124,34 @@ Ein ungültiger Wert wird abgelehnt — der alte Stand bleibt unverändert stehe
 ## Wo liegt was
 
 ```bash
-starter paths
-starter paths --json | jq -r .db_file
+teacher-class paths
+teacher-class paths --json | jq -r .db_file
 ```
 
 | | macOS | Linux | Windows |
 |---|---|---|---|
-| Daten | `~/Library/Application Support/starter` | `~/.local/share/starter` | `%APPDATA%\starter\data` |
-| Konfiguration | `~/Library/Application Support/starter` | `~/.config/starter` | `%APPDATA%\starter\config` |
+| Daten | `~/Library/Application Support/teacher-class` | `~/.local/share/teacher-class` | `%APPDATA%\teacher-class\data` |
+| Konfiguration | `~/Library/Application Support/teacher-class` | `~/.config/teacher-class` | `%APPDATA%\teacher-class\config` |
 
 Überschreiben mit `--data-dir` / `--config-dir` oder den Umgebungsvariablen
-`STARTER_DATA_DIR` / `STARTER_CONFIG_DIR`.
+`TEACHER_CLASS_DATA_DIR` / `TEACHER_CLASS_CONFIG_DIR`.
 
 ## Protokoll
 
 Geht auf stderr, nie auf stdout.
 
 ```bash
-starter -v note list          # info
-starter -vv note list         # debug
-STARTER_LOG=starter=trace starter note list
+teacher-class -v note list          # info
+teacher-class -vv note list         # debug
+TEACHER_CLASS_LOG=teacher-class=trace teacher-class note list
 ```
 
 ## Vervollständigung und Handbuch
 
 ```bash
-starter completions zsh  > ~/.zfunc/_starter
-starter completions bash > /etc/bash_completion.d/starter
-starter man --out ~/.local/share/man/man1
+teacher-class completions zsh  > ~/.zfunc/_teacher-class
+teacher-class completions bash > /etc/bash_completion.d/teacher-class
+teacher-class man --out ~/.local/share/man/man1
 ```
 
 Beides erzeugt die Anwendung aus ihrer eigenen Befehlsstruktur — es kann also

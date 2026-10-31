@@ -1,5 +1,5 @@
 [package]
-name = "starter-core"
+name = "teacher-class-core"
 description = "Fachlogik des Kits. Kennt weder Kommandozeile noch Oberfläche."
 version.workspace = true
 edition.workspace = true

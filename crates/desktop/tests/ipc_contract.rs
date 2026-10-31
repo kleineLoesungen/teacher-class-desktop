@@ -12,16 +12,16 @@
 //! 3. **Die Sicherheitsrichtlinie** in `tauri.conf.json` — so eng wie möglich,
 //!    so weit wie Mermaid es braucht.
 //!
-//! Die fachlichen Regeln stehen in den Tests von `starter-core`. Hier geht es
+//! Die fachlichen Regeln stehen in den Tests von `teacher-class-core`. Hier geht es
 //! nur ums Durchreichen.
 
 use serde_json::{Value, json};
-use starter_core::{App, Paths};
-use starter_desktop::{AppState, configure};
 use tauri::ipc::{CallbackFn, InvokeBody};
 use tauri::test::{INVOKE_KEY, MockRuntime, mock_builder, mock_context, noop_assets};
 use tauri::webview::InvokeRequest;
 use tauri::{WebviewWindow, WebviewWindowBuilder};
+use teacher_class_core::{App, Paths};
+use teacher_class_desktop::{AppState, configure};
 
 struct Ctx {
     _dir: tempfile::TempDir,
@@ -152,7 +152,7 @@ fn ein_fehler_beim_start_erreicht_jeden_befehl() {
     // Die Anwendung ließ sich nicht öffnen — das Fenster soll trotzdem eine
     // Meldung zeigen können, statt kommentarlos zu verschwinden.
     let dir = tempfile::tempdir().unwrap();
-    let state = AppState::failed(starter_desktop::ApiError::internal("kaputt"));
+    let state = AppState::failed(teacher_class_desktop::ApiError::internal("kaputt"));
     let ctx = Ctx::with_state(dir, state);
 
     let err = ctx

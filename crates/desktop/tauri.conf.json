@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Starter",
-  "mainBinaryName": "starter-desktop",
-  "identifier": "de.kleineloesungen.starter",
+  "productName": "Teacher Class",
+  "mainBinaryName": "teacher-class-desktop",
+  "identifier": "de.example.teacher-class",
   "build": {
     "beforeDevCommand": "npm run dev:ui",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Starter",
+        "title": "Teacher Class",
         "width": 1100,
         "height": 720,
         "minWidth": 640,

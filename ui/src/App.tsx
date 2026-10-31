@@ -33,8 +33,8 @@ flowchart TD
     UI[Komponente] -->|Rückruf| App[App.tsx]
     App -->|api.ts| IPC{{Tauri IPC}}
     IPC --> Cmd[commands.rs]
-    CLI[starter CLI] --> Core
-    Cmd --> Core[(starter-core)]
+    CLI[teacher-class CLI] --> Core
+    Cmd --> Core[(teacher-class-core)]
 \`\`\`
 
 \`\`\`mermaid
