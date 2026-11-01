@@ -284,3 +284,50 @@ fn loescht_man_einen_schueler_verschwinden_seine_eintraege() {
         .unwrap();
     assert_eq!(n, 0);
 }
+
+#[test]
+fn der_notenschluessel_zaehlt_die_noten_und_mittelt_auf_zwei_stellen() {
+    let a = aufbau(false);
+    // Leer: niemand hat eine Note, kein Durchschnitt.
+    let leer = grading::grade_key(&a.conn, a.exam, a.class).unwrap();
+    assert_eq!(leer.graded, 0);
+    assert_eq!(leer.average, None);
+    assert_eq!(leer.counts.len(), 3);
+
+    // Max: 17,5 Punkte → Note 1. Eva: 10 Punkte → Note 3.
+    grading::set(&a.conn, a.exam, eintrag(a.max, 0, 0, Some(4.0), "")).unwrap();
+    grading::set(&a.conn, a.exam, eintrag(a.max, 1, 0, Some(13.5), "")).unwrap();
+    grading::set(&a.conn, a.exam, eintrag(a.eva, 1, 0, Some(10.0), "")).unwrap();
+    let key = grading::grade_key(&a.conn, a.exam, a.class).unwrap();
+    let counts: Vec<(&str, u32)> = key
+        .counts
+        .iter()
+        .map(|c| (c.grade.as_str(), c.count))
+        .collect();
+    assert_eq!(counts, vec![("6", 0), ("3", 1), ("1", 1)]);
+    assert_eq!(key.graded, 2);
+    assert_eq!(key.average, Some(2.0));
+}
+
+#[test]
+fn der_durchschnitt_wird_auf_zwei_nachkommastellen_gerundet() {
+    let a = aufbau(false);
+    let dora = student::add_many(&a.conn, a.class, "Dritt, Dora").unwrap();
+    let dora = dora.iter().find(|s| s.last_name == "Dritt").unwrap().id;
+    // Noten 1, 3, 6 → 10/3 = 3,33
+    grading::set(&a.conn, a.exam, eintrag(a.max, 1, 0, Some(13.5), "")).unwrap();
+    grading::set(&a.conn, a.exam, eintrag(a.max, 0, 0, Some(4.0), "")).unwrap();
+    grading::set(&a.conn, a.exam, eintrag(a.eva, 1, 0, Some(10.0), "")).unwrap();
+    grading::set(&a.conn, a.exam, eintrag(dora, 0, 0, Some(1.0), "")).unwrap();
+    let key = grading::grade_key(&a.conn, a.exam, a.class).unwrap();
+    assert_eq!(key.graded, 3);
+    assert_eq!(key.average, Some(3.33));
+}
+
+#[test]
+fn der_notenschluessel_gehoert_zu_einer_klasse_der_pruefung() {
+    let a = aufbau(false);
+    let andere = class::create(&a.conn, ClassInput::new("8b", 2025)).unwrap();
+    let err = grading::grade_key(&a.conn, a.exam, andere.id).unwrap_err();
+    assert!(matches!(err, Error::NotFound));
+}

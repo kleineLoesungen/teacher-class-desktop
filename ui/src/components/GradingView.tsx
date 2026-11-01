@@ -7,8 +7,8 @@
 // gültig ist, entscheidet Rust, die Meldung erscheint über dem Schüler.
 
 import { useState } from "react";
-import type { Class, Exam, ScoreInput, StudentResult } from "../bindings";
-import { formatPoints, parsePoints } from "../lib/exam";
+import type { Class, Exam, GradeKey, ScoreInput, StudentResult } from "../bindings";
+import { formatAverage, formatPoints, parsePoints } from "../lib/exam";
 import { classLabel } from "../lib/format";
 
 type Props = {
@@ -17,6 +17,8 @@ type Props = {
   classes: Class[];
   classId: string | null;
   results: StudentResult[];
+  /** Anzahl je Note und Durchschnitt der Klasse; von Rust berechnet. */
+  gradeKey: GradeKey | null;
   studentId: string | null;
   /** Meldungen von Rust zu einem Feld (`points`, `note`, `item`). */
   messages: (field: string) => string[];
@@ -173,6 +175,34 @@ function StudentTile({
   );
 }
 
+/** Der Notenschlüssel, eingeklappt: „1× Note 1, 3× Note 4 · Schnitt 2,60“. */
+function GradeKeyView({ gradeKey }: { gradeKey: GradeKey }) {
+  const given = gradeKey.counts.filter((c) => c.count > 0);
+  return (
+    <details className="grade-key">
+      <summary>Notenschlüssel</summary>
+      {given.length === 0 ? (
+        <p className="muted">Noch keine Note vergeben.</p>
+      ) : (
+        <>
+          <ul aria-label="Noten">
+            {given.map((c) => (
+              <li key={c.grade}>
+                {c.count}× Note {c.grade}
+              </li>
+            ))}
+          </ul>
+          {gradeKey.average !== null && (
+            <p>
+              <strong>Schnitt {formatAverage(gradeKey.average)}</strong>
+            </p>
+          )}
+        </>
+      )}
+    </details>
+  );
+}
+
 export function GradingView(props: Props) {
   const { exam, classes, classId, results, studentId } = props;
   const current = results.find((r) => r.student.id === studentId) ?? null;
@@ -209,6 +239,8 @@ export function GradingView(props: Props) {
             ))}
           </select>
         </div>
+
+        {props.gradeKey && results.length > 0 && <GradeKeyView gradeKey={props.gradeKey} />}
 
         {results.length === 0 ? (
           <p className="muted">Diese Klasse hat keine Schüler.</p>

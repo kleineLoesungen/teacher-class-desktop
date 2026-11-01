@@ -832,6 +832,16 @@ input[type="color"] {
   width: 100%;
 }
 
+.grade-key summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.grade-key ul {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-4);
+}
+
 .tile-total {
   display: flex;
   justify-content: space-between;

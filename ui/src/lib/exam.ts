@@ -41,6 +41,12 @@ export function formatPoints(points: number): string {
   return String(points).replace(".", ",");
 }
 
+/** Der Notendurchschnitt mit zwei Nachkommastellen und Komma („2,60“). Nur
+ *  Darstellung — den Wert hat Rust gerundet. */
+export function formatAverage(average: number): string {
+  return average.toFixed(2).replace(".", ",");
+}
+
 export function draftFromExam(exam: Exam): ExamDraft {
   return {
     name: exam.name,

@@ -18,7 +18,7 @@ use serde::Serialize;
 use tauri::State;
 use teacher_class_core::class::{self, Class, ClassInput};
 use teacher_class_core::exam::{self, Exam, ExamInput, Preview};
-use teacher_class_core::grading::{self, ScoreInput, StudentResult};
+use teacher_class_core::grading::{self, GradeKey, ScoreInput, StudentResult};
 use teacher_class_core::student::{self, Student, StudentInput};
 use teacher_class_core::{App, Config, Paths};
 use teacher_class_core::{export, export_pdf};
@@ -166,6 +166,17 @@ pub async fn exam_score(
     input: ScoreInput,
 ) -> ApiResult<StudentResult> {
     state.with(|app| grading::set(app.conn(), id, input))
+}
+
+/// Der Notenschlüssel der Klasse `class` in der Prüfung `id`: Anzahl je Note
+/// und Durchschnitt — berechnet von core.
+#[tauri::command]
+pub async fn exam_grade_key(
+    state: State<'_, AppState>,
+    id: Uuid,
+    class: Uuid,
+) -> ApiResult<GradeKey> {
+    state.with(|app| grading::grade_key(app.conn(), id, class))
 }
 
 // --- Einstellungen ---------------------------------------------------------

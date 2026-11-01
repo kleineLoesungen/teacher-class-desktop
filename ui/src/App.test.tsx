@@ -150,6 +150,17 @@ function backend(cmd: string, args: Record<string, unknown> = {}): unknown {
       return null;
     case "exam_results":
       return results;
+    case "exam_grade_key":
+      // Feste Werte, damit die Anzeige geprüft wird; gerechnet hat Rust.
+      return {
+        counts: [
+          { grade: "4", count: 3 },
+          { grade: "2", count: 0 },
+          { grade: "1", count: 1 },
+        ],
+        graded: 4,
+        average: 2.6,
+      };
     case "exam_score": {
       // Keine Regeln, keine Rechnung: Rust hat Summe und Note errechnet — hier
       // stehen feste Werte, damit die Anzeige geprüft wird.
@@ -674,6 +685,26 @@ describe("Oberfläche", () => {
       });
       expect(await screen.findByText("Gesamt: 2,5 / 2,5")).toBeTruthy();
       expect(screen.getByText("Note: 1")).toBeTruthy();
+    });
+
+    it("zeigt den Notenschlüssel der Klasse aus Rust, eingeklappt", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      exams = [savedExam()];
+      results = [maxResult()];
+      render(<App />);
+
+      await openExams(user);
+      await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
+      await user.click(screen.getByRole("button", { name: "Bewerten" }));
+
+      await user.click(await screen.findByText("Notenschlüssel"));
+      expect(commands("exam_grade_key")[0]?.args).toEqual({ id: "e1", class: "a" });
+      expect(screen.getByText("3× Note 4")).toBeTruthy();
+      expect(screen.getByText("1× Note 1")).toBeTruthy();
+      // Noten ohne Schüler stehen nicht in der Liste.
+      expect(screen.queryByText(/Note 2$/)).toBeNull();
+      expect(screen.getByText("Schnitt 2,60")).toBeTruthy();
     });
 
     it("schickt Begründungen mit, wenn die Prüfung sie vorsieht", async () => {

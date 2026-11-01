@@ -3,6 +3,7 @@ import type { Exam } from "../bindings";
 import {
   draftFromExam,
   emptyExamDraft,
+  formatAverage,
   formatPoints,
   parsePoints,
   sameDraft,
@@ -31,6 +32,11 @@ describe("Prüfungsentwurf", () => {
   it("zeigt Punkte mit Komma", () => {
     expect(formatPoints(2.5)).toBe("2,5");
     expect(formatPoints(4)).toBe("4");
+  });
+
+  it("zeigt den Schnitt mit zwei Nachkommastellen und Komma", () => {
+    expect(formatAverage(2.6)).toBe("2,60");
+    expect(formatAverage(1)).toBe("1,00");
   });
 
   it("macht aus dem Gespeicherten und zurück denselben Entwurf", () => {

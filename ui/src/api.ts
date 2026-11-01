@@ -27,6 +27,7 @@ import type {
   Exam,
   ExamInput,
   FieldError,
+  GradeKey,
   Preview,
   ScoreInput,
   Student,
@@ -115,6 +116,9 @@ export const api = {
     /** Die Bewertung der Schüler der Klasse `classId` in der Prüfung `id`. */
     results: (id: string, classId: string) =>
       call<StudentResult[]>("exam_results", { id, class: classId }),
+    /** Der Notenschlüssel der Klasse `classId`: Anzahl je Note und Durchschnitt. */
+    gradeKey: (id: string, classId: string) =>
+      call<GradeKey>("exam_grade_key", { id, class: classId }),
     /** Trägt Punkte und Begründung ein; liefert die neu berechnete Bewertung. */
     score: (id: string, input: ScoreInput) => call<StudentResult>("exam_score", { id, input }),
   },

@@ -17,6 +17,7 @@ import type {
   ClassInput,
   Config,
   Exam,
+  GradeKey,
   Preview,
   ScoreInput,
   Student,
@@ -70,6 +71,8 @@ export function App() {
     null,
   );
   const [results, setResults] = useState<StudentResult[]>([]);
+  // Notenschlüssel der Klasse in der Bewertung, von Rust berechnet.
+  const [gradeKey, setGradeKey] = useState<GradeKey | null>(null);
 
   const [config, setConfig] = useState<Config | null>(null);
   const [info, setInfo] = useState<AppInfo | null>(null);
@@ -321,6 +324,7 @@ export function App() {
     try {
       const list = await api.exams.results(exam.id, target);
       setResults(list);
+      setGradeKey(await api.exams.gradeKey(exam.id, target));
       setGrading({ classId: target, studentId: list[0]?.student.id ?? null });
       setFieldError(null);
       setNotice(null);
@@ -334,6 +338,7 @@ export function App() {
     try {
       const updated = await api.exams.score(examSelection.id, input);
       setResults((all) => all.map((r) => (r.student.id === updated.student.id ? updated : r)));
+      if (grading) setGradeKey(await api.exams.gradeKey(examSelection.id, grading.classId));
       setFieldError(null);
     } catch (raw) {
       fail(raw);
@@ -567,6 +572,7 @@ export function App() {
               classes={classes.filter((c) => gradingExam.class_ids.includes(c.id))}
               classId={grading.classId}
               results={results}
+              gradeKey={gradeKey}
               studentId={grading.studentId}
               messages={(field) => fieldError?.fieldMessages(field) ?? []}
               onSelectClass={(id) => void openGrading(id)}

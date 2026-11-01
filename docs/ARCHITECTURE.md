@@ -103,6 +103,8 @@ ExamInput  ──exam::create/update──▶  Tabellen exams, exam_classes,
   Prüfung als Ganzes neu, die Kennungen der Punkte wechseln dabei. Danach
   räumt `grading::prune` auf — was nicht mehr passt, entfällt. Summen und Note
   berechnet `grading::results`; die Oberfläche und der Export zeigen das nur.
+  Dasselbe gilt für den Notenschlüssel (`grading::grade_key`: Anzahl je Note,
+  Schnitt auf zwei Stellen); im Export rechnen ihn Formeln (`COUNTIF`, `AVERAGE`).
 * **Excel ist die Matrix, das PDF ist der Ausdruck.** Das Klassenblatt in Excel
   ist immer eine Matrix (Schüler in Zeilen). Gedruckt wird nicht über Excel —
   Seitenumbrüche und Zeilenhöhen hat dort nie ein Test gerechnet und sie

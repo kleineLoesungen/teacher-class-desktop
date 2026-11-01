@@ -235,6 +235,67 @@ pub fn set(conn: &Connection, exam_id: Uuid, input: ScoreInput) -> Result<Studen
     Ok(compute(&exam, student, &stored))
 }
 
+// --- Notenschlüssel --------------------------------------------------------
+
+/// Wie viele Schüler eine Note erreicht haben.
+#[derive(Debug, Clone, PartialEq, Serialize, TS)]
+pub struct GradeCount {
+    pub grade: String,
+    pub count: u32,
+}
+
+/// Der Notenschlüssel einer Klasse: wie oft jede Note vorkommt, und der
+/// Durchschnitt. Berechnet von `core`, die Oberfläche rechnet nicht nach.
+#[derive(Debug, Clone, PartialEq, Serialize, TS)]
+pub struct GradeKey {
+    /// Je Note der Bewertungsmatrix, in deren Reihenfolge (auch mit 0).
+    pub counts: Vec<GradeCount>,
+    /// Schüler mit einer Note, also mit mindestens einem eingetragenen Punkt.
+    pub graded: u32,
+    /// Durchschnitt der Noten auf zwei Nachkommastellen. `None`, wenn noch
+    /// niemand eine Note hat oder ein Notenname keine Zahl ist (z. B. „A“).
+    pub average: Option<f64>,
+}
+
+/// Der Notenschlüssel aus bereits berechneten Bewertungen.
+pub fn grade_key_of(exam: &Exam, results: &[StudentResult]) -> GradeKey {
+    let counts: Vec<GradeCount> = exam
+        .grades
+        .iter()
+        .map(|g| GradeCount {
+            grade: g.name.clone(),
+            count: results
+                .iter()
+                .filter(|r| r.grade.as_deref() == Some(g.name.as_str()))
+                .count() as u32,
+        })
+        .collect();
+    let graded: u32 = counts.iter().map(|c| c.count).sum();
+    let mut sum = 0.0;
+    let mut numeric = true;
+    for c in &counts {
+        match c.grade.trim().replace(',', ".").parse::<f64>() {
+            Ok(n) => sum += n * f64::from(c.count),
+            Err(_) if c.count > 0 => numeric = false,
+            Err(_) => {}
+        }
+    }
+    let average =
+        (graded > 0 && numeric).then(|| (sum / f64::from(graded) * 100.0).round() / 100.0);
+    GradeKey {
+        counts,
+        graded,
+        average,
+    }
+}
+
+/// Der Notenschlüssel der Klasse `class_id` in der Prüfung.
+pub fn grade_key(conn: &Connection, exam_id: Uuid, class_id: Uuid) -> Result<GradeKey> {
+    let exam = exam::get(conn, exam_id)?;
+    let results = results(conn, exam_id, class_id)?;
+    Ok(grade_key_of(&exam, &results))
+}
+
 /// Räumt nach einer Änderung der Prüfung auf: Einträge zu Punkten, die es nicht
 /// mehr gibt, zu Schülern aus entfernten Klassen und Begründungen einer
 /// Prüfung ohne Begründungen entfallen; Punkte über der neuen Höchstpunktzahl
