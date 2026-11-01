@@ -517,6 +517,31 @@ ein zu enges Recht —, dann **schreib es in die PR-Beschreibung**, mit der
 Datei und dem Vorschlag im Wortlaut. Der Mensch trägt es nach. Das ist kein
 Umweg, sondern die Stelle, an der jemand anders hinsehen soll.
 
+#### Was der Runner nicht kann
+
+Du hast die Werkzeugkette dieses Projekts, nicht eine ganze Shell. Vier Dinge
+folgen daraus, und jedes hat schon einen Lauf gekostet:
+
+* **Kein Netz.** `curl` und `wget` sind nicht freigegeben, und das ist
+  Absicht: Die Anwendung muss ohne Netz bauen und starten. Fehlt eine
+  Binärdatei, die nicht im Repo liegt — eine Schrift, ein Symbol —, dann
+  **frag in Schritt 1 danach**, statt sie zu laden. Ein Mensch legt sie ab.
+* **Zusammengesetzte Befehle werden Teil für Teil geprüft.** `cd crates/core
+  && cargo add …` scheitert am ersten Teil, auch wenn `cargo` erlaubt ist.
+  Nimm die Form ohne Verzeichniswechsel: `cargo add -p <kiste>`,
+  `cargo test -p <kiste>`, `--manifest-path`.
+* **Eine neue Abhängigkeit ist kein `cargo add` in einer Kiste.** Die Fassung
+  steht in `[workspace.dependencies]` der obersten `Cargo.toml`, die Kiste
+  schreibt `foo.workspace = true`. Rezept in `docs/RECIPES.md` — und die
+  Versionstabelle oben in dieser Datei will eine Zeile **mit Begründung**.
+* **`git push` fehlt und wird nicht gebraucht**; die Action committet und
+  schiebt selbst. Lesen darf Git dagegen vollständig (`status`, `diff`,
+  `log`, `show`, `branch`, `rev-parse`).
+
+Wird dir wirklich etwas Nötiges verweigert, dann **schreib es in den
+Kommentar, mit dem Befehl im Wortlaut** — `.github/workflows/` darfst du
+nicht anfassen, aber der Mensch kann die Zeile ergänzen.
+
 #### Wenn ein früherer Lauf schon etwas angefangen hat
 
 Jeder Lauf startet auf einem **frischen** Branch von `main`. Hat ein

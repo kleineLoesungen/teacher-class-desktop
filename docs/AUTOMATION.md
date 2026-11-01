@@ -224,8 +224,15 @@ ihn aber weder übersetzen noch prüfen.
 `claude-issue.yml` gibt deshalb die Werkzeugkette dieses Projekts frei:
 
 ```
-Bash(just:*)  Bash(cargo:*)  Bash(npm:*)  Bash(npx:*)  Bash(node:*)
+Bash(just:*)  Bash(cargo:*)  Bash(npm:*)  Bash(npx:*)  Bash(node:*)  Bash(cd:*)
+Bash(git status:*)  Bash(git diff:*)  Bash(git log:*)  …  Bash(git commit:*)
 ```
+
+Die zweite Zeile ist nachgerüstet worden: Ohne lesendes Git arbeitet Claude
+blind — es sieht nicht, was es selbst geändert hat, und kann einen
+Fehlversuch nicht zurücknehmen. **Nicht** dabei sind `git push` (das erledigt
+die Action) sowie `curl` und `wget` (die Anwendung muss ohne Netz bauen;
+fehlt eine Binärdatei, fragt Claude danach).
 
 Das ist die Voraussetzung dafür, dass `CLAUDE.md` von Claude verlangen kann,
 `just check` vor dem Pull Request laufen zu lassen. Ohne sie entstünde Code,

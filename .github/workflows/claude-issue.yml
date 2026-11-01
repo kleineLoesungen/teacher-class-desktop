@@ -201,11 +201,29 @@ jobs:
           # claude/*-Branch abgelegt, sitzt Claude sonst auf seiner eigenen
           # Arbeit fest und müsste sie blind neu schreiben.
           #
+          # Das LESENDE Git gehört dazu, auch wenn es nichts ändert: Ohne
+          # `git status` und `git diff` arbeitet Claude blind — es sieht nicht,
+          # was es selbst geändert hat, und kann einen Fehlversuch nicht
+          # zurücknehmen. CLAUDE.md verlangt obendrein ausdrücklich ein
+          # `git log`, um Arbeit eines früheren Laufs zu finden. Diese Zeile
+          # hat gefehlt, und ein Lauf ist daran hängen geblieben.
+          #
+          # `cd` ist dabei, weil zusammengesetzte Befehle Teil für Teil
+          # geprüft werden: `cd crates/core && cargo add …` scheiterte sonst
+          # am ersten Teil, obwohl `cargo` erlaubt ist. `cd` allein kann
+          # nichts anrichten.
+          #
           # BEWUSST NICHT dabei: `git push`. Das erledigt die Action selbst,
           # und ohne die Freigabe kann ein Lauf auch mit Schreibrecht nicht
           # versehentlich `main` überschreiben. Alles andere wirkt nur im
           # Runner, der danach verschwindet.
+          #
+          # BEWUSST NICHT dabei: `curl` und `wget`. Die Anwendung muss ohne
+          # Netz bauen und starten — ein Lauf, der sich eine Datei aus dem
+          # Netz holt, hinterlässt eine Abhängigkeit, die in keiner Sperrdatei
+          # steht. Fehlt eine Binärdatei (eine Schrift, ein Symbol), fragt
+          # Claude danach, und ein Mensch legt sie ab.
           claude_args: >-
-            --allowedTools "Edit,Write,Bash(just:*),Bash(cargo:*),Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(git fetch:*),Bash(git merge:*),Bash(git cherry-pick:*),Bash(git checkout:*),Bash(git switch:*),Bash(git restore:*),Bash(git add:*),Bash(git rm:*),Bash(git mv:*),Bash(git reset:*),Bash(git stash:*),Bash(git commit:*)"
+            --allowedTools "Edit,Write,Bash(cd:*),Bash(just:*),Bash(cargo:*),Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git branch:*),Bash(git rev-parse:*),Bash(git ls-files:*),Bash(git ls-remote:*),Bash(git fetch:*),Bash(git merge:*),Bash(git cherry-pick:*),Bash(git checkout:*),Bash(git switch:*),Bash(git restore:*),Bash(git add:*),Bash(git rm:*),Bash(git mv:*),Bash(git reset:*),Bash(git stash:*),Bash(git commit:*)"
           # Kein --model: Für das Umsetzen darf das stärkere Modell ran.
           # Die Festlegung auf Sonnet gilt nur den Prüf-Agents.

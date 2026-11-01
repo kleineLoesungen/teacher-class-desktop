@@ -241,6 +241,39 @@ Zähler, die nie über 2⁵³ gehen: `#[ts(type = "number")]`.
 
 ---
 
+## Eine Rust-Kiste hinzufügen
+
+Zwei Stellen — und **nie** `cargo add` im Verzeichnis einer Kiste:
+
+```toml
+# Cargo.toml der Wurzel, [workspace.dependencies]
+pdf-writer = "0.13"
+```
+
+```toml
+# crates/core/Cargo.toml, [dependencies]
+pdf-writer.workspace = true
+```
+
+`cargo add pdf-writer` in `crates/core` schreibt die Fassung direkt in die
+Kiste. Dann steht sie an zwei Orten, die nächste Kiste erbt sie nicht, und
+`just dupes` findet den Unterschied irgendwann als doppelte Abhängigkeit.
+Wer den Befehl trotzdem benutzt: `cargo add -p <kiste> --no-default-features`
+und die Fassungszeile anschließend in die Wurzel verschieben.
+
+Danach:
+
+```bash
+just check          # cargo deny prüft Lizenz und bekannte Lücken mit
+```
+
+Lehnt `cargo deny` die Lizenz ab, steht die Liste der erlaubten in
+`deny.toml`. Eine Lizenz aufzunehmen ist eine Entscheidung, keine
+Formalität — und eine neue Fassung gehört mit **Begründung** in die
+Versionstabelle in `CLAUDE.md`.
+
+---
+
 ## Ein Tauri-Plugin benutzen
 
 So ist der Speichern-Dialog für den Excel-Export eingebaut
