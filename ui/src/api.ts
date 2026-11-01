@@ -35,6 +35,7 @@ import type {
   StudentInput,
   StudentResult,
   SuggestInput,
+  TemplateList,
 } from "./bindings";
 
 /** Ein abgelehnter Befehl. Dieselbe Form wie `error` im JSON der CLI. */
@@ -116,9 +117,13 @@ export const api = {
     remove: (id: string) => call<null>("exam_delete", { id }),
     /** Schreibt die Excel-Datei nach `path` (aus `pickExportPath`). */
     export: (id: string, path: string) => call<null>("exam_export", { id, path }),
-    /** Schreibt das PDF der Klasse `classId` nach `path` (aus `pickPdfPath`). */
-    exportPdf: (id: string, classId: string, path: string) =>
-      call<null>("exam_export_pdf", { id, class: classId, path }),
+    /**
+     * Schreibt das PDF der Klasse `classId` nach `path` (aus `pickPdfPath`),
+     * gesetzt aus der Druckvorlage `template` (Dateiname aus `templates.list`).
+     * Ein Fehler in der Vorlage kommt als Eingabefehler am Feld `template`.
+     */
+    exportPdf: (id: string, classId: string, template: string, path: string) =>
+      call<null>("exam_export_pdf", { id, class: classId, template, path }),
     /** Die Bewertung der Schüler der Klasse `classId` in der Prüfung `id`. */
     results: (id: string, classId: string) =>
       call<StudentResult[]>("exam_results", { id, class: classId }),
@@ -160,6 +165,14 @@ export const api = {
     } catch (raw) {
       throw ApiError.from(raw);
     }
+  },
+
+  templates: {
+    /**
+     * Die Druckvorlagen neben der Datenbank und der Ordner, in dem man eigene
+     * ablegt. Legt Ordner und Standardvorlagen bei Bedarf an.
+     */
+    list: () => call<TemplateList>("template_list"),
   },
 
   config: {

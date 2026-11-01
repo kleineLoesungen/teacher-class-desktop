@@ -198,9 +198,26 @@ fn pruefungen_anlegen_aendern_exportieren_loeschen() {
     assert_eq!(err["fields"][0]["field"], "path");
 
     let pdf = dir.path().join("klasse.pdf");
+    let list = ctx.invoke("template_list", json!({})).unwrap();
+    let files: Vec<&str> = list["templates"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|t| t["file"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        files,
+        [
+            "print_test_student_standard.md",
+            "print_test_class_standard.md"
+        ]
+    );
+    assert_eq!(list["templates"][1]["kind"], "class");
+    assert!(list["dir"].as_str().unwrap().ends_with("Templates"));
+
     ctx.invoke(
         "exam_export_pdf",
-        json!({ "id": id, "class": class["id"], "path": pdf.to_str().unwrap() }),
+        json!({ "id": id, "class": class["id"], "template": files[0], "path": pdf.to_str().unwrap() }),
     )
     .unwrap();
     assert_eq!(&std::fs::read(&pdf).unwrap()[..5], b"%PDF-");
@@ -208,10 +225,19 @@ fn pruefungen_anlegen_aendern_exportieren_loeschen() {
     let err = ctx
         .invoke(
             "exam_export_pdf",
-            json!({ "id": id, "class": class["id"], "path": dir.path().join("x.xlsx").to_str().unwrap() }),
+            json!({ "id": id, "class": class["id"], "template": files[0], "path": dir.path().join("x.xlsx").to_str().unwrap() }),
         )
         .unwrap_err();
     assert_eq!(err["fields"][0]["field"], "path");
+
+    // Eine Vorlage, die es nicht gibt, kommt als Eingabefehler am Feld `template`.
+    let err = ctx
+        .invoke(
+            "exam_export_pdf",
+            json!({ "id": id, "class": class["id"], "template": "print_test_student_gibtsnicht.md", "path": pdf.to_str().unwrap() }),
+        )
+        .unwrap_err();
+    assert_eq!(err["fields"][0]["field"], "template");
 
     ctx.invoke("exam_delete", json!({ "id": id })).unwrap();
     assert!(

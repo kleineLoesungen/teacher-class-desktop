@@ -348,7 +348,11 @@ pub enum ExamCommand {
         out: PathBuf,
     },
 
-    /// Eine Klasse einer Prüfung als PDF ausdrucken (eine Seite je Schüler).
+    /// Eine Klasse einer Prüfung als PDF ausdrucken, aus einer Druckvorlage.
+    ///
+    /// Ohne --template eine Seite je Schüler (Standardvorlage). Eine Vorlage
+    /// ist eine Markdown-Datei im Ordner `Templates` neben der Datenbank;
+    /// `exam templates` listet sie.
     ///
     /// Beispiel:  exam export-pdf 3f9a2b1c 7d41e0aa --out 7a.pdf
     ExportPdf {
@@ -361,7 +365,22 @@ pub enum ExamCommand {
         /// Zieldatei, muss auf .pdf enden.
         #[arg(long, value_name = "DATEI")]
         out: PathBuf,
+
+        /// Dateiname der Vorlage, z. B. print_test_class_standard.md.
+        #[arg(
+            long,
+            value_name = "VORLAGE",
+            default_value = "print_test_student_standard.md"
+        )]
+        template: String,
     },
+
+    /// Die Druckvorlagen auflisten und den Vorlagenordner nennen.
+    ///
+    /// `print_test_student_*.md` wird je Schüler ausgefüllt,
+    /// `print_test_class_*.md` einmal je Klasse. Welche Platzhalter es gibt,
+    /// steht in `placeholder.md` im selben Ordner.
+    Templates,
 }
 
 #[derive(Debug, Subcommand)]

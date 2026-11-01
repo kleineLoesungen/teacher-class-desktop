@@ -107,9 +107,21 @@ b2c9a113  Muster, Max      17.5  1
 eins) und
 überschreibt eine vorhandene. Eingetragene Punkte und Begründungen stehen
 darin. Die Datei muss auf `.xlsx` enden, sonst Rückgabewert 4. 
-`exam export-pdf PRÜFUNG KLASSE --out DATEI` schreibt das PDF einer Klasse (eine
-Seite je Schüler, mit Begründungen, wenn die Prüfung welche hat). Die Datei muss
-auf `.pdf` enden, sonst Rückgabewert 4; die Klasse muss zur Prüfung gehören.
+`exam export-pdf PRÜFUNG KLASSE --out DATEI [--template VORLAGE]` schreibt das PDF
+einer Klasse aus einer Druckvorlage. Ohne `--template` gilt
+`print_test_student_standard.md`: eine Seite je Schüler, mit Begründungen, wenn
+die Prüfung welche hat. Die Datei muss auf `.pdf` enden, sonst Rückgabewert 4; die
+Klasse muss zur Prüfung gehören. Ein Fehler in der Vorlage (unbekannter
+Platzhalter, falsches CSS, fehlendes Bild, unbekannte Vorlage) ergibt ebenfalls
+Rückgabewert 4, die Meldung nennt Datei und Zeile, und es wird nichts geschrieben.
+
+`exam templates` listet die Druckvorlagen und nennt den Ordner (`Templates` neben
+der Datenbank; er wird bei Bedarf samt Standardvorlagen und `placeholder.md`
+angelegt). Mit `--json`: `{ "dir": …, "templates": [{ "file", "kind", "name",
+"standard" }] }`. Der Dateiname bestimmt die Art: `print_test_student_NAME.md`
+(`kind` = `student`) wird je Schüler ausgefüllt, `print_test_class_NAME.md`
+(`kind` = `class`) einmal je Klasse. Die Vorlagen mit `NAME` = `standard` sind
+eingebaut und werden nie aus der Datei gelesen.
 
 Bearbeiten einer Prüfung geht in der
 Oberfläche; auf der Kommandozeile legt man sie neu an.

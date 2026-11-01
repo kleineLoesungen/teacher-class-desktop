@@ -93,18 +93,48 @@ einklappbaren **Notenschlüssel** („3× Note 4 …, Schnitt 2,60“).
 
 ### PDF-Ausdruck
 
-**„Klasse als PDF drucken“** in der Bewertung öffnet einen Speichern-Dialog und
-schreibt **ein PDF für die gewählte Klasse**: A4 hochkant, **eine Seite je
+In der Bewertung wählt man eine **Druckvorlage**; **„Klasse als PDF drucken“**
+öffnet dann einen Speichern-Dialog und schreibt **ein PDF für die gewählte
+Klasse**, A4 hochkant. Die **Standardvorlage „je Schüler“** setzt **eine Seite je
 Schüler** — Aufgabe, Beschreibung, Punkte, Höchstpunkte und (bei Prüfungen mit
 Begründungen) die Begründung, je Gruppe eine Summenzeile, darunter Gesamtpunkte,
-Note und die Bewertungsmatrix. Die Seitenaufteilung berechnet die App selbst
-(`crates/core/src/export_pdf.rs`); ein Tabellenprogramm ist nicht beteiligt.
-Ist eine Kachel durch lange Begründungen höher als eine Seite, läuft sie auf der
-nächsten weiter, mit wiederholtem Tabellenkopf; der nächste Schüler beginnt
-immer neu.
+Note, Abschluss-Satz und die Bewertungsmatrix. Die Standardvorlage „je Klasse“
+ist eine Übersicht mit allen Schülern, Punkten und Noten sowie dem Notenspiegel.
+Die Seitenaufteilung berechnet die App selbst (`crates/core/src/export_pdf.rs`);
+ein Tabellenprogramm ist nicht beteiligt. Ist eine Tabelle durch lange
+Begründungen höher als eine Seite, läuft sie auf der nächsten weiter, mit
+wiederholtem Tabellenkopf; der nächste Schüler beginnt immer neu.
 
-Die **Schrift** ist Times (die in jedem PDF-Programm eingebaute `Times-Roman`,
-sie wird nicht eingebettet — es liegt keine Schriftdatei im Projekt). Zeichen
+#### Eigene Druckvorlagen
+
+Das Aussehen steuern **Markdown-Dateien mit Platzhaltern** im Ordner `Templates`
+**neben der Datenbank** (die Bewertung zeigt den Pfad; auf der Kommandozeile
+`teacher-class exam templates`). Wechselt man den Speicherort der Datenbank,
+gelten die Vorlagen dort; fehlen sie, legt die App die Standards an.
+
+* Der **Dateiname** entscheidet: `print_test_student_NAME.md` wird für jeden
+  Schüler ausgefüllt, `print_test_class_NAME.md` einmal für die Klasse. Eigene
+  Vorlagen bekommen einen eigenen `NAME`, z. B. `print_test_student_schulkopf.md`.
+* `print_test_student_standard.md` und `print_test_class_standard.md` sind die
+  **Vorlagen der App** — als Kopie zum Abschreiben angelegt, aber **nie
+  gelesen**: Die App benutzt ihre eingebaute Fassung, damit der Ausdruck immer
+  geht. Zum Anpassen die Datei unter anderem Namen speichern.
+* `placeholder.md` im selben Ordner listet alle Platzhalter (`{{schueler}}`,
+  `{{gesamtpunkte}}`, Wiederholungen wie `{{#gruppen}} … {{/gruppen}}`,
+  Auswahl mit `{{#wenn begruendungen}}`). Sie wird bei jedem Start neu
+  geschrieben.
+* **Markdown:** Überschriften, Absätze, **fett**, *kursiv*, Listen, Tabellen,
+  Trennlinie, `<!-- seitenumbruch -->` und **Bilder** (`![Logo](logo.png)`, PNG
+  oder JPEG aus dem Vorlagenordner). **Stil:** ein Block `<style> … </style>`
+  mit einer kleinen CSS-Teilmenge (Schriftgröße, Farbe, Ausrichtung, Ränder,
+  Rahmen, Bildbreite); was die App nicht kennt, ist ein Fehler.
+* **Fehler in einer Vorlage brechen den Druck ab**, mit Datei, Zeile und Grund
+  (in der Oberfläche oben in der Leiste). Einen Editor gibt es nicht — man
+  bearbeitet die Datei in einem Textprogramm. Werte aus der Datenbank sind
+  immer Text, nie Markdown: Ein `*` im Namen macht nichts fett.
+
+Die **Schrift** ist Times (die in jedem PDF-Programm eingebauten Times-Schriften,
+sie werden nicht eingebettet — es liegt keine Schriftdatei im Projekt). Zeichen
 außerhalb von Westeuropa (z. B. polnisches Ł) erscheinen als „?“.
 
 Der Export ist einseitig: Änderungen in Excel gelangen nicht zurück in die App.
@@ -176,6 +206,11 @@ crates/
 │   ├── src/student.rs         Schüler einer Klasse, Massen-Eintrag als Text
 │   ├── src/exam.rs            Prüfungen: Schema, Bewertungsmatrix, Prüfung
 │   ├── src/export.rs          Excel-Export (rust_xlsxwriter)
+│   ├── src/export_pdf.rs      PDF-Ausdruck: Seitenaufteilung und PDF-Datei
+│   ├── src/template.rs        Druckvorlagen: Ordner, Platzhalter, Standardvorlagen
+│   ├── src/markdown.rs        Markdown-Teilmenge der Vorlagen
+│   ├── src/style.rs           CSS-Teilmenge der Vorlagen
+│   ├── src/image.rs           Logo (PNG, JPEG) fürs PDF
 │   ├── src/config.rs          Einstellungen, TOML
 │   ├── src/paths.rs           Die einzige Stelle mit macOS/Linux-Unterschieden
 │   └── tests/layering.rs      Der Wächter über die Schichtregel (Rust + TypeScript)

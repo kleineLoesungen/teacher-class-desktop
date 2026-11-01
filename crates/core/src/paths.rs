@@ -100,6 +100,18 @@ impl Paths {
         self.data_dir.join(format!("{APP_NAME}.sqlite3"))
     }
 
+    /// Der Ordner der Druckvorlagen: `Templates` **neben der Datenbank**. Wechselt
+    /// der Speicherort, wechseln die Vorlagen mit.
+    pub fn templates_dir(&self) -> PathBuf {
+        let db = self.db_file();
+        db.parent()
+            .map_or_else(
+                || PathBuf::from(crate::template::DIR_NAME),
+                Path::to_path_buf,
+            )
+            .join(crate::template::DIR_NAME)
+    }
+
     /// Dieselben Pfade mit einem anderen Ort für die Datenbank; `None` heißt
     /// Standardort.
     pub fn with_db_file(mut self, file: Option<PathBuf>) -> Self {

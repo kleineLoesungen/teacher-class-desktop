@@ -20,6 +20,7 @@ use teacher_class_core::grading::{
     SuggestKind,
 };
 use teacher_class_core::student::{Student, StudentInput};
+use teacher_class_core::template::{Kind as TemplateKind, TemplateInfo, TemplateList};
 use teacher_class_core::{Config, ErrorCode, FieldError, Theme};
 use teacher_class_desktop::ApiError;
 use teacher_class_desktop::commands::AppInfo;
@@ -67,6 +68,9 @@ fn generate() -> String {
         decl::<StudentResult>(&cfg),
         decl::<GradeCount>(&cfg),
         decl::<GradeKey>(&cfg),
+        decl::<TemplateInfo>(&cfg),
+        decl::<TemplateKind>(&cfg),
+        decl::<TemplateList>(&cfg),
         decl::<Theme>(&cfg),
     ];
 

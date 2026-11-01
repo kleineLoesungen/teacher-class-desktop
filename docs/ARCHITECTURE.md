@@ -114,11 +114,22 @@ ExamInput  ──exam::create/update──▶  Tabellen exams, exam_classes,
   ist immer eine Matrix (Schüler in Zeilen). Gedruckt wird nicht über Excel —
   Seitenumbrüche und Zeilenhöhen hat dort nie ein Test gerechnet und sie
   stimmten in der Praxis nicht. Stattdessen schreibt `core::export_pdf` ein PDF
-  je Klasse, eine Seite je Schüler, und bestimmt die Seitenaufteilung selbst.
-  Es ist von Hand geschrieben (keine PDF-Abhängigkeit) und nimmt die
-  eingebaute Schrift Times-Roman, damit weder eine Schriftdatei noch eine
-  Lizenz ins Projekt kommt. Ein Blatt „Ausdruck“ mit Schülerauswahl und eine
-  versteckte Hilfsliste gibt es nicht.
+  je Klasse und bestimmt die Seitenaufteilung selbst. Es ist von Hand
+  geschrieben (keine PDF-Abhängigkeit) und nimmt die eingebauten Times-Schriften,
+  damit weder eine Schriftdatei noch eine Lizenz ins Projekt kommt. Ein Blatt
+  „Ausdruck“ mit Schülerauswahl und eine versteckte Hilfsliste gibt es nicht.
+* **Das Aussehen steht in Vorlagen, nicht im Code.** Eine Druckvorlage ist eine
+  Markdown-Datei im Ordner `Templates` neben der Datenbank. Der Weg: `template`
+  liest die Platzhalter und prüft sie gegen die Tabellen der Ebenen (dieselben
+  Tabellen erzeugen `placeholder.md`), `export_pdf` füllt je Schüler (oder einmal
+  je Klasse) die Werte ein, `markdown` liest das Ergebnis in Blöcke, `style`
+  liefert die Eigenschaften je Element, und `Doc` in `export_pdf` setzt die
+  Blöcke auf Seiten. Zwei Entscheidungen: Die Standardvorlagen sind **eingebaut**
+  und die Dateien nur Abschriften — so geht der Ausdruck auch, wenn jemand die
+  Datei zerstört; und eingesetzte Werte werden **escaped**, bevor Markdown sie
+  sieht, damit ein `*` oder `|` in einem Namen das Layout nicht verändert. Jeder
+  Fehler in einer Vorlage ist ein Eingabefehler am Feld `template`, mit Datei und
+  Zeile; es gibt kein stilles Weglassen.
 * **Der Speichern-Dialog gehört zur Oberfläche.** `tauri-plugin-dialog` liefert
   den Pfad, `exam_export` schreibt die Datei und verlangt die Endung `.xlsx`.
   Dazu steht `dialog:allow-save` in `capabilities/default.json`. Dasselbe gilt

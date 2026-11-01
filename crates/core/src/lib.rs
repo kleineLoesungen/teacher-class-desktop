@@ -33,8 +33,12 @@ pub mod export;
 pub mod export_pdf;
 pub mod grading;
 pub mod ids;
+mod image;
+mod markdown;
 pub mod paths;
 pub mod student;
+mod style;
+pub mod template;
 pub mod timestamp;
 
 pub use config::{Config, Theme};
@@ -71,6 +75,7 @@ impl App {
             return Err(Error::DatabaseMissing { path: file });
         }
         let conn = db::open(&file)?;
+        ensure_templates(&paths);
         Ok(Self {
             paths,
             config,
@@ -113,6 +118,8 @@ impl App {
         // kein Schreibrecht), bleibt der bisherige Ort eingestellt.
         let conn = db::open(&paths.db_file())?;
         config.save(&base.config_file())?;
+        // Am neuen Ort gelten die Vorlagen dort; fehlen sie, kommen die Standards.
+        ensure_templates(&paths);
         Ok(Self {
             paths,
             config,
@@ -159,6 +166,16 @@ impl App {
         config.save(&self.paths.config_file())?;
         self.config = config;
         Ok(())
+    }
+}
+
+/// Legt den Vorlagenordner neben der Datenbank an. Scheitert das (etwa auf
+/// einem schreibgeschützten Stick), ist die Datenbank trotzdem benutzbar — die
+/// Standardvorlagen sind eingebaut, und der Druck meldet den Fehler, falls er
+/// den Ordner wirklich braucht.
+fn ensure_templates(paths: &Paths) {
+    if let Err(e) = template::ensure(&paths.templates_dir()) {
+        tracing::warn!("Vorlagenordner nicht angelegt: {e}");
     }
 }
 

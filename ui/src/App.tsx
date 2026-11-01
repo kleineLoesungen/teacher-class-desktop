@@ -24,6 +24,7 @@ import type {
   Student,
   StudentResult,
   SuggestInput,
+  TemplateList,
 } from "./bindings";
 import { ClassEditor } from "./components/ClassEditor";
 import { ClassList } from "./components/ClassList";
@@ -42,6 +43,9 @@ type Selection = { kind: "none" } | { kind: "new" } | { kind: "class"; id: strin
 type ExamSelection = { kind: "none" } | { kind: "new" } | { kind: "exam"; id: string };
 
 type View = "classes" | "exams";
+
+/** Die eingebaute Vorlage je Schüler: Vorgabe, auch wenn die Liste fehlt. */
+const STANDARD_TEMPLATE = "print_test_student_standard.md";
 
 type Dialog = "settings" | "delete-class" | "delete-exam" | { student: Student } | null;
 
@@ -75,6 +79,9 @@ export function App() {
   const [results, setResults] = useState<StudentResult[]>([]);
   // Notenschlüssel der Klasse in der Bewertung, von Rust berechnet.
   const [gradeKey, setGradeKey] = useState<GradeKey | null>(null);
+  // Druckvorlagen neben der Datenbank; gewählt wird in der Bewertung.
+  const [templates, setTemplates] = useState<TemplateList>({ dir: "", templates: [] });
+  const [template, setTemplate] = useState(STANDARD_TEMPLATE);
 
   const [config, setConfig] = useState<Config | null>(null);
   const [info, setInfo] = useState<AppInfo | null>(null);
@@ -337,6 +344,11 @@ export function App() {
       const list = await api.exams.results(exam.id, target);
       setResults(list);
       setGradeKey(await api.exams.gradeKey(exam.id, target));
+      // Die Vorlagen frisch holen: Wer eine neue Datei in den Ordner gelegt
+      // hat, soll sie sehen, ohne die App neu zu starten.
+      const available = await api.templates.list();
+      setTemplates(available);
+      if (!available.templates.some((t) => t.file === template)) setTemplate(STANDARD_TEMPLATE);
       setGrading({ classId: target, studentId: list[0]?.student.id ?? null });
       setFieldError(null);
       setNotice(null);
@@ -439,12 +451,17 @@ export function App() {
       const name = [exam?.name, cls ? classLabel(cls) : null].filter(Boolean).join(" ");
       const path = await api.pickPdfPath(`${name}.pdf`);
       if (path === null) return;
-      await api.exams.exportPdf(examSelection.id, grading.classId, path);
+      await api.exams.exportPdf(examSelection.id, grading.classId, template, path);
       setBanner(null);
       setNotice(`Gespeichert: ${path}`);
     } catch (raw) {
       setNotice(null);
-      fail(raw);
+      // Ein Fehler in der Vorlage (Datei, Zeile, Grund) gehört nach oben in die
+      // Leiste: Es gibt kein Feld, an dem er stehen könnte, und gedruckt wurde nichts.
+      const err = ApiError.from(raw);
+      const problems = err.isValidation ? err.fieldMessages("template") : [];
+      if (problems.length > 0) setBanner(problems.join(" "));
+      else fail(raw);
     }
   }
 
@@ -605,7 +622,7 @@ export function App() {
           examSelection.kind === "none" ? (
             <EmptyState
               title={exams.length > 0 ? "Keine Prüfung ausgewählt" : "Noch keine Prüfungen"}
-              text="Eine Prüfung hat ein Schema aus Gruppen und Punkten und eine Bewertungsmatrix. Bewertet wird in der App oder in der Excel-Datei; jede Klasse lässt sich als PDF drucken, eine Seite je Schüler."
+              text="Eine Prüfung hat ein Schema aus Gruppen und Punkten und eine Bewertungsmatrix. Bewertet wird in der App oder in der Excel-Datei; jede Klasse lässt sich nach einer Druckvorlage als PDF drucken."
               action="Neue Prüfung"
               onCreate={() => void createNewExam()}
             />
@@ -632,6 +649,10 @@ export function App() {
               }}
               onExport={() => void exportExam()}
               onExportPdf={() => void exportClassPdf()}
+              templates={templates.templates}
+              templateDir={templates.dir}
+              template={template}
+              onSelectTemplate={setTemplate}
             />
           ) : (
             <ExamEditor
