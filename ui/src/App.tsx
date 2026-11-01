@@ -429,17 +429,17 @@ export function App() {
     }
   }
 
-  /** Die Klasse, die in der Bewertung gewählt ist, als PDF. Die Prüfung ist
+  /** Die im Druck-Menü gewählte Klasse als PDF. Die Prüfung ist
    *  hier schon gespeichert, denn die Bewertung öffnet erst danach. */
-  async function exportClassPdf() {
+  async function exportClassPdf(classId: string) {
     if (examSelection.kind !== "exam" || grading === null) return;
     const exam = exams.find((e) => e.id === examSelection.id);
-    const cls = classes.find((c) => c.id === grading.classId);
+    const cls = classes.find((c) => c.id === classId);
     try {
       const name = [exam?.name, cls ? classLabel(cls) : null].filter(Boolean).join(" ");
       const path = await api.pickPdfPath(`${name}.pdf`);
       if (path === null) return;
-      await api.exams.exportPdf(examSelection.id, grading.classId, path);
+      await api.exams.exportPdf(examSelection.id, classId, path);
       setBanner(null);
       setNotice(`Gespeichert: ${path}`);
     } catch (raw) {
@@ -631,7 +631,7 @@ export function App() {
                 setFieldError(null);
               }}
               onExport={() => void exportExam()}
-              onExportPdf={() => void exportClassPdf()}
+              onExportPdf={(id) => void exportClassPdf(id)}
             />
           ) : (
             <ExamEditor

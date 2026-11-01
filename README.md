@@ -89,12 +89,14 @@ Begründungen stehen nicht in der Excel-Datei, sondern im PDF.
 Klasse eine Spalte **Anzahl** (wie oft jede Note vorkam) und darunter der
 **Schnitt** auf zwei Nachkommastellen — beides Formeln auf die Noten des
 Klassenblatts. In der App zeigt die Bewertung nach Wahl der Klasse einen
-einklappbaren **Notenschlüssel** („3× Note 4 …, Schnitt 2,60“).
+einklappbaren **Notenschlüssel** als Tabelle (Spalten Note und Anzahl, darunter
+„Schnitt 2,60“). Die Klasse wählt man über die Knöpfe über der Schülerliste.
 
 ### PDF-Ausdruck
 
-**„Klasse als PDF drucken“** in der Bewertung öffnet einen Speichern-Dialog und
-schreibt **ein PDF für die gewählte Klasse**: A4 hochkant, **eine Seite je
+**„Als PDF drucken ▾“** in der Bewertung klappt eine Liste der Klassen der
+Prüfung auf; die gewählte Klasse öffnet einen Speichern-Dialog und
+wird als **ein PDF für diese Klasse** geschrieben: A4 hochkant, **eine Seite je
 Schüler** — Aufgabe, Beschreibung, Punkte, Höchstpunkte und (bei Prüfungen mit
 Begründungen) die Begründung, je Gruppe eine Summenzeile, darunter Gesamtpunkte,
 Note und die Bewertungsmatrix. Die Seitenaufteilung berechnet die App selbst
