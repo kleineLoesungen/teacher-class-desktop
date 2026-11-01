@@ -41,7 +41,7 @@ type Props = {
   onBack: () => void;
   onExport: () => void;
   /** Die gewählte Klasse als PDF (eine Seite je Schüler). */
-  onExportPdf: () => void;
+  onExportPdf: (classId: string) => void;
 };
 
 type CellDraft = { points: string; note: string };
@@ -303,7 +303,7 @@ function StudentTile({
   );
 }
 
-/** Der Notenschlüssel, eingeklappt: „1× Note 1, 3× Note 4 · Schnitt 2,60“. */
+/** Der Notenschlüssel, eingeklappt: Tabelle Note | Anzahl, darunter der Schnitt. */
 function GradeKeyView({ gradeKey }: { gradeKey: GradeKey }) {
   const given = gradeKey.counts.filter((c) => c.count > 0);
   return (
@@ -313,13 +313,22 @@ function GradeKeyView({ gradeKey }: { gradeKey: GradeKey }) {
         <p className="muted">Noch keine Note vergeben.</p>
       ) : (
         <>
-          <ul aria-label="Noten">
-            {given.map((c) => (
-              <li key={c.grade}>
-                {c.count}× Note {c.grade}
-              </li>
-            ))}
-          </ul>
+          <table aria-label="Noten">
+            <thead>
+              <tr>
+                <th scope="col">Note</th>
+                <th scope="col">Anzahl</th>
+              </tr>
+            </thead>
+            <tbody>
+              {given.map((c) => (
+                <tr key={c.grade}>
+                  <th scope="row">{c.grade}</th>
+                  <td>{c.count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
           {gradeKey.average !== null && (
             <p>
               <strong>Schnitt {formatAverage(gradeKey.average)}</strong>
@@ -328,6 +337,60 @@ function GradeKeyView({ gradeKey }: { gradeKey: GradeKey }) {
         </>
       )}
     </details>
+  );
+}
+
+/** Druck-Knopf mit Auswahl: Ein Klick auf eine Klasse druckt deren PDF. */
+function PrintMenu({
+  classes,
+  selected,
+  onPick,
+}: {
+  classes: Class[];
+  selected: string | null;
+  onPick: (classId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: fängt nur Fokusverlust und Escape der Kinder ab
+    <div
+      className="menu"
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(false);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") setOpen(false);
+      }}
+    >
+      <button
+        type="button"
+        aria-haspopup="true"
+        aria-expanded={open}
+        disabled={classes.length === 0}
+        onClick={() => setOpen(!open)}
+      >
+        Als PDF drucken ▾
+      </button>
+      {open && (
+        <ul className="menu-list" aria-label="Klasse drucken">
+          {classes.map((c) => (
+            <li key={c.id}>
+              <button
+                type="button"
+                className="ghost"
+                aria-current={c.id === selected}
+                onClick={() => {
+                  setOpen(false);
+                  onPick(c.id);
+                }}
+              >
+                {classLabel(c)}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -341,9 +404,7 @@ export function GradingView(props: Props) {
     <section className="editor" aria-label="Bewertung">
       <header className="editor-head">
         <h1 className="grow">Bewertung: {exam.name}</h1>
-        <button type="button" disabled={classId === null} onClick={props.onExportPdf}>
-          Klasse als PDF drucken
-        </button>
+        <PrintMenu classes={classes} selected={classId} onPick={props.onExportPdf} />
         <button type="button" onClick={props.onExport}>
           Als Excel exportieren
         </button>
@@ -353,20 +414,20 @@ export function GradingView(props: Props) {
       </header>
 
       <div className="class-body exam-body">
-        <div className="row">
-          <label htmlFor="grading-class">Klasse</label>
-          <select
-            id="grading-class"
-            value={classId ?? ""}
-            onChange={(e) => props.onSelectClass(e.target.value)}
-          >
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>
+        <ul className="class-pick" aria-label="Klassen">
+          {classes.map((c) => (
+            <li key={c.id}>
+              <button
+                type="button"
+                className="ghost"
+                aria-pressed={c.id === classId}
+                onClick={() => props.onSelectClass(c.id)}
+              >
                 {classLabel(c)}
-              </option>
-            ))}
-          </select>
-        </div>
+              </button>
+            </li>
+          ))}
+        </ul>
 
         {props.gradeKey && results.length > 0 && <GradeKeyView gradeKey={props.gradeKey} />}
 

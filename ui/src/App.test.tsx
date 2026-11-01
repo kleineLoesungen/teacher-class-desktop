@@ -10,7 +10,7 @@
 // crates/desktop/tests/ipc_contract.rs.
 
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { App } from "./App";
@@ -682,7 +682,9 @@ describe("Oberfläche", () => {
       await openExams(user);
       await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
       await user.click(screen.getByRole("button", { name: "Bewerten" }));
-      await user.click(await screen.findByRole("button", { name: "Klasse als PDF drucken" }));
+      await user.click(await screen.findByRole("button", { name: /Als PDF drucken/ }));
+      const list = screen.getByRole("list", { name: "Klasse drucken" });
+      await user.click(within(list).getByRole("button", { name: "7a (2025)" }));
 
       await waitFor(() => expect(commands("exam_export_pdf")).toHaveLength(1));
       expect(commands("exam_export_pdf")[0]?.args).toEqual({
@@ -755,10 +757,11 @@ describe("Oberfläche", () => {
 
       await user.click(await screen.findByText("Notenschlüssel"));
       expect(commands("exam_grade_key")[0]?.args).toEqual({ id: "e1", class: "a" });
-      expect(screen.getByText("3× Note 4")).toBeTruthy();
-      expect(screen.getByText("1× Note 1")).toBeTruthy();
-      // Noten ohne Schüler stehen nicht in der Liste.
-      expect(screen.queryByText(/Note 2$/)).toBeNull();
+      const table = screen.getByRole("table", { name: "Noten" });
+      const rows = within(table).getAllByRole("row").slice(1);
+      expect(rows.map((r) => r.textContent)).toEqual(["43", "11"]);
+      // Noten ohne Schüler stehen nicht in der Tabelle.
+      expect(within(table).queryByRole("rowheader", { name: "2" })).toBeNull();
       expect(screen.getByText("Schnitt 2,60")).toBeTruthy();
     });
 
