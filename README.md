@@ -78,17 +78,21 @@ in Excel weiter bearbeiten:
 | Blatt | Inhalt |
 |---|---|
 | **Bewertung** | Prüfungsschema (mit Beschreibungen) und Bewertungsmatrix. Hier ändert man „ab“ und Höchstpunkte; alles andere folgt per Formel. |
-| **je Klasse** | Blattname `7a (2025)`: eine Matrix, siehe unten. |
+| **je Klasse** | Blattname `7a (2025)`: eine Matrix, bei Prüfungen mit Begründungen Kacheln, siehe unten. |
 
-Das Klassenblatt ist eine **Matrix**: Schüler in den Zeilen, Punkte des Schemas
-in den Spalten, Summe je Gruppe, Gesamtpunkte, zuletzt die **Note** aus der
-Bewertungsmatrix. Solange nichts eingetragen ist, bleibt die Note leer.
-Bei Prüfungen **mit Begründungen** folgen **hinter der Note** je Punkt eine Spalte
-„… Begründung“ und zuletzt der **Abschluss-Satz** (als Text, nicht als Formel);
-einen Abschluss-Satz exportiert die App auch ohne Begründungen, sobald einer
-eingetragen ist. Die Notenspalte bleibt dabei, wo sie ist.
+Das Klassenblatt ist bei Prüfungen **ohne Begründungen** eine **Matrix**:
+Schüler in den Zeilen, Punkte des Schemas in den Spalten, Summe je Gruppe,
+Gesamtpunkte, zuletzt die **Note** aus der Bewertungsmatrix. Solange nichts
+eingetragen ist, bleibt die Note leer. Einen **Abschluss-Satz** exportiert die
+App, sobald einer eingetragen ist, als Text hinter der Note.
 
-**Notenschlüssel:** Auf dem Blatt „Bewertung“ steht neben der Bewertungsmatrix je
+Bei Prüfungen **mit Begründungen** ist das Klassenblatt stattdessen in **Kacheln**
+gegliedert: je Schüler ein Block mit Aufgabe, Punkten, Höchstpunkten und
+Begründung, Summe je Gruppe, Gesamtpunkten, Note (Formeln wie oben) und dem
+Abschluss-Satz; nach jedem Block beginnt eine neue Druckseite. Notenschlüssel und
+Schnitt gibt es dann im Excel nicht.
+
+**Notenschlüssel** (nur bei Prüfungen ohne Begründungen): Auf dem Blatt „Bewertung“ steht neben der Bewertungsmatrix je
 Klasse eine Spalte **Anzahl** (wie oft jede Note vorkam) und darunter der
 **Schnitt** auf zwei Nachkommastellen — beides Formeln auf die Noten des
 Klassenblatts. In der App zeigt die Bewertung nach Wahl der Klasse einen
@@ -97,8 +101,9 @@ einklappbaren **Notenschlüssel** als Tabelle (Spalten Note und Anzahl, darunter
 
 ### PDF-Ausdruck
 
-In der Bewertung wählt man eine **Druckvorlage**; **„Als PDF drucken ▾“** klappt
-eine Liste der Klassen der Prüfung auf, und die gewählte Klasse öffnet einen
+**„Als PDF drucken ▾“** in der Bewertung klappt ein Menü auf: oben die
+**Druckvorlage** (je Schüler oder je Klasse), darunter die Klassen der Prüfung.
+Die gewählte Klasse öffnet einen
 Speichern-Dialog und wird als **ein PDF für diese Klasse** geschrieben, A4
 hochkant. Die **Standardvorlage „je Schüler“** setzt **eine Seite je
 Schüler** — Aufgabe, Beschreibung, Punkte, Höchstpunkte und (bei Prüfungen mit

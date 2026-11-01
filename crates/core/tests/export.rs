@@ -134,7 +134,7 @@ fn die_bewertungsmatrix_hat_den_notenschluessel_je_klasse_und_den_schnitt() {
 }
 
 #[test]
-fn mit_begruendungen_zaehlt_der_notenschluessel_die_noten_spalte_der_matrix() {
+fn mit_begruendungen_gibt_es_weder_notenschluessel_noch_schnitt() {
     let conn = db::open_in_memory().unwrap();
     let a = class::create(&conn, ClassInput::new("7a", 2025)).unwrap();
     student::add_many(&conn, a.id, "Muster, Max\nBeispiel, Eva").unwrap();
@@ -144,10 +144,10 @@ fn mit_begruendungen_zaehlt_der_notenschluessel_die_noten_spalte_der_matrix() {
 
     let mut x = Xlsx::open(export::build(&conn, e.id).unwrap());
     let grading_sheet = x.text("xl/worksheets/sheet1.xml");
-    assert!(
-        grading_sheet.contains("COUNTIF('7a (2025)'!$H$4:$H$5,$A$"),
-        "{grading_sheet}"
-    );
+    assert!(!grading_sheet.contains("COUNTIF"), "{grading_sheet}");
+    let strings = x.text("xl/sharedStrings.xml");
+    assert!(!strings.contains("Schnitt"), "{strings}");
+    assert!(!strings.contains("Anzahl"), "{strings}");
 }
 
 #[test]
@@ -228,7 +228,7 @@ fn eine_unbekannte_pruefung_ist_nicht_gefunden() {
 }
 
 #[test]
-fn auch_mit_begruendungen_gibt_es_im_excel_die_matrix() {
+fn mit_begruendungen_ist_das_klassenblatt_in_kacheln_mit_seitenumbruch() {
     let conn = db::open_in_memory().unwrap();
     let a = class::create(&conn, ClassInput::new("7a", 2025)).unwrap();
     student::add_many(&conn, a.id, "Muster, Max\nBeispiel, Eva").unwrap();
@@ -238,9 +238,13 @@ fn auch_mit_begruendungen_gibt_es_im_excel_die_matrix() {
 
     let mut x = Xlsx::open(export::build(&conn, e.id).unwrap());
     let sheet = x.text("xl/worksheets/sheet2.xml");
-    // Keine Kacheln, keine Seitenumbrüche: dieselbe Matrix wie ohne Begründungen.
-    assert_eq!(sheet.matches("<brk ").count(), 0, "{sheet}");
-    assert!(sheet.contains("<f>SUM(B4:C4)</f>"), "{sheet}");
+    // Zwei Schüler, ein Umbruch dazwischen.
+    assert_eq!(sheet.matches("<brk ").count(), 1, "{sheet}");
+    // Erste Kachel: Zeile 1 Name, 2 Kopf, 3–4 Aufgabe 1, 5 Summe, 6 Aufgabe 2,
+    // 7 Summe, 8 Gesamt, 9 Note.
+    assert!(sheet.contains("<f>SUM(D3:D4)</f>"), "{sheet}");
+    assert!(sheet.contains("<f>D5+D7</f>"), "{sheet}");
+    assert!(sheet.contains("MATCH(D8,Bewertung!$B$"), "{sheet}");
 }
 
 #[test]
@@ -279,11 +283,33 @@ fn mit_begruendungen_stehen_sie_hinter_der_note_im_klassenblatt() {
     assert!(strings.contains("Weiter so!"), "{strings}");
     assert!(strings.contains("Abschluss-Satz"), "{strings}");
     let sheet = x.text("xl/worksheets/sheet2.xml");
-    // Drei Punkte: Begründungen in I, J, K, dann der Abschluss-Satz in L; die
-    // Notenspalte H bleibt, wo das Blatt „Bewertung“ sie zählt.
-    assert!(sheet.contains("&amp;\" Begründung\""), "{sheet}");
+    // Kachel: Begründung in Spalte E (zweiter Punkt = Zeile 4), Kopf „Begründung“.
+    assert!(strings.contains("Begründung"), "{strings}");
+    assert!(sheet.contains("r=\"E4\""), "{sheet}");
+}
+
+#[test]
+fn der_abschluss_satz_steht_auch_in_der_matrix_hinter_der_note() {
+    let conn = db::open_in_memory().unwrap();
+    let a = class::create(&conn, ClassInput::new("7a", 2025)).unwrap();
+    let s = student::add_many(&conn, a.id, "Muster, Max").unwrap();
+    let e = exam::create(&conn, beispiel(vec![a.id])).unwrap();
+    grading::set_remark(
+        &conn,
+        e.id,
+        grading::RemarkInput {
+            student_id: s[0].id,
+            text: "Gut gemacht".into(),
+        },
+    )
+    .unwrap();
+
+    let mut x = Xlsx::open(export::build(&conn, e.id).unwrap());
+    let strings = x.text("xl/sharedStrings.xml");
+    assert!(strings.contains("Gut gemacht"), "{strings}");
+    // Matrix: Note in H, Abschluss-Satz in I.
+    let sheet = x.text("xl/worksheets/sheet2.xml");
     assert!(sheet.contains("r=\"I4\""), "{sheet}");
-    assert!(sheet.contains("r=\"L4\""), "{sheet}");
 }
 
 #[test]

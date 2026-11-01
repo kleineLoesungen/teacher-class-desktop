@@ -111,7 +111,8 @@ ExamInput  ──exam::create/update──▶  Tabellen exams, exam_classes,
   Dasselbe gilt für den Notenschlüssel (`grading::grade_key`: Anzahl je Note,
   Schnitt auf zwei Stellen); im Export rechnen ihn Formeln (`COUNTIF`, `AVERAGE`).
 * **Excel ist die Matrix, das PDF ist der Ausdruck.** Das Klassenblatt in Excel
-  ist immer eine Matrix (Schüler in Zeilen). Gedruckt wird nicht über Excel —
+  ist eine Matrix (Schüler in Zeilen), bei Prüfungen mit Begründungen eine
+  Folge von Kacheln (ein Block je Schüler). Gedruckt wird nicht über Excel —
   Seitenumbrüche und Zeilenhöhen hat dort nie ein Test gerechnet und sie
   stimmten in der Praxis nicht. Stattdessen schreibt `core::export_pdf` ein PDF
   je Klasse und bestimmt die Seitenaufteilung selbst. Es ist von Hand

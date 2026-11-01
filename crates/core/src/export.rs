@@ -10,12 +10,13 @@
 //! * **Bewertung** — Prüfungsschema (Gruppen, Punkte, Beschreibungen,
 //!   Höchstpunktzahlen, Summen) und Bewertungsmatrix (Note, ab, bis). „ab“ und
 //!   die Höchstpunktzahlen sind Eingaben, alles andere Formeln.
-//! * **je Klasse ein Blatt** (Blattname `7a (2025)`) als **Matrix** — Schüler
-//!   in den Zeilen, Punkte des Schemas in den Spalten, Summe je Gruppe,
-//!   Gesamtpunkte, Note. Bei Prüfungen mit Begründungen (`with_notes`) folgen
-//!   **hinter der Note** je Punkt eine Spalte „… Begründung“ und zuletzt der
-//!   Abschluss-Satz (der steht auch ohne `with_notes`, sobald einer
-//!   eingetragen ist) — als Text, nicht als Formel. Zum Ausdrucken gibt es den
+//! * **je Klasse ein Blatt** (Blattname `7a (2025)`). Bei Prüfungen mit
+//!   Begründungen (`with_notes`) als **Kacheln**: je Schüler ein Block mit
+//!   Punkten, Begründungen, Summen, Note und Abschluss-Satz, Seitenumbruch
+//!   dazwischen; das Blatt „Bewertung“ hat dann weder Notenschlüssel noch
+//!   Schnitt. Sonst als **Matrix** — Schüler in den Zeilen, Punkte des Schemas
+//!   in den Spalten, Summe je Gruppe, Gesamtpunkte, Note; ein Abschluss-Satz
+//!   (sobald einer eingetragen ist) steht **hinter der Note**, als Text. Zum Ausdrucken gibt es den
 //!   PDF-Export in [`crate::export_pdf`].
 //!
 //! Die Formeln sind in `crates/core/tests/export.rs` nur als Text geprüft;
@@ -94,6 +95,8 @@ pub fn build(conn: &rusqlite::Connection, exam_id: Uuid) -> Result<Vec<u8>> {
 
 struct Styles {
     title: Format,
+    /// Name des Schülers über einer Kachel.
+    tile_title: Format,
     head: Format,
     label: Format,
     input: Format,
@@ -111,6 +114,11 @@ impl Styles {
         let sum_fill = Color::RGB(0x00F6_F6F6);
         Self {
             title: Format::new().set_bold().set_font_size(14),
+            tile_title: Format::new()
+                .set_bold()
+                .set_font_size(12)
+                .set_background_color(light)
+                .set_border(FormatBorder::Thin),
             head: Format::new()
                 .set_bold()
                 .set_background_color(light)
@@ -305,11 +313,21 @@ fn write_grading(
         ws.write_string_with_format(row, col as u16, *text, &st.head)?;
     }
     // Notenschlüssel: je Klasse eine Spalte mit der Anzahl der Noten.
-    let key_ranges: Vec<Option<String>> = classes
-        .iter()
-        .map(|(c, results)| class_grades_range(exam, &c.label(), results.len()))
-        .collect();
-    for (i, (c, _)) in classes.iter().enumerate() {
+    // Bei Kacheln (Begründungen) gibt es weder Notenschlüssel noch Schnitt.
+    let key_ranges: Vec<Option<String>> = if exam.with_notes {
+        Vec::new()
+    } else {
+        classes
+            .iter()
+            .map(|(c, results)| class_grades_range(exam, &c.label(), results.len()))
+            .collect()
+    };
+    let key_classes = if exam.with_notes {
+        &classes[..0]
+    } else {
+        classes
+    };
+    for (i, (c, _)) in key_classes.iter().enumerate() {
         let col = 3 + i as u16;
         if col > 3 {
             ws.set_column_width(col, 16)?;
@@ -352,22 +370,24 @@ fn write_grading(
         .grades
         .iter()
         .all(|g| g.name.trim().replace(',', ".").parse::<f64>().is_ok());
-    ws.write_string_with_format(row, 0, "Schnitt", &st.sum)?;
-    ws.write_blank(row, 1, &st.sum)?;
-    ws.write_blank(row, 2, &st.sum)?;
-    for (i, range) in key_ranges.iter().enumerate() {
-        let col = 3 + i as u16;
-        match range {
-            Some(range) if numeric => ws.write_formula_with_format(
-                row,
-                col,
-                Formula::new(format!(r#"=IFERROR(ROUND(AVERAGE({range}),2),"")"#)),
-                &st.avg,
-            )?,
-            _ => ws.write_blank(row, col, &st.avg)?,
-        };
+    if !exam.with_notes {
+        ws.write_string_with_format(row, 0, "Schnitt", &st.sum)?;
+        ws.write_blank(row, 1, &st.sum)?;
+        ws.write_blank(row, 2, &st.sum)?;
+        for (i, range) in key_ranges.iter().enumerate() {
+            let col = 3 + i as u16;
+            match range {
+                Some(range) if numeric => ws.write_formula_with_format(
+                    row,
+                    col,
+                    Formula::new(format!(r#"=IFERROR(ROUND(AVERAGE({range}),2),"")"#)),
+                    &st.avg,
+                )?,
+                _ => ws.write_blank(row, col, &st.avg)?,
+            };
+        }
+        row += 1;
     }
-    row += 1;
     ws.write_string(
         row + 1,
         0,
@@ -387,6 +407,155 @@ fn write_grading(
 
 const CLASS_HEAD_ROWS: u32 = 3;
 
+/// Klassenblatt als Kacheln (Prüfungen mit Begründungen): je Schüler ein Block
+/// aus Punkten, Begründungen, Gruppensummen, Gesamtpunkten, Note und
+/// Abschluss-Satz; vor jedem weiteren Block ein Seitenumbruch.
+fn write_class_tiles(
+    ws: &mut Worksheet,
+    exam: &Exam,
+    g: &GradingRefs,
+    results: &[StudentResult],
+    st: &Styles,
+) -> Result<()> {
+    ws.set_column_width(0, 18)?;
+    ws.set_column_width(1, 22)?;
+    ws.set_column_width(2, 12)?;
+    ws.set_column_width(3, 12)?;
+    ws.set_column_width(4, 60)?;
+
+    let mut row: u32 = 0;
+    for res in results {
+        if row > 0 {
+            ws.set_page_breaks(&[row])?;
+        }
+        ws.merge_range(row, 0, row, 4, &res.student.label(), &st.tile_title)?;
+        row += 1;
+        for (col, text) in ["Gruppe", "Punkt", "Max. Punkte", "Punkte", "Begründung"]
+            .iter()
+            .enumerate()
+        {
+            ws.write_string_with_format(row, col as u16, *text, &st.head)?;
+        }
+        row += 1;
+
+        let mut point_ranges = Vec::new();
+        let mut sum_cells = Vec::new();
+        for (gi, group) in exam.groups.iter().enumerate() {
+            let (gr, gc) = g.group_names[gi];
+            let first = row;
+            for ii in 0..group.items.len() {
+                let item_row = g.item_rows[gi][ii];
+                ws.write_formula_with_format(
+                    row,
+                    0,
+                    Formula::new(format!("={}", grading_ref(gr, gc))),
+                    &st.label,
+                )?;
+                ws.write_formula_with_format(
+                    row,
+                    1,
+                    Formula::new(format!("={}", grading_ref(item_row, 1))),
+                    &st.label,
+                )?;
+                ws.write_formula_with_format(
+                    row,
+                    2,
+                    Formula::new(format!("={}", grading_ref(item_row, 2))),
+                    &st.calc,
+                )?;
+                let score = &res.groups[gi].scores[ii];
+                match score.points {
+                    Some(p) => ws.write_number_with_format(row, 3, p, &st.input)?,
+                    None => ws.write_blank(row, 3, &st.input)?,
+                };
+                if score.note.is_empty() {
+                    ws.write_blank(row, 4, &st.wrap)?;
+                } else {
+                    ws.write_string_with_format(row, 4, &score.note, &st.wrap)?;
+                }
+                row += 1;
+            }
+            if row == first {
+                continue;
+            }
+            point_ranges.push(format!(
+                "{}:{}",
+                row_col_to_cell(first, 3),
+                row_col_to_cell(row - 1, 3)
+            ));
+            ws.write_blank(row, 0, &st.sum)?;
+            ws.write_formula_with_format(
+                row,
+                1,
+                Formula::new(format!(r#"="Summe "&{}"#, grading_ref(gr, gc))),
+                &st.sum,
+            )?;
+            for col in [2u16, 3] {
+                ws.write_formula_with_format(
+                    row,
+                    col,
+                    Formula::new(format!(
+                        "SUM({}:{})",
+                        row_col_to_cell(first, col),
+                        row_col_to_cell(row - 1, col)
+                    )),
+                    &st.sum,
+                )?;
+            }
+            ws.write_blank(row, 4, &st.sum)?;
+            sum_cells.push(row_col_to_cell(row, 3));
+            row += 1;
+        }
+
+        // Gesamtpunkte
+        ws.write_blank(row, 0, &st.sum)?;
+        ws.write_string_with_format(row, 1, "Gesamt", &st.sum)?;
+        ws.write_formula_with_format(
+            row,
+            2,
+            Formula::new(format!("={}", grading_ref(g.total.0, g.total.1))),
+            &st.sum,
+        )?;
+        ws.write_formula_with_format(
+            row,
+            3,
+            Formula::new(format!("={}", sum_cells.join("+"))),
+            &st.sum,
+        )?;
+        ws.write_blank(row, 4, &st.sum)?;
+        let total_cell = row_col_to_cell(row, 3);
+        row += 1;
+
+        // Note; solange nichts eingetragen ist, bleibt sie leer.
+        ws.write_blank(row, 0, &st.sum)?;
+        ws.write_string_with_format(row, 1, "Note", &st.sum)?;
+        ws.write_blank(row, 2, &st.sum)?;
+        ws.write_formula_with_format(
+            row,
+            3,
+            Formula::new(format!(
+                r#"=IF(COUNT({})=0,"",{})"#,
+                point_ranges.join(","),
+                g.grade_formula(&total_cell)
+            )),
+            &st.sum,
+        )?;
+        ws.write_blank(row, 4, &st.sum)?;
+        row += 1;
+
+        // Abschluss-Satz (Text) über die Breite von Max. Punkte bis Begründung.
+        ws.write_blank(row, 0, &st.sum)?;
+        ws.write_string_with_format(row, 1, "Abschluss-Satz", &st.sum)?;
+        ws.merge_range(row, 2, row, 4, &res.remark, &st.wrap)?;
+        row += 2;
+    }
+
+    ws.set_portrait();
+    ws.set_paper_size(9);
+    ws.set_print_fit_to_pages(1, 0);
+    Ok(())
+}
+
 fn write_class(
     ws: &mut Worksheet,
     exam: &Exam,
@@ -394,6 +563,9 @@ fn write_class(
     results: &[StudentResult],
     st: &Styles,
 ) -> Result<()> {
+    if exam.with_notes {
+        return write_class_tiles(ws, exam, g, results, st);
+    }
     let student_count = results.len();
     ws.set_column_width(0, 30)?;
     ws.write_string_with_format(1, 0, "Schüler", &st.head)?;
@@ -532,43 +704,11 @@ fn write_class(
         )?;
     }
 
-    // Begründungen und Abschluss-Satz stehen **hinter** der Note, damit die
-    // Matrix samt Notenspalte (auf die das Blatt „Bewertung“ zählt) an ihrer
-    // Stelle bleibt. Es sind Werte, keine Formeln.
-    let mut next = grade_col + 1;
-    if exam.with_notes {
-        for (gi, group) in exam.groups.iter().enumerate() {
-            let (gr, gc) = g.group_names[gi];
-            for ii in 0..group.items.len() {
-                let item_row = g.item_rows[gi][ii];
-                ws.set_column_width(next, 30)?;
-                ws.write_formula_with_format(
-                    0,
-                    next,
-                    Formula::new(format!("={}", grading_ref(gr, gc))),
-                    &st.head,
-                )?;
-                ws.write_formula_with_format(
-                    1,
-                    next,
-                    Formula::new(format!(r#"={}&" Begründung""#, grading_ref(item_row, 1))),
-                    &st.head,
-                )?;
-                ws.write_blank(2, next, &st.sum)?;
-                for (r, res) in results.iter().enumerate() {
-                    let row = first + r as u32;
-                    let note = &res.groups[gi].scores[ii].note;
-                    if note.is_empty() {
-                        ws.write_blank(row, next, &st.wrap)?;
-                    } else {
-                        ws.write_string_with_format(row, next, note, &st.wrap)?;
-                    }
-                }
-                next += 1;
-            }
-        }
-    }
-    if exam.with_notes || results.iter().any(|r| !r.remark.is_empty()) {
+    // Der Abschluss-Satz steht (sobald einer eingetragen ist) **hinter** der
+    // Note, damit die Notenspalte, auf die das Blatt „Bewertung“ zählt, an ihrer
+    // Stelle bleibt. Ein Wert, keine Formel.
+    let next = grade_col + 1;
+    if results.iter().any(|r| !r.remark.is_empty()) {
         ws.set_column_width(next, 34)?;
         ws.write_blank(0, next, &st.head)?;
         ws.write_string_with_format(1, next, "Abschluss-Satz", &st.head)?;
