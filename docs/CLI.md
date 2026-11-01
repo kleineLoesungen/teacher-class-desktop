@@ -71,6 +71,11 @@ Begründung gibt es nur bei Prüfungen mit `--notes`. Ungültige Punkte (nicht
 ganz oder halb, über der Höchstpunktzahl), ein unbekanntes Prüfkriterium und
 eine Begründung ohne `--notes` ergeben Rückgabewert 4.
 
+`exam key PRÜFUNG --class KLASSE` zeigt den **Notenschlüssel**: wie oft jede Note
+der Bewertungsmatrix vorkommt und den Schnitt auf zwei Nachkommastellen (`–`,
+wenn noch niemand eine Note hat oder eine Note keine Zahl ist). Mit `--json`:
+`counts` (`grade`, `count`), `graded`, `average`.
+
 `exam results PRÜFUNG --class KLASSE` zeigt je Schüler Gesamtpunkte und Note
 (`–`, solange nichts eingetragen ist). Mit `--json` kommen auch die Punkte und
 Begründungen je Prüfkriterium.

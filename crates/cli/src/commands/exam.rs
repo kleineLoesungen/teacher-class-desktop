@@ -85,6 +85,16 @@ pub fn run(cmd: ExamCommand, app: &App, out: &Out) -> Result<()> {
             Ok(())
         }
 
+        ExamCommand::Key {
+            id,
+            class: class_id,
+        } => {
+            let exam_id = exam::resolve_id(app.conn(), &id)?;
+            let class_id = class::resolve_id(app.conn(), &class_id)?;
+            out.grade_key(&grading::grade_key(app.conn(), exam_id, class_id)?);
+            Ok(())
+        }
+
         ExamCommand::List => {
             out.exams(&exam::list(app.conn())?);
             Ok(())

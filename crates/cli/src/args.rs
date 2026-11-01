@@ -238,6 +238,16 @@ pub enum ExamCommand {
         note: String,
     },
 
+    /// Den Notenschlüssel einer Klasse zeigen: Anzahl je Note und Durchschnitt.
+    Key {
+        /// Kennung der Prüfung oder ein eindeutiges Ende davon.
+        id: String,
+
+        /// Kennung der Klasse oder ein eindeutiges Ende davon.
+        #[arg(long, value_name = "KLASSE")]
+        class: String,
+    },
+
     /// Die Bewertung der Schüler einer Klasse zeigen.
     Results {
         /// Kennung der Prüfung oder ein eindeutiges Ende davon.

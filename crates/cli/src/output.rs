@@ -12,7 +12,7 @@
 
 use teacher_class_core::class::Class;
 use teacher_class_core::exam::Exam;
-use teacher_class_core::grading::StudentResult;
+use teacher_class_core::grading::{GradeKey, StudentResult};
 use teacher_class_core::student::Student;
 use teacher_class_core::{Config, Paths, ids};
 use uuid::Uuid;
@@ -170,6 +170,22 @@ impl Out {
                 r.total,
                 r.grade.as_deref().unwrap_or("–")
             );
+        }
+    }
+
+    /// Der Notenschlüssel einer Klasse.
+    pub fn grade_key(&self, key: &GradeKey) {
+        if self.json {
+            self.print(key);
+            return;
+        }
+        println!("{:<12} {:>6}", "NOTE", "ANZAHL");
+        for c in &key.counts {
+            println!("{:<12} {:>6}", c.grade, c.count);
+        }
+        match key.average {
+            Some(avg) => println!("Schnitt {avg:.2} ({} bewertet)", key.graded),
+            None => println!("Schnitt –"),
         }
     }
 

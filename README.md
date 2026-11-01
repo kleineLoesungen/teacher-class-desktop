@@ -74,6 +74,14 @@ Zeilen, Punkte des Schemas in den Spalten, Summe je Gruppe, Gesamtpunkte,
 zuletzt die **Note** aus der Bewertungsmatrix. Solange nichts eingetragen ist,
 bleibt die Note leer.
 
+**Notenschlüssel:** Auf dem Blatt „Bewertung“ steht neben der Bewertungsmatrix je
+Klasse eine Spalte **Anzahl** (wie oft jede Note vorkam) und darunter der
+**Schnitt** auf zwei Nachkommastellen — beides Formeln auf die Noten des
+Klassenblatts. Bei Prüfungen mit Begründungen steht dafür neben den Kacheln,
+außerhalb des Druckbereichs, eine Liste Schüler/Note. In der App zeigt die
+Bewertung nach Wahl der Klasse einen einklappbaren **Notenschlüssel** („3× Note
+4 …, Schnitt 2,60“).
+
 **Mit Begründungen** ist es **eine Bewertungskachel je Schüler**, untereinander
 auf demselben Blatt: Aufgabe, Beschreibung, Punkte, Höchstpunkte und
 Begründung, je Gruppe eine Summenzeile, darunter Gesamtpunkte, Note und die
@@ -101,6 +109,7 @@ teacher-class exam add "Klassenarbeit 1" --class <KLASSE> \
 teacher-class exam show <PRÜFUNG>
 teacher-class exam score <PRÜFUNG> <SCHÜLER> 1 1 --points 2,5
 teacher-class exam results <PRÜFUNG> --class <KLASSE>
+teacher-class exam key <PRÜFUNG> --class <KLASSE>
 teacher-class exam export <PRÜFUNG> --out Klassenarbeit.xlsx
 ```
 

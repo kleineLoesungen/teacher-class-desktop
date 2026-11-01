@@ -282,6 +282,20 @@ fn bewerten_traegt_ein_und_die_ergebnisse_zeigen_summe_und_note() {
     assert_eq!(max["total"], 17.5);
     assert_eq!(max["grade"], "1");
     assert_eq!(max["groups"][0]["scores"][0]["note"], "Rechenweg ok");
+
+    // Notenschlüssel: Anzahl je Note und Schnitt.
+    let json = ctx
+        .run(&["exam", "key", &exam, "--class", &class, "--json"])
+        .ok()
+        .stdout;
+    let key: serde_json::Value = serde_json::from_str(&json).unwrap();
+    assert_eq!(key["graded"], 1);
+    assert_eq!(key["average"], 1.0);
+    let text = ctx
+        .run(&["exam", "key", &exam, "--class", &class])
+        .ok()
+        .stdout;
+    assert!(text.contains("Schnitt 1.00"), "{text}");
 }
 
 #[test]

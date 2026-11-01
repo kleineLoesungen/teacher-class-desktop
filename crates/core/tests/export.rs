@@ -104,6 +104,57 @@ fn das_klassenblatt_rechnet_summen_und_note_per_formel() {
 }
 
 #[test]
+fn die_bewertungsmatrix_hat_den_notenschluessel_je_klasse_und_den_schnitt() {
+    let conn = db::open_in_memory().unwrap();
+    let a = class::create(&conn, ClassInput::new("7a", 2025)).unwrap();
+    let b = class::create(&conn, ClassInput::new("7b", 2024)).unwrap();
+    student::add_many(&conn, a.id, "Muster, Max\nBeispiel, Eva").unwrap();
+    student::add_many(&conn, b.id, "Test, Tom").unwrap();
+    let e = exam::create(&conn, beispiel(vec![a.id, b.id])).unwrap();
+
+    let mut x = Xlsx::open(export::build(&conn, e.id).unwrap());
+    let sheet = x.text("xl/worksheets/sheet1.xml");
+    // Anzahl je Note: Zählen in der Notenspalte (H) des Klassenblatts.
+    assert!(
+        sheet.contains("COUNTIF('7a (2025)'!$H$4:$H$5,$A$"),
+        "{sheet}"
+    );
+    assert!(
+        sheet.contains("COUNTIF('7b (2024)'!$H$4:$H$4,$A$"),
+        "{sheet}"
+    );
+    // Schnitt auf zwei Nachkommastellen.
+    assert!(
+        sheet.contains("ROUND(AVERAGE('7a (2025)'!$H$4:$H$5),2)"),
+        "{sheet}"
+    );
+    let strings = x.text("xl/sharedStrings.xml");
+    assert!(strings.contains("Anzahl 7a (2025)"), "{strings}");
+    assert!(strings.contains("Schnitt"), "{strings}");
+}
+
+#[test]
+fn mit_begruendungen_zaehlt_der_notenschluessel_die_notenliste_neben_den_kacheln() {
+    let conn = db::open_in_memory().unwrap();
+    let a = class::create(&conn, ClassInput::new("7a", 2025)).unwrap();
+    student::add_many(&conn, a.id, "Muster, Max\nBeispiel, Eva").unwrap();
+    let mut input = beispiel(vec![a.id]);
+    input.with_notes = true;
+    let e = exam::create(&conn, input).unwrap();
+
+    let mut x = Xlsx::open(export::build(&conn, e.id).unwrap());
+    let grading_sheet = x.text("xl/worksheets/sheet1.xml");
+    assert!(
+        grading_sheet.contains("COUNTIF('7a (2025)'!$H$2:$H$3,$A$"),
+        "{grading_sheet}"
+    );
+    // Die Liste ist Verweis auf die Note jeder Kachel, nicht eine zweite Rechnung.
+    let tiles = x.text("xl/worksheets/sheet2.xml");
+    assert!(tiles.contains("<c r=\"H2\""), "{tiles}");
+    assert!(tiles.contains("<f>C"), "{tiles}");
+}
+
+#[test]
 fn die_bewertung_hat_summen_und_bis_als_formeln() {
     let conn = db::open_in_memory().unwrap();
     let a = class::create(&conn, ClassInput::new("7a", 2025)).unwrap();

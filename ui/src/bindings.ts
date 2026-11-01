@@ -191,4 +191,28 @@ total: number,
  */
 grade: string | null, };
 
+/**
+ * Wie viele Schüler eine Note erreicht haben.
+ */
+export type GradeCount = { grade: string, count: number, };
+
+/**
+ * Der Notenschlüssel einer Klasse: wie oft jede Note vorkommt, und der
+ * Durchschnitt. Berechnet von `core`, die Oberfläche rechnet nicht nach.
+ */
+export type GradeKey = { 
+/**
+ * Je Note der Bewertungsmatrix, in deren Reihenfolge (auch mit 0).
+ */
+counts: Array<GradeCount>, 
+/**
+ * Schüler mit einer Note, also mit mindestens einem eingetragenen Punkt.
+ */
+graded: number, 
+/**
+ * Durchschnitt der Noten auf zwei Nachkommastellen. `None`, wenn noch
+ * niemand eine Note hat oder ein Notenname keine Zahl ist (z. B. „A“).
+ */
+average: number | null, };
+
 export type Theme = "system" | "light" | "dark";

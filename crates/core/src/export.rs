@@ -113,6 +113,8 @@ struct Styles {
     input: Format,
     calc: Format,
     sum: Format,
+    /// Durchschnitt: wie `sum`, mit zwei Nachkommastellen.
+    avg: Format,
     /// Mehrzeiliger Text (Beschreibung), oben ausgerichtet.
     wrap: Format,
     /// Eingabe von Text (Begründung): mehrzeilig, linksbündig, oben.
@@ -142,6 +144,12 @@ impl Styles {
                 .set_background_color(sum_fill)
                 .set_border(FormatBorder::Thin)
                 .set_align(FormatAlign::Center),
+            avg: Format::new()
+                .set_bold()
+                .set_background_color(sum_fill)
+                .set_border(FormatBorder::Thin)
+                .set_align(FormatAlign::Center)
+                .set_num_format("0.00"),
             wrap: Format::new()
                 .set_border(FormatBorder::Thin)
                 .set_text_wrap()
@@ -194,6 +202,35 @@ impl GradingRefs {
             self.start_range()
         )
     }
+}
+
+/// Spalte der Note auf dem Klassenblatt als Matrix: hinter allen Punkten und
+/// Gruppensummen, nach „Gesamt“.
+fn matrix_grade_col(exam: &Exam) -> u16 {
+    let cols: usize = exam.groups.iter().map(|g| g.items.len() + 1).sum();
+    (1 + cols + 1) as u16
+}
+
+/// Spalten der Notenliste neben den Kacheln (außerhalb des Druckbereichs):
+/// Schüler und Note, je Schüler eine Zeile ab Zeile 2.
+const TILE_LIST_COL: u16 = 6;
+
+/// Der Bereich aller Noten einer Klasse, als Verweis aus dem Blatt „Bewertung“.
+/// `None`, wenn die Klasse keine Schüler hat.
+fn class_grades_range(exam: &Exam, class_label: &str, students: usize) -> Option<String> {
+    if students == 0 {
+        return None;
+    }
+    let (col, first) = if exam.with_notes {
+        (TILE_LIST_COL + 1, 1)
+    } else {
+        (matrix_grade_col(exam), CLASS_HEAD_ROWS)
+    };
+    Some(format!(
+        "'{class_label}'!{}:{}",
+        row_col_to_cell_absolute(first, col),
+        row_col_to_cell_absolute(first + students as u32 - 1, col)
+    ))
 }
 
 fn grading_ref(row: u32, col: u16) -> String {
@@ -294,6 +331,23 @@ fn write_grading(
     for (col, text) in ["Note", "ab (Punkte)", "bis (Punkte)"].iter().enumerate() {
         ws.write_string_with_format(row, col as u16, *text, &st.head)?;
     }
+    // Notenschlüssel: je Klasse eine Spalte mit der Anzahl der Noten.
+    let key_ranges: Vec<Option<String>> = classes
+        .iter()
+        .map(|(c, results)| class_grades_range(exam, &c.label(), results.len()))
+        .collect();
+    for (i, (c, _)) in classes.iter().enumerate() {
+        let col = 3 + i as u16;
+        if col > 3 {
+            ws.set_column_width(col, 16)?;
+        }
+        let head = if classes.len() == 1 {
+            "Anzahl".to_string()
+        } else {
+            format!("Anzahl {}", c.label())
+        };
+        ws.write_string_with_format(row, col, head, &st.head)?;
+    }
     row += 1;
     let matrix_first = row;
     let last_index = exam.grades.len() - 1;
@@ -309,9 +363,38 @@ fn write_grading(
             format!("={}-0.5", row_col_to_cell(row + 1, 1))
         };
         ws.write_formula_with_format(row, 2, Formula::new(to), &st.calc)?;
+        for (i, range) in key_ranges.iter().enumerate() {
+            let formula = match range {
+                Some(range) => format!("=COUNTIF({range},{})", row_col_to_cell_absolute(row, 0)),
+                None => "=0".to_string(),
+            };
+            ws.write_formula_with_format(row, 3 + i as u16, Formula::new(formula), &st.calc)?;
+        }
         row += 1;
     }
     let matrix_last = row - 1;
+
+    // Schnitt je Klasse, auf zwei Nachkommastellen. Nur bei Zahlen als Noten.
+    let numeric = exam
+        .grades
+        .iter()
+        .all(|g| g.name.trim().replace(',', ".").parse::<f64>().is_ok());
+    ws.write_string_with_format(row, 0, "Schnitt", &st.sum)?;
+    ws.write_blank(row, 1, &st.sum)?;
+    ws.write_blank(row, 2, &st.sum)?;
+    for (i, range) in key_ranges.iter().enumerate() {
+        let col = 3 + i as u16;
+        match range {
+            Some(range) if numeric => ws.write_formula_with_format(
+                row,
+                col,
+                Formula::new(format!(r#"=IFERROR(ROUND(AVERAGE({range}),2),"")"#)),
+                &st.avg,
+            )?,
+            _ => ws.write_blank(row, col, &st.avg)?,
+        };
+    }
+    row += 1;
     ws.write_string(
         row + 1,
         0,
@@ -554,13 +637,31 @@ fn write_tiles(
     let mut breaks = Vec::new();
     let mut top: u32 = 0;
     let mut tallest: f64 = 0.0;
+    let mut note_cells = Vec::new();
     for res in results {
         if top > 0 {
             breaks.push(top);
         }
-        let (next, height) = write_tile(ws, exam, g, class_label, res, top, st)?;
+        let (next, height, note_row) = write_tile(ws, exam, g, class_label, res, top, st)?;
         tallest = tallest.max(height);
+        note_cells.push(note_row);
         top = next;
+    }
+    // Notenliste neben den Kacheln, außerhalb des Druckbereichs: Grundlage für
+    // den Notenschlüssel auf dem Blatt „Bewertung“.
+    ws.set_column_width(TILE_LIST_COL, 24)?;
+    ws.set_column_width(TILE_LIST_COL + 1, 8)?;
+    ws.write_string_with_format(0, TILE_LIST_COL, "Schüler/in", &st.head)?;
+    ws.write_string_with_format(0, TILE_LIST_COL + 1, "Note", &st.head)?;
+    for (i, (res, note_row)) in results.iter().zip(&note_cells).enumerate() {
+        let row = 1 + i as u32;
+        ws.write_string_with_format(row, TILE_LIST_COL, res.student.label(), &st.label)?;
+        ws.write_formula_with_format(
+            row,
+            TILE_LIST_COL + 1,
+            Formula::new(format!("={}", row_col_to_cell(*note_row, 2))),
+            &st.calc,
+        )?;
     }
     ws.set_page_breaks(&breaks)?;
     // Druckbereich: genau die Kacheln, nicht, was Excel sonst für benutzt hält.
@@ -584,7 +685,7 @@ fn write_tile(
     res: &StudentResult,
     top: u32,
     st: &Styles,
-) -> Result<(u32, f64)> {
+) -> Result<(u32, f64, u32)> {
     let mut r = top;
     // Was höhere Zeilen über die Standardhöhe hinaus brauchen.
     let mut extra: f64 = 0.0;
@@ -717,6 +818,7 @@ fn write_tile(
     )?;
     ws.write_blank(r, 3, &st.sum)?;
     ws.write_blank(r, 4, &st.sum)?;
+    let note_row = r;
     r += 2;
 
     // Bewertungsmatrix zur Einordnung.
@@ -746,5 +848,5 @@ fn write_tile(
     }
     // Zehn Prozent Luft: Die Höhe ist geschätzt, Titel und Kopf sind größer.
     let height = ((r - top) as f64 * ROW_POINTS + extra) * 1.1;
-    Ok((r, height))
+    Ok((r, height, note_row))
 }

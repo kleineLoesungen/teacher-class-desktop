@@ -103,6 +103,8 @@ ExamInput  ──exam::create/update──▶  Tabellen exams, exam_classes,
   Prüfung als Ganzes neu, die Kennungen der Punkte wechseln dabei. Danach
   räumt `grading::prune` auf — was nicht mehr passt, entfällt. Summen und Note
   berechnet `grading::results`; die Oberfläche und der Export zeigen das nur.
+  Dasselbe gilt für den Notenschlüssel (`grading::grade_key`: Anzahl je Note,
+  Schnitt auf zwei Stellen); im Export rechnen ihn Formeln (`COUNTIF`, `AVERAGE`).
 * **Die Form des Klassenblatts folgt `with_notes`.** Ohne Begründungen eine
   Matrix (Schüler in Zeilen), mit Begründungen eine Bewertungskachel je Schüler
   untereinander, vor jeder ein Seitenumbruch — ein Schüler, eine Druckseite,
