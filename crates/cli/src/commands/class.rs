@@ -6,6 +6,18 @@ use super::confirm::confirm;
 use crate::args::ClassCommand;
 use crate::output::Out;
 
+fn archive(app: &App, out: &Out, id: &str, archived: bool) -> Result<()> {
+    let id = class::resolve_id(app.conn(), id)?;
+    let updated = class::set_archived(app.conn(), id, archived)?;
+    let verb = if archived {
+        "Archiviert"
+    } else {
+        "Zurückgeholt"
+    };
+    out.done(format!("{verb}: {}", updated.label()), &updated);
+    Ok(())
+}
+
 pub fn run(cmd: ClassCommand, app: &App, out: &Out) -> Result<()> {
     match cmd {
         ClassCommand::Add { name, year } => {
@@ -35,6 +47,9 @@ pub fn run(cmd: ClassCommand, app: &App, out: &Out) -> Result<()> {
             out.done(format!("Geändert: {}", updated.label()), &updated);
             Ok(())
         }
+
+        ClassCommand::Archive { id } => archive(app, out, &id, true),
+        ClassCommand::Unarchive { id } => archive(app, out, &id, false),
 
         ClassCommand::Rm { id, yes } => {
             let id = class::resolve_id(app.conn(), &id)?;

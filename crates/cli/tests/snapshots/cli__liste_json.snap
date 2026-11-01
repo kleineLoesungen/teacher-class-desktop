@@ -8,6 +8,7 @@ expression: text
     "name": "7a",
     "year": 2025,
     "student_count": 3,
+    "archived": false,
     "created_at": "[zeit]"
   },
   {
@@ -15,6 +16,7 @@ expression: text
     "name": "8b",
     "year": 2024,
     "student_count": 0,
+    "archived": false,
     "created_at": "[zeit]"
   }
 ]

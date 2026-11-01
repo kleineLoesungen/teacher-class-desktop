@@ -234,12 +234,27 @@ input[type="color"] {
   text-align: left;
 }
 
+.class-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .class-list {
   list-style: none;
   margin: 0;
   padding: 0 var(--space-2);
-  overflow-y: auto;
-  flex: 1;
+}
+
+/* Archiv: eingeklappter Bereich unter den aktiven Einträgen. */
+.archive {
+  margin-top: var(--space-2);
+}
+
+.archive summary {
+  cursor: pointer;
+  padding: var(--space-2) var(--space-4);
+  color: var(--muted);
 }
 
 .class-item {

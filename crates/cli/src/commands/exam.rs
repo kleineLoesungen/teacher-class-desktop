@@ -112,6 +112,9 @@ pub fn run(cmd: ExamCommand, app: &App, out: &Out) -> Result<()> {
             Ok(())
         }
 
+        ExamCommand::Archive { id } => archive(app, out, &id, true),
+        ExamCommand::Unarchive { id } => archive(app, out, &id, false),
+
         ExamCommand::Rm { id, yes } => {
             let id = exam::resolve_id(app.conn(), &id)?;
             let existing = exam::get(app.conn(), id)?;
@@ -153,6 +156,18 @@ pub fn run(cmd: ExamCommand, app: &App, out: &Out) -> Result<()> {
             Ok(())
         }
     }
+}
+
+fn archive(app: &App, out: &Out, id: &str, archived: bool) -> Result<()> {
+    let id = exam::resolve_id(app.conn(), id)?;
+    let updated = exam::set_archived(app.conn(), id, archived)?;
+    let verb = if archived {
+        "Archiviert"
+    } else {
+        "Zurückgeholt"
+    };
+    out.done(format!("{verb}: {}", updated.name), &updated);
+    Ok(())
 }
 
 pub fn parse_points(text: &str) -> Result<f64, String> {

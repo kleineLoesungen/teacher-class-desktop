@@ -13,7 +13,11 @@ export type Class = { id: string, name: string, year: number,
 /**
  * Wie viele Schüler in der Klasse sind.
  */
-student_count: number, created_at: string, };
+student_count: number, 
+/**
+ * Archivierte Klassen blendet die Oberfläche aus; gelöscht sind sie nicht.
+ */
+archived: boolean, created_at: string, };
 
 /**
  * Was von außen hereinkommt — ungeprüft.
@@ -62,7 +66,11 @@ max_points: number,
 /**
  * Ob zu jedem Prüfkriterium eine Begründung gepflegt wird.
  */
-with_notes: boolean, created_at: string, };
+with_notes: boolean, 
+/**
+ * Archivierte Prüfungen blendet die Oberfläche aus; gelöscht sind sie nicht.
+ */
+archived: boolean, created_at: string, };
 
 /**
  * Was von außen hereinkommt — ungeprüft.

@@ -49,6 +49,16 @@ pub async fn class_update(
     state.with(|app| class::update(app.conn(), id, input))
 }
 
+/// Archiviert die Klasse `id` (`archived = true`) oder holt sie zurück.
+#[tauri::command]
+pub async fn class_archive(
+    state: State<'_, AppState>,
+    id: Uuid,
+    archived: bool,
+) -> ApiResult<Class> {
+    state.with(|app| class::set_archived(app.conn(), id, archived))
+}
+
 /// Löscht die Klasse samt ihren Schülern.
 #[tauri::command]
 pub async fn class_delete(state: State<'_, AppState>, id: Uuid) -> ApiResult<()> {
@@ -117,6 +127,12 @@ pub async fn exam_update(
 #[tauri::command]
 pub async fn exam_preview(input: ExamInput) -> ApiResult<Preview> {
     Ok(exam::preview(&input))
+}
+
+/// Archiviert die Prüfung `id` (`archived = true`) oder holt sie zurück.
+#[tauri::command]
+pub async fn exam_archive(state: State<'_, AppState>, id: Uuid, archived: bool) -> ApiResult<Exam> {
+    state.with(|app| exam::set_archived(app.conn(), id, archived))
 }
 
 #[tauri::command]

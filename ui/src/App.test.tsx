@@ -33,7 +33,13 @@ class Rejection {
 }
 
 function cls(id: string, input: ClassInput, studentCount = 0): Class {
-  return { id, ...input, student_count: studentCount, created_at: "2026-09-15T06:39:51Z" };
+  return {
+    id,
+    ...input,
+    student_count: studentCount,
+    archived: false,
+    created_at: "2026-09-15T06:39:51Z",
+  };
 }
 
 function student(id: string, classId: string, last: string, first: string): Student {
@@ -94,6 +100,18 @@ function backend(cmd: string, args: Record<string, unknown> = {}): unknown {
       classes = classes.map((c) => (c.id === updated.id ? updated : c));
       return updated;
     }
+    case "class_archive": {
+      classes = classes.map((c) =>
+        c.id === args.id ? { ...c, archived: args.archived as boolean } : c,
+      );
+      return classes.find((c) => c.id === args.id);
+    }
+    case "exam_archive": {
+      exams = exams.map((e) =>
+        e.id === args.id ? { ...e, archived: args.archived as boolean } : e,
+      );
+      return exams.find((e) => e.id === args.id);
+    }
     case "class_delete":
       classes = classes.filter((c) => c.id !== args.id);
       return null;
@@ -132,6 +150,7 @@ function backend(cmd: string, args: Record<string, unknown> = {}): unknown {
         grades: [{ name: "6", from_points: 0, to_points: 9.5 }],
         max_points: 20,
         with_notes: input.with_notes ?? false,
+        archived: false,
         created_at: "2026-09-15T06:39:51Z",
       };
       exams =
@@ -339,6 +358,25 @@ describe("Oberfläche", () => {
     await waitFor(() => expect(commands("class_delete")[0]?.args).toEqual({ id: "a" }));
   });
 
+  it("archiviert eine Klasse und zeigt sie im Archiv-Bereich", async () => {
+    const user = userEvent.setup();
+    classes = [cls("a", { name: "7a", year: 2025 })];
+    render(<App />);
+
+    await user.click(await screen.findByRole("button", { name: /7a \(2025\)/ }));
+    await user.click(screen.getByRole("button", { name: "Archivieren" }));
+    await waitFor(() =>
+      expect(commands("class_archive")[0]?.args).toEqual({ id: "a", archived: true }),
+    );
+
+    expect(await screen.findByText("Archiv (1)")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Aus dem Archiv holen" }));
+    await waitFor(() =>
+      expect(commands("class_archive")[1]?.args).toEqual({ id: "a", archived: false }),
+    );
+    await waitFor(() => expect(screen.queryByText(/^Archiv \(/)).toBeNull());
+  });
+
   it("entfernt einen Schüler erst nach der Rückfrage", async () => {
     const user = userEvent.setup();
     classes = [cls("a", { name: "7a", year: 2025 })];
@@ -465,6 +503,7 @@ describe("Oberfläche", () => {
         ],
         max_points: 2.5,
         with_notes: false,
+        archived: false,
         created_at: "2026-09-15T06:39:51Z",
       };
     }

@@ -140,3 +140,27 @@ fn kurzkennungen_werden_ueber_das_endstueck_aufgeloest() {
     let short = teacher_class_core::ids::short_id(c.id);
     assert_eq!(class::resolve_id(&conn, &short).unwrap(), c.id);
 }
+
+#[test]
+fn eine_klasse_laesst_sich_archivieren_und_zurueckholen() {
+    let conn = db::open_in_memory().unwrap();
+    let c = class::create(&conn, ClassInput::new("7a", 2025)).unwrap();
+    assert!(!c.archived);
+
+    assert!(class::set_archived(&conn, c.id, true).unwrap().archived);
+    // Archivierte Klassen bleiben in der Liste.
+    assert_eq!(class::list(&conn).unwrap().len(), 1);
+
+    // Ändern hebt die Archivierung nicht auf.
+    let geaendert = class::update(&conn, c.id, ClassInput::new("7b", 2025)).unwrap();
+    assert!(geaendert.archived);
+
+    assert!(!class::set_archived(&conn, c.id, false).unwrap().archived);
+}
+
+#[test]
+fn eine_unbekannte_klasse_laesst_sich_nicht_archivieren() {
+    let conn = db::open_in_memory().unwrap();
+    let err = class::set_archived(&conn, uuid::Uuid::now_v7(), true).unwrap_err();
+    assert!(matches!(err, Error::NotFound));
+}

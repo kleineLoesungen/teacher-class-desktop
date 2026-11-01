@@ -26,6 +26,8 @@ pub struct Class {
     /// Wie viele Schüler in der Klasse sind.
     #[ts(type = "number")]
     pub student_count: i64,
+    /// Archivierte Klassen blendet die Oberfläche aus; gelöscht sind sie nicht.
+    pub archived: bool,
     #[serde(with = "crate::timestamp::serde_rfc3339")]
     #[ts(type = "string")]
     pub created_at: OffsetDateTime,
@@ -87,7 +89,7 @@ impl ClassInput {
 }
 
 const SELECT: &str = "SELECT c.id, c.name, c.year, c.created_at, \
-     (SELECT count(*) FROM students s WHERE s.class_id = c.id) FROM classes c";
+     (SELECT count(*) FROM students s WHERE s.class_id = c.id), c.archived FROM classes c";
 
 /// Nach Jahr absteigend (neuester Jahrgang zuerst), dann nach Name.
 pub fn list(conn: &Connection) -> Result<Vec<Class>> {
@@ -138,6 +140,18 @@ pub fn update(conn: &Connection, id: Uuid, input: ClassInput) -> Result<Class> {
     get(conn, id)
 }
 
+/// Archiviert die Klasse (`true`) oder holt sie zurück (`false`).
+pub fn set_archived(conn: &Connection, id: Uuid, archived: bool) -> Result<Class> {
+    let changed = conn.execute(
+        "UPDATE classes SET archived = ?2 WHERE id = ?1",
+        rusqlite::params![id.to_string(), archived],
+    )?;
+    if changed == 0 {
+        return Err(Error::NotFound);
+    }
+    get(conn, id)
+}
+
 /// Löscht die Klasse samt ihren Schülern.
 pub fn delete(conn: &Connection, id: Uuid) -> Result<()> {
     let changed = conn.execute("DELETE FROM classes WHERE id = ?1", [id.to_string()])?;
@@ -182,6 +196,7 @@ fn from_row(row: &Row<'_>) -> rusqlite::Result<Result<Class>> {
             year: row.get(2)?,
             created_at: timestamp::from_text(&created_at)?,
             student_count: row.get(4)?,
+            archived: row.get(5)?,
         })
     })())
 }
