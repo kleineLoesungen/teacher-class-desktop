@@ -15,8 +15,7 @@ Kommandozeile rufen nur `export::write_xlsx`. Der Aufbau:
 | Funktion | Schreibt |
 |---|---|
 | `write_grading` | Blatt „Bewertung“ und merkt sich, **wo** Schema und Matrix stehen (`GradingRefs`) |
-| `write_class` | Ein Klassenblatt als Matrix (Prüfung ohne Begründungen) |
-| `write_tiles`, `write_tile` | Ein Klassenblatt als Bewertungskacheln, eine je Schüler (Prüfung mit Begründungen) |
+| `write_class` | Ein Klassenblatt als Matrix |
 
 Regeln, die sich bewährt haben:
 
@@ -24,25 +23,37 @@ Regeln, die sich bewährt haben:
   verweisen auf „Bewertung“ (`=Bewertung!$C$6`), damit eine Änderung dort
   überall ankommt. Eingetragene Punkte und Begründungen sind dagegen **Werte**
   aus `grading::results`.
-* **Zellen nie von Hand zählen.** Zeilen und Spalten kommen aus `GradingRefs`
-  und den Zeilen, die `write_tile` selbst mitführt; Adressen aus
-  `row_col_to_cell`. Sonst verschiebt eine neue Spalte stillschweigend alle
+* **Zellen nie von Hand zählen.** Zeilen und Spalten kommen aus `GradingRefs`;
+  Adressen aus `row_col_to_cell`. Sonst verschiebt eine neue Spalte stillschweigend alle
   Formeln dahinter.
-* **Kacheln drucken:** Seitenumbrüche vor jeder Kachel (`set_page_breaks`) und
-  ein fester Druckmaßstab (`set_print_scale`), dazu der Druckbereich
-  (`set_print_area`). Mit „auf Seiten anpassen“ ignoriert Excel manuelle
-  Umbrüche. Die Höhe der Zeilen schätzt `lines_needed` aus der Textlänge;
-  ist die höchste Kachel höher als eine Seite, sinkt der Maßstab für das
-  ganze Blatt (`TILE_MIN_SCALE`).
 * **Ein neues Blatt** in `build` anlegen und mit `push_worksheet` in der
   gewünschten Reihenfolge anhängen.
 * **Test in `crates/core/tests/export.rs`**: Die erzeugte `.xlsx` ist ein ZIP;
   der Test liest `xl/worksheets/sheetN.xml` und sucht die Formel als Text.
   Das fängt verrutschte Adressen, aber keine falsche Rechnung.
 * **Danach einmal in Excel oder LibreOffice öffnen.** Ein Beispiel mit Halb­
-  punkten ausfüllen und prüfen, dass Summe und Note stimmen und – bei einer
-  Prüfung mit Begründungen – jede Kachel auf genau eine Seite passt. Das kann
+  punkten ausfüllen und prüfen, dass Summe und Note stimmen. Das kann
   kein Test ersetzen.
+
+---
+
+## Den PDF-Ausdruck ändern
+
+Steht in `crates/core/src/export_pdf.rs`; Oberfläche und Kommandozeile rufen nur
+`export_pdf::write_pdf`. Das PDF ist von Hand geschrieben (Objekte,
+Querverweistabelle) und benutzt die eingebauten Schriften Times-Roman und
+Times-Bold in WinAnsi-Kodierung.
+
+* **Zeichenbreiten** stehen in `WIDTHS` (Adobe-Metrik Times-Roman, Zeichen 32 bis
+  126) und `width_of` (Umlaute und Satzzeichen). Ein neues Zeichen, das breiter
+  ist als 500, dort ergänzen, sonst bricht der Text zu spät um.
+* **Seitenaufteilung:** `Layout::place_row` setzt eine Zeile oder wechselt die
+  Seite (`continue_page` wiederholt Überschrift und Tabellenkopf). Jeder Schüler
+  beginnt mit `new_page`.
+* **Test in `crates/core/tests/export_pdf.rs`**: Seitenzahl und Texte im
+  Inhaltsstrom (Hex in WinAnsi). Wie die Seite aussieht, prüft kein Test —
+  nach einer Änderung ein PDF erzeugen (`teacher-class exam export-pdf`) und
+  ansehen.
 
 ---
 

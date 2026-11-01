@@ -109,6 +109,9 @@ export const api = {
     remove: (id: string) => call<null>("exam_delete", { id }),
     /** Schreibt die Excel-Datei nach `path` (aus `pickExportPath`). */
     export: (id: string, path: string) => call<null>("exam_export", { id, path }),
+    /** Schreibt das PDF der Klasse `classId` nach `path` (aus `pickPdfPath`). */
+    exportPdf: (id: string, classId: string, path: string) =>
+      call<null>("exam_export_pdf", { id, class: classId, path }),
     /** Die Bewertung der Schüler der Klasse `classId` in der Prüfung `id`. */
     results: (id: string, classId: string) =>
       call<StudentResult[]>("exam_results", { id, class: classId }),
@@ -126,6 +129,19 @@ export const api = {
         title: "Excel-Datei speichern",
         defaultPath: fileName,
         filters: [{ name: "Excel-Arbeitsmappe", extensions: ["xlsx"] }],
+      });
+    } catch (raw) {
+      throw ApiError.from(raw);
+    }
+  },
+
+  /** Wie `pickExportPath`, für das PDF einer Klasse. */
+  pickPdfPath: async (fileName: string): Promise<string | null> => {
+    try {
+      return await save({
+        title: "PDF speichern",
+        defaultPath: fileName,
+        filters: [{ name: "PDF-Dokument", extensions: ["pdf"] }],
       });
     } catch (raw) {
       throw ApiError.from(raw);

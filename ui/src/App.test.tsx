@@ -605,6 +605,28 @@ describe("Oberfläche", () => {
       expect(commands("exam_export")).toHaveLength(0);
     });
 
+    it("druckt die gewählte Klasse als PDF an den gewählten Ort", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      exams = [savedExam()];
+      results = [maxResult()];
+      savePath = "/tmp/Klassenarbeit 7a.pdf";
+      render(<App />);
+
+      await openExams(user);
+      await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
+      await user.click(screen.getByRole("button", { name: "Bewerten" }));
+      await user.click(await screen.findByRole("button", { name: "Klasse als PDF drucken" }));
+
+      await waitFor(() => expect(commands("exam_export_pdf")).toHaveLength(1));
+      expect(commands("exam_export_pdf")[0]?.args).toEqual({
+        id: "e1",
+        class: "a",
+        path: "/tmp/Klassenarbeit 7a.pdf",
+      });
+      expect(await screen.findByText("Gespeichert: /tmp/Klassenarbeit 7a.pdf")).toBeTruthy();
+    });
+
     it("rechnet bei jeder Änderung des Entwurfs neu, ohne zu speichern", async () => {
       const user = userEvent.setup();
       classes = [cls("a", { name: "7a", year: 2025 })];
