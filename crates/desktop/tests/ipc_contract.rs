@@ -197,6 +197,22 @@ fn pruefungen_anlegen_aendern_exportieren_loeschen() {
         .unwrap_err();
     assert_eq!(err["fields"][0]["field"], "path");
 
+    let pdf = dir.path().join("klasse.pdf");
+    ctx.invoke(
+        "exam_export_pdf",
+        json!({ "id": id, "class": class["id"], "path": pdf.to_str().unwrap() }),
+    )
+    .unwrap();
+    assert_eq!(&std::fs::read(&pdf).unwrap()[..5], b"%PDF-");
+
+    let err = ctx
+        .invoke(
+            "exam_export_pdf",
+            json!({ "id": id, "class": class["id"], "path": dir.path().join("x.xlsx").to_str().unwrap() }),
+        )
+        .unwrap_err();
+    assert_eq!(err["fields"][0]["field"], "path");
+
     ctx.invoke("exam_delete", json!({ "id": id })).unwrap();
     assert!(
         ctx.invoke("exam_list", json!({}))

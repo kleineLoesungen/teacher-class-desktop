@@ -255,8 +255,8 @@ export function ExamEditor(props: Props) {
           Zu jedem Prüfkriterium eine Begründung pflegen
         </label>
         <p className="muted hint">
-          Mit Begründungen enthält der Excel-Export statt einer Matrix eine Bewertungskachel je
-          Schüler, eine Seite pro Schüler zum Drucken.
+          Begründungen stehen im PDF-Ausdruck einer Klasse (in der Bewertung), eine Seite pro
+          Schüler. Die Excel-Datei enthält nur die Punkte.
         </p>
 
         <h2>Bewertungsmatrix</h2>

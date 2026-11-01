@@ -8,8 +8,8 @@ Man pflegt Klassen und Schüler, legt eine Prüfung mit **Prüfungsschema** und
 die Punkte je Schüler ein; Summen und Noten rechnen **Formeln**. Ändert man die
 Bewertungsmatrix, ändern sich die Noten. Bewertet werden kann auch **in der
 App** (Punkte und, wenn gewünscht, eine Begründung je Prüfkriterium); der Export
-enthält dann alles. Mit Begründungen gibt es **eine Bewertungskachel je
-Schüler**, eine Druckseite pro Schüler.
+enthält dann die Punkte. Zum Ausdrucken gibt es pro Klasse ein **PDF mit einer
+Seite je Schüler** (mit Begründungen, wenn die Prüfung welche hat).
 
 Technisch: **Tauri 2**, Oberfläche in **React und TypeScript**, Fachlogik in
 **Rust** mit eingebetteter **SQLite**. Dieselbe Fachlogik bedient auch eine
@@ -67,25 +67,28 @@ in Excel weiter bearbeiten:
 | Blatt | Inhalt |
 |---|---|
 | **Bewertung** | Prüfungsschema (mit Beschreibungen) und Bewertungsmatrix. Hier ändert man „ab“ und Höchstpunkte; alles andere folgt per Formel. |
-| **je Klasse** | Blattname `7a (2025)`. Die Form hängt von den Begründungen ab, siehe unten. |
+| **je Klasse** | Blattname `7a (2025)`: eine Matrix, siehe unten. |
 
-**Ohne Begründungen** ist das Klassenblatt eine **Matrix**: Schüler in den
-Zeilen, Punkte des Schemas in den Spalten, Summe je Gruppe, Gesamtpunkte,
-zuletzt die **Note** aus der Bewertungsmatrix. Solange nichts eingetragen ist,
-bleibt die Note leer.
+Das Klassenblatt ist eine **Matrix**: Schüler in den Zeilen, Punkte des Schemas
+in den Spalten, Summe je Gruppe, Gesamtpunkte, zuletzt die **Note** aus der
+Bewertungsmatrix. Solange nichts eingetragen ist, bleibt die Note leer.
+Begründungen stehen nicht in der Excel-Datei, sondern im PDF.
 
-**Mit Begründungen** ist es **eine Bewertungskachel je Schüler**, untereinander
-auf demselben Blatt: Aufgabe, Beschreibung, Punkte, Höchstpunkte und
-Begründung, je Gruppe eine Summenzeile, darunter Gesamtpunkte, Note und die
-Bewertungsmatrix. Vor jeder Kachel steht ein Seitenumbruch; das Blatt ist auf
-A4 hochkant mit festem Druckmaßstab eingestellt. **Drucken:** In Excel das
-Klassenblatt drucken oder als PDF speichern — jeder Schüler ist genau eine Seite
-(einzelne Schüler über „Seiten von … bis …“). Der Druckbereich ist auf die
-Kacheln gesetzt. Der Druckmaßstab ist bewusst fest und nicht „auf eine Seite
-anpassen“, weil Excel dabei die Seitenumbrüche ignoriert. Wird eine Kachel mit
-sehr langen Beschreibungen oder Begründungen höher als eine Seite, sinkt der
-Maßstab für das ganze Blatt (bis 40 %); die Höhe wird aus der Textlänge
-geschätzt, in Excel oder LibreOffice kann sie leicht abweichen.
+### PDF-Ausdruck
+
+**„Klasse als PDF drucken“** in der Bewertung öffnet einen Speichern-Dialog und
+schreibt **ein PDF für die gewählte Klasse**: A4 hochkant, **eine Seite je
+Schüler** — Aufgabe, Beschreibung, Punkte, Höchstpunkte und (bei Prüfungen mit
+Begründungen) die Begründung, je Gruppe eine Summenzeile, darunter Gesamtpunkte,
+Note und die Bewertungsmatrix. Die Seitenaufteilung berechnet die App selbst
+(`crates/core/src/export_pdf.rs`); ein Tabellenprogramm ist nicht beteiligt.
+Ist eine Kachel durch lange Begründungen höher als eine Seite, läuft sie auf der
+nächsten weiter, mit wiederholtem Tabellenkopf; der nächste Schüler beginnt
+immer neu.
+
+Die **Schrift** ist Times (die in jedem PDF-Programm eingebaute `Times-Roman`,
+sie wird nicht eingebettet — es liegt keine Schriftdatei im Projekt). Zeichen
+außerhalb von Westeuropa (z. B. polnisches Ł) erscheinen als „?“.
 
 Der Export ist einseitig: Änderungen in Excel gelangen nicht zurück in die App.
 

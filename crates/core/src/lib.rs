@@ -30,6 +30,7 @@ pub mod db;
 pub mod error;
 pub mod exam;
 pub mod export;
+pub mod export_pdf;
 pub mod grading;
 pub mod ids;
 pub mod paths;
