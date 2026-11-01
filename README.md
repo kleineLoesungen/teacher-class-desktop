@@ -101,10 +101,10 @@ einklappbaren **Notenschlüssel** als Tabelle (Spalten Note und Anzahl, darunter
 
 ### PDF-Ausdruck
 
-**„Als PDF drucken ▾“** in der Bewertung klappt ein Menü auf: oben die
-**Druckvorlage** (je Schüler oder je Klasse), darunter die Klassen der Prüfung.
-Die gewählte Klasse öffnet einen
-Speichern-Dialog und wird als **ein PDF für diese Klasse** geschrieben, A4
+**„Als PDF drucken …“** in der Bewertung öffnet einen Dialog: oben die **Klasse**
+(vorgewählt ist die offene), darunter die **Druckvorlage** (je Schüler oder je
+Klasse). „PDF speichern …“ öffnet den Speichern-Dialog und schreibt **ein PDF für
+diese Klasse**, A4
 hochkant. Die **Standardvorlage „je Schüler“** setzt **eine Seite je
 Schüler** — Aufgabe, Beschreibung, Punkte, Höchstpunkte und (bei Prüfungen mit
 Begründungen) die Begründung, je Gruppe eine Summenzeile, darunter Gesamtpunkte,

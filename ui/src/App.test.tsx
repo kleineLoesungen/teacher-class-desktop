@@ -712,10 +712,10 @@ describe("Oberfläche", () => {
       await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
       await user.click(screen.getByRole("button", { name: "Bewerten" }));
       await user.click(await screen.findByRole("button", { name: /Als PDF drucken/ }));
-      const list = screen.getByRole("list", { name: "Klasse drucken" });
-      await user.click(within(list).getByRole("button", { name: "7a (2025)" }));
+      await user.click(screen.getByRole("button", { name: "PDF speichern …" }));
 
       await waitFor(() => expect(commands("exam_export_pdf")).toHaveLength(1));
+      expect(screen.queryByRole("dialog", { name: "Als PDF drucken" })).toBeNull();
       expect(commands("exam_export_pdf")[0]?.args).toEqual({
         id: "e1",
         class: "a",
@@ -737,27 +737,67 @@ describe("Oberfläche", () => {
       await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
       await user.click(screen.getByRole("button", { name: "Bewerten" }));
 
-      // Die Vorlagen stehen im Druckmenü, nicht mehr als eigene Auswahl.
-      expect(screen.queryByRole("combobox", { name: "Druckvorlage" })).toBeNull();
       await user.click(await screen.findByRole("button", { name: /Als PDF drucken/ }));
       expect(screen.getByText(/liegen in \/tmp\/d\/Templates/)).toBeTruthy();
       // Beide Sorten stehen zur Wahl, getrennt nach Gruppen.
-      const perStudent = screen.getByRole("list", { name: /Je Schüler/ });
-      const perClass = screen.getByRole("list", { name: /Je Klasse/ });
-      expect(
-        within(perStudent).getByRole("button", { name: "Standard", pressed: true }),
-      ).toBeTruthy();
-      await user.click(within(perClass).getByRole("button", { name: "Standard" }));
-      await user.click(
-        within(screen.getByRole("list", { name: "Klasse drucken" })).getByRole("button", {
-          name: "7a (2025)",
-        }),
-      );
+      const perStudent = screen.getByRole("group", { name: /eine Seite je Schüler/ });
+      const perClass = screen.getByRole("group", { name: /eine Übersicht je Klasse/ });
+      const standard = within(perStudent).getByRole("radio", { name: "Standard" });
+      expect((standard as HTMLInputElement).checked).toBe(true);
+
+      // Die Wahl bleibt sichtbar stehen, gedruckt wird erst auf den Knopf.
+      const overview = within(perClass).getByRole("radio", { name: "Standard" });
+      await user.click(overview);
+      expect((overview as HTMLInputElement).checked).toBe(true);
+      expect((standard as HTMLInputElement).checked).toBe(false);
+      expect(commands("exam_export_pdf")).toHaveLength(0);
+      await user.click(screen.getByRole("button", { name: "PDF speichern …" }));
 
       await waitFor(() => expect(commands("exam_export_pdf")).toHaveLength(1));
       expect(commands("exam_export_pdf")[0]?.args).toMatchObject({
         template: "print_test_class_standard.md",
       });
+    });
+
+    it("druckt eine andere Klasse als die offene, wenn man sie im Dialog wählt", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 }), cls("b", { name: "7b", year: 2025 })];
+      exams = [{ ...savedExam(), class_ids: ["a", "b"] }];
+      results = [maxResult()];
+      savePath = "/tmp/x.pdf";
+      render(<App />);
+
+      await openExams(user);
+      await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
+      await user.click(screen.getByRole("button", { name: "Bewerten" }));
+      await user.click(await screen.findByRole("button", { name: /Als PDF drucken/ }));
+      const group = screen.getByRole("group", { name: "Klasse" });
+      const open = within(group).getByRole("radio", { name: "7a (2025)" });
+      expect((open as HTMLInputElement).checked).toBe(true);
+      await user.click(within(group).getByRole("radio", { name: "7b (2025)" }));
+      await user.click(screen.getByRole("button", { name: "PDF speichern …" }));
+
+      await waitFor(() => expect(commands("exam_export_pdf")).toHaveLength(1));
+      expect(commands("exam_export_pdf")[0]?.args).toMatchObject({ class: "b" });
+    });
+
+    it("druckt nichts, wenn der Druckdialog abgebrochen wird", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      exams = [savedExam()];
+      results = [maxResult()];
+      render(<App />);
+
+      await openExams(user);
+      await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
+      await user.click(screen.getByRole("button", { name: "Bewerten" }));
+      await user.click(await screen.findByRole("button", { name: /Als PDF drucken/ }));
+      const dialog = screen.getByRole("dialog", { name: "Als PDF drucken" });
+      await user.click(within(dialog).getByRole("button", { name: "Abbrechen" }));
+
+      expect(screen.queryByRole("dialog", { name: "Als PDF drucken" })).toBeNull();
+      expect(commands("plugin:dialog|save")).toHaveLength(0);
+      expect(commands("exam_export_pdf")).toHaveLength(0);
     });
 
     it("zeigt einen Fehler in der Vorlage oben und meldet nichts als gespeichert", async () => {
@@ -783,11 +823,7 @@ describe("Oberfläche", () => {
       await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
       await user.click(screen.getByRole("button", { name: "Bewerten" }));
       await user.click(await screen.findByRole("button", { name: /Als PDF drucken/ }));
-      await user.click(
-        within(screen.getByRole("list", { name: "Klasse drucken" })).getByRole("button", {
-          name: "7a (2025)",
-        }),
-      );
+      await user.click(screen.getByRole("button", { name: "PDF speichern …" }));
 
       expect(await screen.findByText(/Zeile 4: unbekannter Platzhalter \{\{foo\}\}/)).toBeTruthy();
       expect(screen.queryByText(/Gespeichert:/)).toBeNull();

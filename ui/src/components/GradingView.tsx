@@ -6,7 +6,7 @@
 // gerechnet. Gespeichert wird, sobald ein Feld verlassen wird; ob die Eingabe
 // gültig ist, entscheidet Rust, die Meldung erscheint über dem Schüler.
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type {
   Class,
   Exam,
@@ -20,6 +20,7 @@ import type {
 } from "../bindings";
 import { formatAverage, formatPoints, parsePoints } from "../lib/exam";
 import { classLabel } from "../lib/format";
+import { PrintDialog } from "./PrintDialog";
 
 type Props = {
   exam: Exam;
@@ -51,11 +52,6 @@ type Props = {
   template: string;
   onSelectTemplate: (file: string) => void;
 };
-
-/** Der Name einer Vorlage, wie er in der Auswahl steht. */
-function templateLabel(t: TemplateInfo): string {
-  return t.standard ? "Standard" : t.name;
-}
 
 type CellDraft = { points: string; note: string };
 
@@ -361,162 +357,20 @@ function GradeKeyView({ gradeKey }: { gradeKey: GradeKey }) {
   );
 }
 
-/** Eine Gruppe von Vorlagen im Druckmenü; die gewählte ist gedrückt. */
-function TemplateGroup({
-  label,
-  templates,
-  selected,
-  onSelect,
-}: {
-  label: string;
-  templates: TemplateInfo[];
-  selected: string;
-  onSelect: (file: string) => void;
-}) {
-  if (templates.length === 0) return null;
-  return (
-    <>
-      <p className="hint">{label}</p>
-      <ul aria-label={label}>
-        {templates.map((t) => (
-          <li key={t.file}>
-            <button
-              type="button"
-              className="ghost"
-              aria-pressed={t.file === selected}
-              onClick={() => onSelect(t.file)}
-            >
-              {templateLabel(t)}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </>
-  );
-}
-
-/**
- * Druck-Knopf mit Auswahl: oben die Druckvorlage, darunter die Klassen — ein
- * Klick auf eine Klasse druckt deren PDF mit der gewählten Vorlage.
- */
-function PrintMenu({
-  classes,
-  selected,
-  templates,
-  templateDir,
-  template,
-  onSelectTemplate,
-  onPick,
-}: {
-  classes: Class[];
-  selected: string | null;
-  templates: TemplateInfo[];
-  templateDir: string;
-  template: string;
-  onSelectTemplate: (file: string) => void;
-  onPick: (classId: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const box = useRef<HTMLDivElement>(null);
-
-  // Schließen bei Klick oder Fokus außerhalb. Nicht über onBlur: Safari und
-  // WebKitGTK geben Knöpfen beim Klicken keinen Fokus, relatedTarget ist dann
-  // leer, und das Menü ginge zu, bevor der Klick ankommt.
-  useEffect(() => {
-    if (!open) return;
-    const outside = (e: Event) => {
-      if (box.current && !box.current.contains(e.target as Node | null)) setOpen(false);
-    };
-    document.addEventListener("pointerdown", outside);
-    document.addEventListener("focusin", outside);
-    return () => {
-      document.removeEventListener("pointerdown", outside);
-      document.removeEventListener("focusin", outside);
-    };
-  }, [open]);
-
-  return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: fängt nur Escape der Kinder ab
-    <div
-      ref={box}
-      className="menu"
-      onKeyDown={(e) => {
-        if (e.key === "Escape") setOpen(false);
-      }}
-    >
-      <button
-        type="button"
-        aria-haspopup="true"
-        aria-expanded={open}
-        disabled={classes.length === 0}
-        onClick={() => setOpen(!open)}
-      >
-        Als PDF drucken ▾
-      </button>
-      {open && (
-        <div className="menu-list">
-          <p className="hint">Druckvorlage</p>
-          <TemplateGroup
-            label="Je Schüler (eine Seite je Schüler)"
-            templates={templates.filter((t) => t.kind === "student")}
-            selected={template}
-            onSelect={onSelectTemplate}
-          />
-          <TemplateGroup
-            label="Je Klasse (eine Übersicht)"
-            templates={templates.filter((t) => t.kind === "class")}
-            selected={template}
-            onSelect={onSelectTemplate}
-          />
-          {templateDir !== "" && (
-            <p className="hint">
-              Eigene Vorlagen (Markdown-Dateien) liegen in {templateDir}. Welche Platzhalter es
-              gibt, steht dort in placeholder.md.
-            </p>
-          )}
-          <p className="hint">Klasse drucken</p>
-          <ul aria-label="Klasse drucken">
-            {classes.map((c) => (
-              <li key={c.id}>
-                <button
-                  type="button"
-                  className="ghost"
-                  aria-current={c.id === selected}
-                  onClick={() => {
-                    setOpen(false);
-                    onPick(c.id);
-                  }}
-                >
-                  {classLabel(c)}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function GradingView(props: Props) {
   const { exam, classes, classId, results, studentId } = props;
   const current = results.find((r) => r.student.id === studentId) ?? null;
   const index = current ? results.indexOf(current) : -1;
   const next = index >= 0 ? results[index + 1] : undefined;
+  const [printing, setPrinting] = useState(false);
 
   return (
     <section className="editor" aria-label="Bewertung">
       <header className="editor-head">
         <h1 className="grow">Bewertung: {exam.name}</h1>
-        <PrintMenu
-          classes={classes}
-          selected={classId}
-          templates={props.templates}
-          templateDir={props.templateDir}
-          template={props.template}
-          onSelectTemplate={props.onSelectTemplate}
-          onPick={props.onExportPdf}
-        />
+        <button type="button" disabled={classes.length === 0} onClick={() => setPrinting(true)}>
+          Als PDF drucken …
+        </button>
         <button type="button" onClick={props.onExport}>
           Als Excel exportieren
         </button>
@@ -591,6 +445,19 @@ export function GradingView(props: Props) {
           </div>
         )}
       </div>
+
+      {printing && (
+        <PrintDialog
+          classes={classes}
+          classId={classId}
+          templates={props.templates}
+          templateDir={props.templateDir}
+          template={props.template}
+          onSelectTemplate={props.onSelectTemplate}
+          onPrint={props.onExportPdf}
+          onClose={() => setPrinting(false)}
+        />
+      )}
     </section>
   );
 }

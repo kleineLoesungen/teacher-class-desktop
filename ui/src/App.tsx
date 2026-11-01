@@ -441,7 +441,7 @@ export function App() {
     }
   }
 
-  /** Die im Druck-Menü gewählte Klasse als PDF. Die Prüfung ist
+  /** Die im Druckdialog gewählte Klasse als PDF. Die Prüfung ist
    *  hier schon gespeichert, denn die Bewertung öffnet erst danach. */
   async function exportClassPdf(classId: string) {
     if (examSelection.kind !== "exam" || grading === null) return;
