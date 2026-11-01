@@ -103,6 +103,11 @@ ExamInput  ──exam::create/update──▶  Tabellen exams, exam_classes,
   Prüfung als Ganzes neu, die Kennungen der Punkte wechseln dabei. Danach
   räumt `grading::prune` auf — was nicht mehr passt, entfällt. Summen und Note
   berechnet `grading::results`; die Oberfläche und der Export zeigen das nur.
+  Der Abschluss-Satz (`exam_remarks`, eine Zeile je Prüfung und Schüler) hängt
+  an der Kennung des Schülers; `grading::set_remark` schreibt ihn,
+  `grading::suggest` sucht Vorschläge — beides in `core`, die Oberfläche zeigt
+  nur die Liste. Vorschläge kommen nur aus derselben Prüfung; ein eigenes Fach
+  als Textvorrat gibt es (noch) nicht.
   Dasselbe gilt für den Notenschlüssel (`grading::grade_key`: Anzahl je Note,
   Schnitt auf zwei Stellen); im Export rechnen ihn Formeln (`COUNTIF`, `AVERAGE`).
 * **Excel ist die Matrix, das PDF ist der Ausdruck.** Das Klassenblatt in Excel

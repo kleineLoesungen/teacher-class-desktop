@@ -173,6 +173,21 @@ impl Out {
         }
     }
 
+    /// Textvorschläge, ein Text je Zeile.
+    pub fn suggestions(&self, list: &[String]) {
+        if self.json {
+            self.print(list);
+            return;
+        }
+        if list.is_empty() {
+            println!("Keine Vorschläge.");
+            return;
+        }
+        for text in list {
+            println!("{text}");
+        }
+    }
+
     /// Der Notenschlüssel einer Klasse.
     pub fn grade_key(&self, key: &GradeKey) {
         if self.json {

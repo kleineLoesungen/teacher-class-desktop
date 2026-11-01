@@ -77,6 +77,17 @@ Begründung gibt es nur bei Prüfungen mit `--notes`. Ungültige Punkte (nicht
 ganz oder halb, über der Höchstpunktzahl), ein unbekanntes Prüfkriterium und
 eine Begründung ohne `--notes` ergeben Rückgabewert 4.
 
+`exam remark PRÜFUNG SCHÜLER [TEXT]` setzt den **Abschluss-Satz** eines Schülers
+(„Tolle Leistung! Weiter so“), neben der Note; ohne Text wird er gelöscht. Er
+gilt für jede Prüfung (auch ohne `--notes`), steht in `exam results --json` als
+`remark` und im PDF-Ausdruck, nicht im Excel-Export. Zu lang (über 2000 Zeichen)
+ergibt Rückgabewert 4.
+
+`exam suggest PRÜFUNG [WÖRTER] [--remark]` zeigt Textvorschläge: Begründungen
+(mit `--remark`: Abschluss-Sätze) anderer Schüler derselben Prüfung, die **alle**
+Wörter enthalten, die häufigsten zuerst (höchstens 8). Mit `--json` eine Liste
+von Texten.
+
 `exam key PRÜFUNG --class KLASSE` zeigt den **Notenschlüssel**: wie oft jede Note
 der Bewertungsmatrix vorkommt und den Schnitt auf zwei Nachkommastellen (`–`,
 wenn noch niemand eine Note hat oder eine Note keine Zahl ist). Mit `--json`:

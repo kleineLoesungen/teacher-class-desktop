@@ -175,6 +175,29 @@ item: number,
  */
 points: number | null, note: string, };
 
+/**
+ * Der Abschluss-Satz eines Schülers, ungeprüft. Leer löscht ihn.
+ */
+export type RemarkInput = { student_id: string, text: string, };
+
+/**
+ * Anfrage nach Textvorschlägen.
+ */
+export type SuggestInput = { kind: SuggestKind, 
+/**
+ * Das bisher Getippte; Vorschläge enthalten jedes Wort daraus.
+ */
+query: string, 
+/**
+ * Dieser Schüler wird nicht berücksichtigt (sein eigener Text).
+ */
+exclude_student_id: string | null, };
+
+/**
+ * Wofür ein Vorschlag gedacht ist.
+ */
+export type SuggestKind = "note" | "remark";
+
 export type Student = { id: string, class_id: string, last_name: string, first_name: string, };
 
 /**
@@ -197,7 +220,11 @@ total: number,
 /**
  * Note aus der Bewertungsmatrix; `None`, solange nichts eingetragen ist.
  */
-grade: string | null, };
+grade: string | null, 
+/**
+ * Abschluss-Satz, leer = keiner.
+ */
+remark: string, };
 
 /**
  * Wie viele Schüler eine Note erreicht haben.

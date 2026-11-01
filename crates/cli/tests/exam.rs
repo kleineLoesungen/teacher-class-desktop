@@ -269,6 +269,52 @@ fn die_beschreibung_steht_in_der_pruefungsansicht() {
 }
 
 #[test]
+fn abschluss_satz_und_vorschlaege() {
+    let ctx = Ctx::new();
+    let class = ctx.seed_class();
+    let (exam, max) = seed_graded(&ctx, &class);
+
+    let text = ctx
+        .run(&["exam", "remark", &exam, &max, "Tolle Leistung! Weiter so"])
+        .ok()
+        .stdout;
+    assert!(text.contains("Abschluss-Satz gesetzt"), "{text}");
+
+    let json = ctx
+        .run(&["exam", "results", &exam, "--class", &class, "--json"])
+        .ok()
+        .stdout;
+    let results: serde_json::Value = serde_json::from_str(&json).unwrap();
+    let remarks: Vec<&str> = results
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["remark"].as_str().unwrap())
+        .collect();
+    assert!(
+        remarks.contains(&"Tolle Leistung! Weiter so"),
+        "{remarks:?}"
+    );
+
+    let json = ctx
+        .run(&["exam", "suggest", &exam, "weiter", "--remark", "--json"])
+        .ok()
+        .stdout;
+    let list: serde_json::Value = serde_json::from_str(&json).unwrap();
+    assert_eq!(list, serde_json::json!(["Tolle Leistung! Weiter so"]));
+
+    let text = ctx
+        .run(&["exam", "suggest", &exam, "gibtsnicht"])
+        .ok()
+        .stdout;
+    assert!(text.contains("Keine Vorschläge"), "{text}");
+
+    ctx.run(&["exam", "remark", &exam, &max]).ok();
+    let text = ctx.run(&["exam", "suggest", &exam, "--remark"]).ok().stdout;
+    assert!(text.contains("Keine Vorschläge"), "{text}");
+}
+
+#[test]
 fn bewerten_traegt_ein_und_die_ergebnisse_zeigen_summe_und_note() {
     let ctx = Ctx::new();
     let class = ctx.seed_class();

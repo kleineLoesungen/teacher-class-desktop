@@ -6,8 +6,17 @@
 // gerechnet. Gespeichert wird, sobald ein Feld verlassen wird; ob die Eingabe
 // gültig ist, entscheidet Rust, die Meldung erscheint über dem Schüler.
 
-import { useState } from "react";
-import type { Class, Exam, GradeKey, ScoreInput, StudentResult } from "../bindings";
+import { useRef, useState } from "react";
+import type {
+  Class,
+  Exam,
+  GradeKey,
+  RemarkInput,
+  ScoreInput,
+  StudentResult,
+  SuggestInput,
+  SuggestKind,
+} from "../bindings";
 import { formatAverage, formatPoints, parsePoints } from "../lib/exam";
 import { classLabel } from "../lib/format";
 
@@ -25,6 +34,10 @@ type Props = {
   onSelectClass: (id: string) => void;
   onSelectStudent: (id: string) => void;
   onScore: (input: ScoreInput) => void;
+  /** Setzt den Abschluss-Satz; leer löscht ihn. */
+  onRemark: (input: RemarkInput) => void;
+  /** Texte anderer Schüler derselben Prüfung, die zur Eingabe passen. */
+  onSuggest: (input: SuggestInput) => Promise<string[]>;
   onBack: () => void;
   onExport: () => void;
   /** Die gewählte Klasse als PDF (eine Seite je Schüler). */
@@ -40,6 +53,91 @@ function draftOf(result: StudentResult, gi: number, ii: number): CellDraft {
     points: score?.points == null ? "" : formatPoints(score.points),
     note: score?.note ?? "",
   };
+}
+
+/**
+ * Ein Textfeld mit Vorschlägen aus den Texten anderer Schüler. Die Vorschläge
+ * wählt Rust aus (`onSuggest`); hier wird nur angezeigt und eingefügt. Gespeichert
+ * wird, sobald der Fokus das Feld samt Vorschlägen verlässt oder ein Vorschlag
+ * gewählt wird.
+ */
+function SuggestField({
+  kind,
+  studentId,
+  label,
+  placeholder,
+  className,
+  value,
+  onChange,
+  onCommit,
+  onSuggest,
+}: {
+  kind: SuggestKind;
+  studentId: string;
+  label: string;
+  placeholder: string;
+  className?: string;
+  value: string;
+  onChange: (text: string) => void;
+  onCommit: (text: string) => void;
+  onSuggest: (input: SuggestInput) => Promise<string[]>;
+}) {
+  const [list, setList] = useState<string[]>([]);
+  // Nur die jüngste Antwort zählt, sonst überholt eine späte alte die neue.
+  const latest = useRef(0);
+
+  function ask(query: string) {
+    const n = ++latest.current;
+    void onSuggest({ kind, query, exclude_student_id: studentId }).then((texts) => {
+      if (n === latest.current) setList(texts);
+    });
+  }
+
+  return (
+    <fieldset
+      className="suggest"
+      aria-label={`${label} mit Vorschlägen`}
+      onBlur={(e) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+        latest.current++;
+        setList([]);
+        onCommit(value);
+      }}
+    >
+      <textarea
+        className={className}
+        rows={2}
+        aria-label={label}
+        placeholder={placeholder}
+        value={value}
+        onFocus={() => ask(value)}
+        onChange={(e) => {
+          onChange(e.target.value);
+          ask(e.target.value);
+        }}
+      />
+      {list.length > 0 && (
+        <ul className="suggestions" aria-label={`Vorschläge ${label}`}>
+          {list.map((text) => (
+            <li key={text}>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => {
+                  latest.current++;
+                  setList([]);
+                  onChange(text);
+                  onCommit(text);
+                }}
+              >
+                {text}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </fieldset>
+  );
 }
 
 /** Schmaler Balken; die Zahlen stehen daneben, deshalb für Bildschirmleser stumm.
@@ -58,12 +156,17 @@ function StudentTile({
   result,
   messages,
   onScore,
+  onRemark,
+  onSuggest,
 }: {
   exam: Exam;
   result: StudentResult;
   messages: (field: string) => string[];
   onScore: (input: ScoreInput) => void;
+  onRemark: (input: RemarkInput) => void;
+  onSuggest: (input: SuggestInput) => Promise<string[]>;
 }) {
+  const [remark, setRemark] = useState(result.remark);
   // Eigene Entwürfe je Feld, damit Tippen nicht auf die Antwort von Rust wartet.
   // Die Kachel wird je Schüler neu aufgebaut (`key`), nicht je Antwort — sonst
   // ginge beim Tabben der Fokus verloren.
@@ -85,8 +188,8 @@ function StudentTile({
   }
 
   /** Beim Verlassen eines Feldes: nur schicken, was sich geändert hat. */
-  function commit(gi: number, ii: number) {
-    const draft = draftFor(gi, ii);
+  function commit(gi: number, ii: number, patch: Partial<CellDraft> = {}) {
+    const draft = { ...draftFor(gi, ii), ...patch };
     const stored = draftOf(result, gi, ii);
     if (draft.points === stored.points && draft.note === stored.note) return;
     onScore({
@@ -98,7 +201,17 @@ function StudentTile({
     });
   }
 
-  const errors = [...messages("item"), ...messages("points"), ...messages("note")];
+  function commitRemark(text: string) {
+    if (text.trim() === result.remark) return;
+    onRemark({ student_id: result.student.id, text });
+  }
+
+  const errors = [
+    ...messages("item"),
+    ...messages("points"),
+    ...messages("note"),
+    ...messages("remark"),
+  ];
 
   return (
     <section className="tile" aria-label={`Bewertung ${result.student.last_name}`}>
@@ -149,14 +262,16 @@ function StudentTile({
                     <span className="muted points-sum">/ {formatPoints(item.max_points)}</span>
                   </div>
                   {exam.with_notes && (
-                    <textarea
+                    <SuggestField
+                      kind="note"
+                      studentId={result.student.id}
                       className="note-input"
-                      rows={2}
-                      aria-label={`Gruppe ${g} Punkt ${n} Begründung`}
+                      label={`Gruppe ${g} Punkt ${n} Begründung`}
                       placeholder="Begründung / Hinweis"
                       value={draft.note}
-                      onChange={(e) => change(gi, ii, { note: e.target.value })}
-                      onBlur={() => commit(gi, ii)}
+                      onChange={(note) => change(gi, ii, { note })}
+                      onCommit={(note) => commit(gi, ii, { note })}
+                      onSuggest={onSuggest}
                     />
                   )}
                 </div>
@@ -165,6 +280,19 @@ function StudentTile({
           </div>
         );
       })}
+      <div className="criterion">
+        <SuggestField
+          kind="remark"
+          studentId={result.student.id}
+          className="note-input"
+          label="Abschluss-Satz"
+          placeholder="Abschluss-Satz, z. B. „Tolle Leistung! Weiter so“"
+          value={remark}
+          onChange={setRemark}
+          onCommit={commitRemark}
+          onSuggest={onSuggest}
+        />
+      </div>
       <p className="tile-total">
         <strong>
           Gesamt: {formatPoints(result.total)} / {formatPoints(exam.max_points)}
@@ -274,6 +402,8 @@ export function GradingView(props: Props) {
                     result={current}
                     messages={props.messages}
                     onScore={props.onScore}
+                    onRemark={props.onRemark}
+                    onSuggest={props.onSuggest}
                   />
                   {next && (
                     <button type="button" onClick={() => props.onSelectStudent(next.student.id)}>

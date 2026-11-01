@@ -1,7 +1,7 @@
 use anyhow::Result;
 use teacher_class_core::App;
 use teacher_class_core::exam::{self, ExamInput, GradeInput, GroupInput, ItemInput};
-use teacher_class_core::grading::{self, ScoreInput};
+use teacher_class_core::grading::{self, RemarkInput, ScoreInput, SuggestInput, SuggestKind};
 use teacher_class_core::{class, export, export_pdf, student};
 
 use super::confirm::confirm;
@@ -70,6 +70,44 @@ pub fn run(cmd: ExamCommand, app: &App, out: &Out) -> Result<()> {
                 ),
                 &result,
             );
+            Ok(())
+        }
+
+        ExamCommand::Remark {
+            id,
+            student: student_id,
+            text,
+        } => {
+            let exam_id = exam::resolve_id(app.conn(), &id)?;
+            let student_id = student::resolve_id(app.conn(), &student_id)?;
+            let result =
+                grading::set_remark(app.conn(), exam_id, RemarkInput { student_id, text })?;
+            let message = if result.remark.is_empty() {
+                format!("Abschluss-Satz gelöscht: {}", result.student.label())
+            } else {
+                format!("Abschluss-Satz gesetzt: {}", result.student.label())
+            };
+            out.done(message, &result);
+            Ok(())
+        }
+
+        ExamCommand::Suggest { id, query, remark } => {
+            let exam_id = exam::resolve_id(app.conn(), &id)?;
+            let kind = if remark {
+                SuggestKind::Remark
+            } else {
+                SuggestKind::Note
+            };
+            let list = grading::suggest(
+                app.conn(),
+                exam_id,
+                SuggestInput {
+                    kind,
+                    query,
+                    exclude_student_id: None,
+                },
+            )?;
+            out.suggestions(&list);
             Ok(())
         }
 
