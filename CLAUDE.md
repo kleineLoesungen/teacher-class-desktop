@@ -47,17 +47,37 @@ Ausführlich im README („Was die App kann"). Was beim Ändern zählt:
   Oberfläche.
 * **Excel-Export** (`crates/core/src/export.rs`) schreibt **Formeln** für alles
   Gerechnete und die eingetragenen Punkte als Werte: Blatt „Bewertung“ und ein
-  Blatt je Klasse als Matrix. Begründungen stehen nicht darin. Einen
+  Blatt je Klasse als Matrix. Begründungen (bei `with_notes`) und Abschluss-Satz
+  stehen als Textspalten **hinter der Note** — die Notenspalte darf nicht
+  wandern, das Blatt „Bewertung“ zählt sie. Einen
   „Ausdruck“ mit Schülerauswahl und das Blatt „Listen“ gibt es nicht. Die Matrix
   steht aufsteigend, weil die Note per `MATCH(…, 1)` gesucht wird. Gerechnet
   haben die Formeln nur Excel oder LibreOffice, nie ein Test — wer den Export
   ändert, öffnet die Datei einmal dort.
-* **PDF-Ausdruck** (`crates/core/src/export_pdf.rs`): ein PDF je Klasse, eine
-  A4-Seite je Schüler, mit Begründungen bei `with_notes`. Von Hand geschrieben,
-  **ohne PDF-Kiste**, mit der eingebauten Schrift Times-Roman (keine Schriftdatei
-  im Projekt, nichts eingebettet). Die Seitenaufteilung berechnet `core` selbst;
-  ein Tabellenprogramm druckt nichts. CLI `exam export-pdf`, Befehl
-  `exam_export_pdf`. Wie die Seiten aussehen, prüft kein Test — einmal ansehen.
+* **PDF-Ausdruck** (`crates/core/src/export_pdf.rs`): ein PDF je Klasse, gesetzt
+  aus einer **Druckvorlage** — Markdown mit Platzhaltern und einer kleinen
+  CSS-Teilmenge (`markdown.rs`, `style.rs`, `template.rs`), Logo als PNG/JPEG
+  (`image.rs`). Von Hand geschrieben, **ohne PDF-Kiste**, mit den eingebauten
+  Times-Schriften (keine Schriftdatei im Projekt, nichts eingebettet). Die
+  Seitenaufteilung berechnet `core` selbst; ein Tabellenprogramm druckt nichts.
+  CLI `exam export-pdf --template` und `exam templates`, Befehle
+  `exam_export_pdf` und `template_list`. Wie die Seiten aussehen, prüft kein
+  Test — einmal ansehen.
+* **Druckvorlagen** (`crates/core/src/template.rs`): Ordner `Templates` **neben
+  der Datenbank** (`Paths::templates_dir`); wechselt der Speicherort, wechseln
+  die Vorlagen mit, und fehlen sie dort, legt `App::open`/`switch` die Standards
+  an. Der **Dateiname** bestimmt die Art: `print_test_student_NAME.md` wird je
+  Schüler ausgefüllt (jeder auf einer neuen Seite), `print_test_class_NAME.md`
+  einmal je Klasse. `NAME` = `standard` sind die Vorlagen der App: Sie werden
+  **nie gelesen** (eingebaut, damit der Ausdruck immer geht), die Datei ist nur
+  eine Kopie zum Abschreiben und wird nie überschrieben. `placeholder.md`
+  listet alle Platzhalter, wird bei jedem Start neu geschrieben und stammt aus
+  denselben Tabellen, gegen die geprüft wird — ein neuer Platzhalter heißt also:
+  dort eintragen (`COMMON`/`STUDENT`/…) und in `export_pdf.rs` befüllen. Jeder
+  Fehler in einer Vorlage (unbekannter Platzhalter, CSS, Bild) bricht den Druck
+  ab: `Error::Validation` am Feld `template`, mit Datei und Zeile. Eingesetzte
+  Werte sind Text, nie Markdown (`template::escape`). Es gibt keinen Editor in
+  der App; die Oberfläche wählt nur die Vorlage und nennt den Ordner.
 * **Speichern-Dialog:** `tauri-plugin-dialog` (`dialog:allow-save` und
   `dialog:allow-open`) liefert den Pfad, `exam_export` schreibt die Datei. Kein
   `tauri-plugin-fs`.
@@ -105,6 +125,7 @@ Nur dort. npm-Versionen stehen **exakt** (ohne `^`) in `package.json`.
 | **tauri** / **@tauri-apps/api** / **@tauri-apps/cli** | **2.12** | Rust-Kiste und npm-Pakete müssen in derselben Nebenversion bleiben, sonst meldet `tauri dev` „version mismatch". Plugins (`tauri-plugin-opener` ↔ `@tauri-apps/plugin-opener`) ebenso paarweise. |
 | **tauri-plugin-dialog** / **@tauri-apps/plugin-dialog** | **2.8.4** | Speichern-Dialog für den Excel-Export; beide Seiten paarweise, wie beim Opener. Berechtigungen nur `dialog:allow-save` (Export, neue Datenbank) und `dialog:allow-open` (vorhandene Datenbank wählen). |
 | **rust_xlsxwriter** | **0.102** | Schreibt die `.xlsx` mit Formeln. Vor 1.0 ändert sich die API von Nebenversion zu Nebenversion — Anheben heißt `crates/core/tests/export.rs` und die Datei in Excel prüfen. |
+| **png** / **flate2** | **0.18** / **1.1** | Logo im PDF-Ausdruck: `png` liest PNG (auch mit Alphakanal, der im PDF zur Maske wird), `flate2` packt die Bildpunkte. JPEG braucht keine Kiste. Beide hingen schon über tauri im Baum. |
 | **zip** (nur Tests) | **9.2** | Liest die erzeugte `.xlsx`, um Formeln als Text zu prüfen. |
 | **ts-rs** | **12** | Erzeugt `ui/src/bindings.ts`. Die API hat sich zwischen 10, 11 und 12 geändert (`Config`-Argument). |
 | **mermaid** | **12.2** | Lädt nach (`import("mermaid")`). Die alte `mermaid.init()`/`contentLoaded`-API existiert nicht mehr — `parse` und `render` benutzen. |
@@ -456,7 +477,8 @@ Bitte nicht „nachrüsten":
 | `crates/core/tests/exam.rs` | Prüfungen: Halbpunkte, Matrix („bis“ berechnet, niedrigste Note bei 0), Ersetzen als Ganzes |
 | `crates/core/tests/grading.rs` | Bewertung: Halbpunkte, Bereich, Note an der Grenze, Begründung nur mit `with_notes`, Aufräumen beim Ändern der Prüfung |
 | `crates/core/tests/export.rs` | Excel-Datei: Blätter, Reihenfolge, Formeln **als Text** (gerechnet wird nicht) |
-| `crates/core/tests/export_pdf.rs` | PDF: Seite je Schüler, Texte im Inhaltsstrom, Folgeseiten, Pfad- und Klassenprüfung |
+| `crates/core/tests/export_pdf.rs` | PDF: Seite je Schüler, Texte im Inhaltsstrom, Folgeseiten, Pfad- und Klassenprüfung; Vorlagen: Platzhalter, Fehler mit Zeile, CSS, Logo, Standard immer verwendbar |
+| `crates/core/tests/template.rs` | Vorlagenordner neben der Datenbank, Standarddateien nie überschrieben, `placeholder.md`, Dateinamen |
 | `crates/core/tests/config.rs` | Einstellungen lesen, schreiben, ablehnen |
 | `crates/core/tests/layering.rs` | Der Schichtwächter — Rust **und** TypeScript, dazu der Plattform-Wächter |
 | `crates/cli/tests/cli.rs` | Ausgabeformat, Rückgabewerte, Schnappschüsse (Klassen, Schüler) |

@@ -22,6 +22,7 @@ use teacher_class_core::grading::{
     self, GradeKey, RemarkInput, ScoreInput, StudentResult, SuggestInput,
 };
 use teacher_class_core::student::{self, Student, StudentInput};
+use teacher_class_core::template::TemplateList;
 use teacher_class_core::{App, Config, Paths};
 use teacher_class_core::{export, export_pdf};
 use ts_rs::TS;
@@ -149,16 +150,36 @@ pub async fn exam_export(state: State<'_, AppState>, id: Uuid, path: String) -> 
     state.with(|app| export::write_xlsx(app.conn(), id, std::path::Path::new(&path)))
 }
 
-/// Schreibt die Klasse `class` der Prüfung `id` als PDF nach `path` (eine Seite
-/// je Schüler). Den Pfad liefert der Speichern-Dialog der Oberfläche.
+/// Schreibt die Klasse `class` der Prüfung `id` als PDF nach `path`, gesetzt aus
+/// der Druckvorlage `template` (Dateiname, siehe `template_list`). Den Pfad
+/// liefert der Speichern-Dialog der Oberfläche. Ein Fehler in der Vorlage kommt
+/// als Eingabefehler am Feld `template` zurück; geschrieben wird dann nichts.
 #[tauri::command]
 pub async fn exam_export_pdf(
     state: State<'_, AppState>,
     id: Uuid,
     class: Uuid,
+    template: String,
     path: String,
 ) -> ApiResult<()> {
-    state.with(|app| export_pdf::write_pdf(app.conn(), id, class, std::path::Path::new(&path)))
+    state.with(|app| {
+        let dir = app.paths().templates_dir();
+        export_pdf::write_pdf(
+            app.conn(),
+            &dir,
+            id,
+            class,
+            &template,
+            std::path::Path::new(&path),
+        )
+    })
+}
+
+/// Die Druckvorlagen im Ordner neben der Datenbank (legt Ordner und
+/// Standardvorlagen bei Bedarf an) und der Ordner selbst.
+#[tauri::command]
+pub async fn template_list(state: State<'_, AppState>) -> ApiResult<TemplateList> {
+    state.with(|app| export_pdf::templates(&app.paths().templates_dir()))
 }
 
 // --- Bewertung -------------------------------------------------------------

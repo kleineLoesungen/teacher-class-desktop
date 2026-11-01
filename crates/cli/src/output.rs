@@ -188,6 +188,25 @@ impl Out {
         }
     }
 
+    /// Die Druckvorlagen und der Ordner, in dem sie liegen.
+    pub fn templates(&self, list: &teacher_class_core::template::TemplateList) {
+        use teacher_class_core::template::Kind;
+        if self.json {
+            self.print(list);
+            return;
+        }
+        println!("{:<34} FÜR", "VORLAGE");
+        for t in &list.templates {
+            let what = match t.kind {
+                Kind::Student => "je Schüler",
+                Kind::Class => "je Klasse",
+            };
+            let note = if t.standard { " (eingebaut)" } else { "" };
+            println!("{:<34} {what}{note}", t.file);
+        }
+        println!("Ordner: {}", list.dir);
+    }
+
     /// Der Notenschlüssel einer Klasse.
     pub fn grade_key(&self, key: &GradeKey) {
         if self.json {

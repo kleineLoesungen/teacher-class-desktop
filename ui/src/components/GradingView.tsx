@@ -16,6 +16,7 @@ import type {
   StudentResult,
   SuggestInput,
   SuggestKind,
+  TemplateInfo,
 } from "../bindings";
 import { formatAverage, formatPoints, parsePoints } from "../lib/exam";
 import { classLabel } from "../lib/format";
@@ -40,9 +41,21 @@ type Props = {
   onSuggest: (input: SuggestInput) => Promise<string[]>;
   onBack: () => void;
   onExport: () => void;
-  /** Die gewählte Klasse als PDF (eine Seite je Schüler). */
+  /** Die gewählte Klasse als PDF, gesetzt aus der gewählten Druckvorlage. */
   onExportPdf: (classId: string) => void;
+  /** Die Druckvorlagen neben der Datenbank; leer, bis Rust sie geliefert hat. */
+  templates: TemplateInfo[];
+  /** Der Ordner, in dem man eigene Vorlagen ablegt. */
+  templateDir: string;
+  /** Dateiname der gewählten Vorlage. */
+  template: string;
+  onSelectTemplate: (file: string) => void;
 };
+
+/** Der Name einer Vorlage, wie er in der Auswahl steht. */
+function templateLabel(t: TemplateInfo): string {
+  return t.standard ? "Standard" : t.name;
+}
 
 type CellDraft = { points: string; note: string };
 
@@ -117,7 +130,15 @@ function SuggestField({
         }}
       />
       {list.length > 0 && (
-        <ul className="suggestions" aria-label={`Vorschläge ${label}`}>
+        // Ein Mausklick auf einen Knopf nimmt dem Textfeld den Fokus; WebKit setzt
+        // ihn dabei nicht auf den Knopf (relatedTarget bleibt leer). Dann räumte
+        // onBlur die Liste weg, bevor der Klick ankommt. Darum den Fokus halten.
+        // biome-ignore lint/a11y/noNoninteractiveElementInteractions: nur Fokus halten, keine Bedienung
+        <ul
+          className="suggestions"
+          aria-label={`Vorschläge ${label}`}
+          onMouseDown={(e) => e.preventDefault()}
+        >
           {list.map((text) => (
             <li key={text}>
               <button
@@ -428,6 +449,40 @@ export function GradingView(props: Props) {
             </li>
           ))}
         </ul>
+
+        <div className="row">
+          <label htmlFor="grading-template">Druckvorlage</label>
+          <select
+            id="grading-template"
+            value={props.template}
+            onChange={(e) => props.onSelectTemplate(e.target.value)}
+          >
+            <optgroup label="Je Schüler (eine Seite je Schüler)">
+              {props.templates
+                .filter((t) => t.kind === "student")
+                .map((t) => (
+                  <option key={t.file} value={t.file}>
+                    {templateLabel(t)}
+                  </option>
+                ))}
+            </optgroup>
+            <optgroup label="Je Klasse (eine Übersicht)">
+              {props.templates
+                .filter((t) => t.kind === "class")
+                .map((t) => (
+                  <option key={t.file} value={t.file}>
+                    {templateLabel(t)}
+                  </option>
+                ))}
+            </optgroup>
+          </select>
+        </div>
+        {props.templateDir !== "" && (
+          <p className="hint">
+            Eigene Vorlagen (Markdown-Dateien) liegen in {props.templateDir}. Welche Platzhalter es
+            gibt, steht dort in placeholder.md.
+          </p>
+        )}
 
         {props.gradeKey && results.length > 0 && <GradeKeyView gradeKey={props.gradeKey} />}
 

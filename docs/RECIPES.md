@@ -40,16 +40,29 @@ Regeln, die sich bewährt haben:
 ## Den PDF-Ausdruck ändern
 
 Steht in `crates/core/src/export_pdf.rs`; Oberfläche und Kommandozeile rufen nur
-`export_pdf::write_pdf`. Das PDF ist von Hand geschrieben (Objekte,
-Querverweistabelle) und benutzt die eingebauten Schriften Times-Roman und
-Times-Bold in WinAnsi-Kodierung.
+`export_pdf::write_pdf` und `export_pdf::templates`. Das PDF ist von Hand
+geschrieben (Objekte, Querverweistabelle) und benutzt die eingebauten Schriften
+Times-Roman, -Bold, -Italic und -BoldItalic in WinAnsi-Kodierung.
 
+* **Nur das Aussehen ändern?** Dann nicht den Code: Die Standardvorlagen stehen
+  als Text in `template.rs` (`STUDENT_STANDARD`, `CLASS_STANDARD`) — die Dateien im
+  Vorlagenordner sind Abschriften davon. Eigene Vorlagen legt der Benutzer
+  selbst an (README, „Eigene Druckvorlagen“).
+* **Neuer Platzhalter:** in `template.rs` in die Tabelle der Ebene eintragen
+  (`COMMON`, `STUDENT`, `GROUP`, `ITEM`, `GRADE`, bei einer Liste in `lists`) —
+  daraus entsteht `placeholder.md`, und gegen diese Tabellen wird geprüft — und
+  in `export_pdf.rs` befüllen (`common_values`, `student_values`). Der Test
+  `die_platzhalterliste_nennt_alles_was_es_gibt` sollte ihn nennen.
+* **Neues Markdown-Element:** `markdown.rs` (lesen, `Block`), `export_pdf.rs`
+  (`Doc::render` setzen), bei eigenem Aussehen ein Selektor in `style.rs`
+  (`SELECTORS`, `builtin`). Neue CSS-Eigenschaften: `parse_declarations` und
+  `PROPERTIES`. Unbekanntes muss weiter ein Fehler bleiben, nie still ignoriert.
 * **Zeichenbreiten** stehen in `WIDTHS` (Adobe-Metrik Times-Roman, Zeichen 32 bis
   126) und `width_of` (Umlaute und Satzzeichen). Ein neues Zeichen, das breiter
   ist als 500, dort ergänzen, sonst bricht der Text zu spät um.
-* **Seitenaufteilung:** `Layout::place_row` setzt eine Zeile oder wechselt die
-  Seite (`continue_page` wiederholt Überschrift und Tabellenkopf). Jeder Schüler
-  beginnt mit `new_page`.
+* **Seitenaufteilung:** `Doc::place_row` setzt eine Tabellenzeile oder wechselt
+  die Seite (`continue_table_page` wiederholt den Tabellenkopf); `text_block`
+  setzt Absätze und Überschriften. Jeder Schüler beginnt mit `new_page`.
 * **Test in `crates/core/tests/export_pdf.rs`**: Seitenzahl und Texte im
   Inhaltsstrom (Hex in WinAnsi). Wie die Seite aussieht, prüft kein Test —
   nach einer Änderung ein PDF erzeugen (`teacher-class exam export-pdf`) und

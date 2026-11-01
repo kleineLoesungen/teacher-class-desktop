@@ -13,7 +13,7 @@ resolver = "3"
 members = ["crates/core", "crates/cli", "crates/desktop"]
 
 [workspace.package]
-version = "0.6.1"
+version = "0.7.1"
 # Diese App wird nicht auf crates.io veröffentlicht. Der Eintrag ist nicht nur
 # Vorsicht: ohne ihn hält `cargo deny` die Pfadabhängigkeiten im Arbeitsbereich
 # für Abhängigkeiten ohne Fassungsangabe und bricht ab.
@@ -55,6 +55,11 @@ tauri-plugin-dialog = "2.8.4"
 
 # Excel-Export: schreibt .xlsx mit Formeln.
 rust_xlsxwriter = "0.102.0"
+
+# Logo im PDF-Ausdruck: `png` liest PNG-Dateien (auch mit Transparenz), `flate2`
+# packt die Bildpunkte für das PDF. Beide hingen schon im Baum (über tauri).
+png = "0.18.1"
+flate2 = "1.1.10"
 
 # Nur für Tests.
 # Liest die erzeugte .xlsx (ein ZIP), um die Formeln als Text zu prüfen.

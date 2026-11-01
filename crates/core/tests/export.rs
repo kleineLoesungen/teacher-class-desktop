@@ -242,3 +242,60 @@ fn auch_mit_begruendungen_gibt_es_im_excel_die_matrix() {
     assert_eq!(sheet.matches("<brk ").count(), 0, "{sheet}");
     assert!(sheet.contains("<f>SUM(B4:C4)</f>"), "{sheet}");
 }
+
+#[test]
+fn mit_begruendungen_stehen_sie_hinter_der_note_im_klassenblatt() {
+    let conn = db::open_in_memory().unwrap();
+    let a = class::create(&conn, ClassInput::new("7a", 2025)).unwrap();
+    let s = student::add_many(&conn, a.id, "Muster, Max").unwrap();
+    let mut input = beispiel(vec![a.id]);
+    input.with_notes = true;
+    let e = exam::create(&conn, input).unwrap();
+    grading::set(
+        &conn,
+        e.id,
+        ScoreInput {
+            student_id: s[0].id,
+            group: 0,
+            item: 1,
+            points: Some(1.0),
+            note: "Einheit fehlt".into(),
+        },
+    )
+    .unwrap();
+    grading::set_remark(
+        &conn,
+        e.id,
+        grading::RemarkInput {
+            student_id: s[0].id,
+            text: "Weiter so!".into(),
+        },
+    )
+    .unwrap();
+
+    let mut x = Xlsx::open(export::build(&conn, e.id).unwrap());
+    let strings = x.text("xl/sharedStrings.xml");
+    assert!(strings.contains("Einheit fehlt"), "{strings}");
+    assert!(strings.contains("Weiter so!"), "{strings}");
+    assert!(strings.contains("Abschluss-Satz"), "{strings}");
+    let sheet = x.text("xl/worksheets/sheet2.xml");
+    // Drei Punkte: Begründungen in I, J, K, dann der Abschluss-Satz in L; die
+    // Notenspalte H bleibt, wo das Blatt „Bewertung“ sie zählt.
+    assert!(sheet.contains("&amp;\" Begründung\""), "{sheet}");
+    assert!(sheet.contains("r=\"I4\""), "{sheet}");
+    assert!(sheet.contains("r=\"L4\""), "{sheet}");
+}
+
+#[test]
+fn ohne_begruendungen_gibt_es_keine_zusatzspalten() {
+    let conn = db::open_in_memory().unwrap();
+    let a = class::create(&conn, ClassInput::new("7a", 2025)).unwrap();
+    student::add_many(&conn, a.id, "Muster, Max").unwrap();
+    let e = exam::create(&conn, beispiel(vec![a.id])).unwrap();
+
+    let mut x = Xlsx::open(export::build(&conn, e.id).unwrap());
+    let strings = x.text("xl/sharedStrings.xml");
+    assert!(!strings.contains("Abschluss-Satz"), "{strings}");
+    let sheet = x.text("xl/worksheets/sheet2.xml");
+    assert!(!sheet.contains("r=\"I4\""), "{sheet}");
+}

@@ -414,3 +414,68 @@ fn loeschen_verlangt_bestaetigung() {
     ctx.run(&["exam", "rm", &id, "--yes"]).ok();
     assert_eq!(ctx.run(&["exam", "show", &id]).code, 3);
 }
+
+#[test]
+fn export_pdf_nimmt_eine_klassenvorlage_und_listet_die_vorlagen() {
+    let ctx = Ctx::new();
+    let class = ctx.seed_class();
+    let id = ctx.seed_exam(&class);
+
+    // Die Liste legt Ordner und Standards an und nennt den Ordner.
+    let list = ctx.run(&["exam", "templates"]).ok().stdout;
+    assert!(list.contains("print_test_student_standard.md"), "{list}");
+    assert!(list.contains("print_test_class_standard.md"), "{list}");
+    assert!(list.contains("Ordner:"), "{list}");
+    let json = ctx.run(&["--json", "exam", "templates"]).ok().stdout;
+    assert!(
+        json.contains("\"class\"") && json.contains("\"templates\""),
+        "{json}"
+    );
+
+    let target = ctx.dir.path().join("uebersicht.pdf");
+    ctx.run(&[
+        "exam",
+        "export-pdf",
+        &id,
+        &class,
+        "--out",
+        target.to_str().unwrap(),
+        "--template",
+        "print_test_class_standard.md",
+    ])
+    .ok();
+    assert_eq!(&std::fs::read(&target).unwrap()[..5], b"%PDF-");
+}
+
+#[test]
+fn export_pdf_bricht_bei_einem_vorlagenfehler_ab_und_schreibt_nichts() {
+    let ctx = Ctx::new();
+    let class = ctx.seed_class();
+    let id = ctx.seed_exam(&class);
+    ctx.run(&["exam", "templates"]).ok();
+    let dir = ctx.dir.path().join("data").join("Templates");
+    std::fs::write(
+        dir.join("print_test_student_kaputt.md"),
+        "# {{gibtsnicht}}\n",
+    )
+    .unwrap();
+
+    let target = ctx.dir.path().join("kaputt.pdf");
+    let out = ctx.run(&[
+        "exam",
+        "export-pdf",
+        &id,
+        &class,
+        "--out",
+        target.to_str().unwrap(),
+        "--template",
+        "print_test_student_kaputt.md",
+    ]);
+    assert_eq!(out.code, 4, "{}", out.stderr);
+    assert!(
+        out.stderr.contains("print_test_student_kaputt.md, Zeile 1"),
+        "{}",
+        out.stderr
+    );
+    assert!(!target.exists());
+}
