@@ -12,8 +12,10 @@
 //!   die Höchstpunktzahlen sind Eingaben, alles andere Formeln.
 //! * **je Klasse ein Blatt** (Blattname `7a (2025)`) als **Matrix** — Schüler
 //!   in den Zeilen, Punkte des Schemas in den Spalten, Summe je Gruppe,
-//!   Gesamtpunkte, Note. Begründungen stehen nicht in der Excel-Datei; zum
-//!   Ausdrucken (eine Seite je Schüler, mit Begründungen) gibt es den
+//!   Gesamtpunkte, Note. Bei Prüfungen mit Begründungen (`with_notes`) folgen
+//!   **hinter der Note** je Punkt eine Spalte „… Begründung“ und zuletzt der
+//!   Abschluss-Satz (der steht auch ohne `with_notes`, sobald einer
+//!   eingetragen ist) — als Text, nicht als Formel. Zum Ausdrucken gibt es den
 //!   PDF-Export in [`crate::export_pdf`].
 //!
 //! Die Formeln sind in `crates/core/tests/export.rs` nur als Text geprüft;
@@ -381,7 +383,7 @@ fn write_grading(
     })
 }
 
-// --- Klassenblatt als Matrix (ohne Begründungen) ---------------------------
+// --- Klassenblatt als Matrix (Begründungen hinter der Note) ---------------------------
 
 const CLASS_HEAD_ROWS: u32 = 3;
 
@@ -528,6 +530,57 @@ fn write_class(
             )),
             &st.sum,
         )?;
+    }
+
+    // Begründungen und Abschluss-Satz stehen **hinter** der Note, damit die
+    // Matrix samt Notenspalte (auf die das Blatt „Bewertung“ zählt) an ihrer
+    // Stelle bleibt. Es sind Werte, keine Formeln.
+    let mut next = grade_col + 1;
+    if exam.with_notes {
+        for (gi, group) in exam.groups.iter().enumerate() {
+            let (gr, gc) = g.group_names[gi];
+            for ii in 0..group.items.len() {
+                let item_row = g.item_rows[gi][ii];
+                ws.set_column_width(next, 30)?;
+                ws.write_formula_with_format(
+                    0,
+                    next,
+                    Formula::new(format!("={}", grading_ref(gr, gc))),
+                    &st.head,
+                )?;
+                ws.write_formula_with_format(
+                    1,
+                    next,
+                    Formula::new(format!(r#"={}&" Begründung""#, grading_ref(item_row, 1))),
+                    &st.head,
+                )?;
+                ws.write_blank(2, next, &st.sum)?;
+                for (r, res) in results.iter().enumerate() {
+                    let row = first + r as u32;
+                    let note = &res.groups[gi].scores[ii].note;
+                    if note.is_empty() {
+                        ws.write_blank(row, next, &st.wrap)?;
+                    } else {
+                        ws.write_string_with_format(row, next, note, &st.wrap)?;
+                    }
+                }
+                next += 1;
+            }
+        }
+    }
+    if exam.with_notes || results.iter().any(|r| !r.remark.is_empty()) {
+        ws.set_column_width(next, 34)?;
+        ws.write_blank(0, next, &st.head)?;
+        ws.write_string_with_format(1, next, "Abschluss-Satz", &st.head)?;
+        ws.write_blank(2, next, &st.sum)?;
+        for (r, res) in results.iter().enumerate() {
+            let row = first + r as u32;
+            if res.remark.is_empty() {
+                ws.write_blank(row, next, &st.wrap)?;
+            } else {
+                ws.write_string_with_format(row, next, &res.remark, &st.wrap)?;
+            }
+        }
     }
 
     ws.set_freeze_panes(first, 1)?;

@@ -183,14 +183,22 @@ pub fn run(cmd: ExamCommand, app: &App, out: &Out) -> Result<()> {
             id,
             class,
             out: path,
+            template,
         } => {
             let id = exam::resolve_id(app.conn(), &id)?;
             let class_id = class::resolve_id(app.conn(), &class)?;
-            export_pdf::write_pdf(app.conn(), id, class_id, &path)?;
+            let dir = app.paths().templates_dir();
+            export_pdf::write_pdf(app.conn(), &dir, id, class_id, &template, &path)?;
             out.done(
                 format!("Geschrieben: {}", path.display()),
                 &serde_json::json!({ "path": path }),
             );
+            Ok(())
+        }
+
+        ExamCommand::Templates => {
+            let list = export_pdf::templates(&app.paths().templates_dir())?;
+            out.templates(&list);
             Ok(())
         }
     }

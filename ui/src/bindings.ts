@@ -250,4 +250,35 @@ graded: number,
  */
 average: number | null, };
 
+/**
+ * Eine Vorlage zur Auswahl im Druckdialog.
+ */
+export type TemplateInfo = { 
+/**
+ * Dateiname, z. B. `print_test_student_standard.md`.
+ */
+file: string, kind: TemplateKind, 
+/**
+ * Der Teil nach dem Präfix, ohne `.md`: `standard`, `schulkopf`.
+ */
+name: string, 
+/**
+ * Die eingebaute Vorlage der App.
+ */
+standard: boolean, };
+
+/**
+ * Wofür eine Vorlage gilt.
+ */
+export type TemplateKind = "student" | "class";
+
+/**
+ * Die Vorlagen und wo sie liegen.
+ */
+export type TemplateList = { 
+/**
+ * Der Ordner, in dem man eigene Vorlagen ablegt.
+ */
+dir: string, templates: Array<TemplateInfo>, };
+
 export type Theme = "system" | "light" | "dark";

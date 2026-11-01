@@ -10,7 +10,7 @@
 // crates/desktop/tests/ipc_contract.rs.
 
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { App } from "./App";
@@ -61,6 +61,8 @@ let dbMissing: boolean;
 let calls: Call[];
 let config: Config;
 let nextError: ApiError | null;
+/** Die Antwort des nächsten `exam_export_pdf`, wenn es scheitern soll. */
+let pdfError: ApiError | null;
 
 function backend(cmd: string, args: Record<string, unknown> = {}): unknown {
   calls.push({ cmd, args });
@@ -170,6 +172,32 @@ function backend(cmd: string, args: Record<string, unknown> = {}): unknown {
     case "exam_delete":
       exams = exams.filter((e) => e.id !== args.id);
       return null;
+    case "template_list":
+      return {
+        dir: "/tmp/d/Templates",
+        templates: [
+          {
+            file: "print_test_student_standard.md",
+            kind: "student",
+            name: "standard",
+            standard: true,
+          },
+          {
+            file: "print_test_student_schulkopf.md",
+            kind: "student",
+            name: "schulkopf",
+            standard: false,
+          },
+          { file: "print_test_class_standard.md", kind: "class", name: "standard", standard: true },
+        ],
+      };
+    case "exam_export_pdf":
+      if (pdfError) {
+        const error = pdfError;
+        pdfError = null;
+        throw new Rejection(error);
+      }
+      return null;
     case "exam_results":
       return results;
     case "exam_grade_key":
@@ -232,6 +260,7 @@ beforeEach(() => {
   dbMissing = false;
   calls = [];
   nextError = null;
+  pdfError = null;
   config = { app_name: "Teacher Class", theme: "light", accent: "#3b6ea5", db_file: null };
   mockWindows("main");
   mockIPC((cmd, args) => {
@@ -690,9 +719,74 @@ describe("Oberfläche", () => {
       expect(commands("exam_export_pdf")[0]?.args).toEqual({
         id: "e1",
         class: "a",
+        template: "print_test_student_standard.md",
         path: "/tmp/Klassenarbeit 7a.pdf",
       });
       expect(await screen.findByText("Gespeichert: /tmp/Klassenarbeit 7a.pdf")).toBeTruthy();
+    });
+
+    it("druckt mit der gewählten Vorlage und zeigt den Ordner der Vorlagen", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      exams = [savedExam()];
+      results = [maxResult()];
+      savePath = "/tmp/Übersicht.pdf";
+      render(<App />);
+
+      await openExams(user);
+      await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
+      await user.click(screen.getByRole("button", { name: "Bewerten" }));
+
+      const select = await screen.findByRole("combobox", { name: "Druckvorlage" });
+      expect(screen.getByText(/liegen in \/tmp\/d\/Templates/)).toBeTruthy();
+      // Beide Sorten stehen zur Wahl, getrennt nach Gruppen.
+      expect(screen.getByRole("group", { name: /Je Schüler/ })).toBeTruthy();
+      expect(screen.getByRole("group", { name: /Je Klasse/ })).toBeTruthy();
+      await user.selectOptions(select, "print_test_class_standard.md");
+      await user.click(screen.getByRole("button", { name: /Als PDF drucken/ }));
+      await user.click(
+        within(screen.getByRole("list", { name: "Klasse drucken" })).getByRole("button", {
+          name: "7a (2025)",
+        }),
+      );
+
+      await waitFor(() => expect(commands("exam_export_pdf")).toHaveLength(1));
+      expect(commands("exam_export_pdf")[0]?.args).toMatchObject({
+        template: "print_test_class_standard.md",
+      });
+    });
+
+    it("zeigt einen Fehler in der Vorlage oben und meldet nichts als gespeichert", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      exams = [savedExam()];
+      results = [maxResult()];
+      savePath = "/tmp/x.pdf";
+      pdfError = {
+        code: "validation_failed",
+        message:
+          "template: print_test_student_schulkopf.md, Zeile 4: unbekannter Platzhalter {{foo}}",
+        fields: [
+          {
+            field: "template",
+            message: "print_test_student_schulkopf.md, Zeile 4: unbekannter Platzhalter {{foo}}",
+          },
+        ],
+      };
+      render(<App />);
+
+      await openExams(user);
+      await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
+      await user.click(screen.getByRole("button", { name: "Bewerten" }));
+      await user.click(await screen.findByRole("button", { name: /Als PDF drucken/ }));
+      await user.click(
+        within(screen.getByRole("list", { name: "Klasse drucken" })).getByRole("button", {
+          name: "7a (2025)",
+        }),
+      );
+
+      expect(await screen.findByText(/Zeile 4: unbekannter Platzhalter \{\{foo\}\}/)).toBeTruthy();
+      expect(screen.queryByText(/Gespeichert:/)).toBeNull();
     });
 
     it("rechnet bei jeder Änderung des Entwurfs neu, ohne zu speichern", async () => {
@@ -851,6 +945,27 @@ describe("Oberfläche", () => {
       expect(commands("exam_score")[0]?.args.input).toMatchObject({ note: "Einheit fehlt" });
       // Nach der Wahl verschwindet die Liste.
       expect(screen.queryByRole("button", { name: "Rechenweg fehlt" })).toBeNull();
+    });
+
+    it("hält beim Klick auf einen Vorschlag den Fokus im Textfeld (WebKit)", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      exams = [{ ...savedExam(), with_notes: true }];
+      results = [maxResult()];
+      suggestions = ["Einheit fehlt"];
+      render(<App />);
+
+      await openExams(user);
+      await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
+      await user.click(screen.getByRole("button", { name: "Bewerten" }));
+      await user.click(await screen.findByRole("button", { name: /Muster, Max/ }));
+      await user.click(screen.getByRole("textbox", { name: "Gruppe 1 Punkt 1 Begründung" }));
+
+      // WebKit setzt den Fokus bei Mausklick nicht auf den Knopf. Würde das
+      // mousedown nicht verhindert, verlöre das Feld den Fokus, die Liste
+      // verschwände, und der Klick käme nie an.
+      const button = await screen.findByRole("button", { name: "Einheit fehlt" });
+      expect(fireEvent.mouseDown(button)).toBe(false);
     });
 
     it("zeigt eine abgelehnte Eingabe mit Rusts Meldung", async () => {
