@@ -6,7 +6,7 @@
 // gerechnet. Gespeichert wird, sobald ein Feld verlassen wird; ob die Eingabe
 // gültig ist, entscheidet Rust, die Meldung erscheint über dem Schüler.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   Class,
   Exam,
@@ -417,13 +417,29 @@ function PrintMenu({
   onPick: (classId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+
+  // Schließen bei Klick oder Fokus außerhalb. Nicht über onBlur: Safari und
+  // WebKitGTK geben Knöpfen beim Klicken keinen Fokus, relatedTarget ist dann
+  // leer, und das Menü ginge zu, bevor der Klick ankommt.
+  useEffect(() => {
+    if (!open) return;
+    const outside = (e: Event) => {
+      if (box.current && !box.current.contains(e.target as Node | null)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("focusin", outside);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("focusin", outside);
+    };
+  }, [open]);
+
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: fängt nur Fokusverlust und Escape der Kinder ab
+    // biome-ignore lint/a11y/noStaticElementInteractions: fängt nur Escape der Kinder ab
     <div
+      ref={box}
       className="menu"
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(false);
-      }}
       onKeyDown={(e) => {
         if (e.key === "Escape") setOpen(false);
       }}
