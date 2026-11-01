@@ -47,8 +47,10 @@ Ausführlich im README („Was die App kann"). Was beim Ändern zählt:
   Oberfläche.
 * **Excel-Export** (`crates/core/src/export.rs`) schreibt **Formeln** für alles
   Gerechnete und die eingetragenen Punkte als Werte: Blatt „Bewertung“ und ein
-  Blatt je Klasse als Matrix. Begründungen (bei `with_notes`) und Abschluss-Satz
-  stehen als Textspalten **hinter der Note** — die Notenspalte darf nicht
+  Blatt je Klasse: als Matrix, bei `with_notes` als **Kacheln** (je Schüler ein
+  Block mit Begründungen und Abschluss-Satz, Seitenumbruch dazwischen; dann ohne
+  Notenschlüssel und Schnitt auf dem Blatt „Bewertung“). In der Matrix steht der
+  Abschluss-Satz als Textspalte **hinter der Note** — die Notenspalte darf nicht
   wandern, das Blatt „Bewertung“ zählt sie. Einen
   „Ausdruck“ mit Schülerauswahl und das Blatt „Listen“ gibt es nicht. Die Matrix
   steht aufsteigend, weil die Note per `MATCH(…, 1)` gesucht wird. Gerechnet

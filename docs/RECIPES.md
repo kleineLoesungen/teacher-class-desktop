@@ -16,6 +16,7 @@ Kommandozeile rufen nur `export::write_xlsx`. Der Aufbau:
 |---|---|
 | `write_grading` | Blatt „Bewertung“ und merkt sich, **wo** Schema und Matrix stehen (`GradingRefs`) |
 | `write_class` | Ein Klassenblatt als Matrix |
+| `write_class_tiles` | Ein Klassenblatt als Kacheln (Prüfungen mit Begründungen) |
 
 Regeln, die sich bewährt haben:
 

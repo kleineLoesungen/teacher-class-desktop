@@ -737,13 +737,17 @@ describe("Oberfläche", () => {
       await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
       await user.click(screen.getByRole("button", { name: "Bewerten" }));
 
-      const select = await screen.findByRole("combobox", { name: "Druckvorlage" });
+      // Die Vorlagen stehen im Druckmenü, nicht mehr als eigene Auswahl.
+      expect(screen.queryByRole("combobox", { name: "Druckvorlage" })).toBeNull();
+      await user.click(await screen.findByRole("button", { name: /Als PDF drucken/ }));
       expect(screen.getByText(/liegen in \/tmp\/d\/Templates/)).toBeTruthy();
       // Beide Sorten stehen zur Wahl, getrennt nach Gruppen.
-      expect(screen.getByRole("group", { name: /Je Schüler/ })).toBeTruthy();
-      expect(screen.getByRole("group", { name: /Je Klasse/ })).toBeTruthy();
-      await user.selectOptions(select, "print_test_class_standard.md");
-      await user.click(screen.getByRole("button", { name: /Als PDF drucken/ }));
+      const perStudent = screen.getByRole("list", { name: /Je Schüler/ });
+      const perClass = screen.getByRole("list", { name: /Je Klasse/ });
+      expect(
+        within(perStudent).getByRole("button", { name: "Standard", pressed: true }),
+      ).toBeTruthy();
+      await user.click(within(perClass).getByRole("button", { name: "Standard" }));
       await user.click(
         within(screen.getByRole("list", { name: "Klasse drucken" })).getByRole("button", {
           name: "7a (2025)",

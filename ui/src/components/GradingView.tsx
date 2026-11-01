@@ -361,14 +361,59 @@ function GradeKeyView({ gradeKey }: { gradeKey: GradeKey }) {
   );
 }
 
-/** Druck-Knopf mit Auswahl: Ein Klick auf eine Klasse druckt deren PDF. */
+/** Eine Gruppe von Vorlagen im Druckmenü; die gewählte ist gedrückt. */
+function TemplateGroup({
+  label,
+  templates,
+  selected,
+  onSelect,
+}: {
+  label: string;
+  templates: TemplateInfo[];
+  selected: string;
+  onSelect: (file: string) => void;
+}) {
+  if (templates.length === 0) return null;
+  return (
+    <>
+      <p className="hint">{label}</p>
+      <ul aria-label={label}>
+        {templates.map((t) => (
+          <li key={t.file}>
+            <button
+              type="button"
+              className="ghost"
+              aria-pressed={t.file === selected}
+              onClick={() => onSelect(t.file)}
+            >
+              {templateLabel(t)}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+/**
+ * Druck-Knopf mit Auswahl: oben die Druckvorlage, darunter die Klassen — ein
+ * Klick auf eine Klasse druckt deren PDF mit der gewählten Vorlage.
+ */
 function PrintMenu({
   classes,
   selected,
+  templates,
+  templateDir,
+  template,
+  onSelectTemplate,
   onPick,
 }: {
   classes: Class[];
   selected: string | null;
+  templates: TemplateInfo[];
+  templateDir: string;
+  template: string;
+  onSelectTemplate: (file: string) => void;
   onPick: (classId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -393,23 +438,45 @@ function PrintMenu({
         Als PDF drucken ▾
       </button>
       {open && (
-        <ul className="menu-list" aria-label="Klasse drucken">
-          {classes.map((c) => (
-            <li key={c.id}>
-              <button
-                type="button"
-                className="ghost"
-                aria-current={c.id === selected}
-                onClick={() => {
-                  setOpen(false);
-                  onPick(c.id);
-                }}
-              >
-                {classLabel(c)}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div className="menu-list">
+          <p className="hint">Druckvorlage</p>
+          <TemplateGroup
+            label="Je Schüler (eine Seite je Schüler)"
+            templates={templates.filter((t) => t.kind === "student")}
+            selected={template}
+            onSelect={onSelectTemplate}
+          />
+          <TemplateGroup
+            label="Je Klasse (eine Übersicht)"
+            templates={templates.filter((t) => t.kind === "class")}
+            selected={template}
+            onSelect={onSelectTemplate}
+          />
+          {templateDir !== "" && (
+            <p className="hint">
+              Eigene Vorlagen (Markdown-Dateien) liegen in {templateDir}. Welche Platzhalter es
+              gibt, steht dort in placeholder.md.
+            </p>
+          )}
+          <p className="hint">Klasse drucken</p>
+          <ul aria-label="Klasse drucken">
+            {classes.map((c) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  className="ghost"
+                  aria-current={c.id === selected}
+                  onClick={() => {
+                    setOpen(false);
+                    onPick(c.id);
+                  }}
+                >
+                  {classLabel(c)}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );
@@ -425,7 +492,15 @@ export function GradingView(props: Props) {
     <section className="editor" aria-label="Bewertung">
       <header className="editor-head">
         <h1 className="grow">Bewertung: {exam.name}</h1>
-        <PrintMenu classes={classes} selected={classId} onPick={props.onExportPdf} />
+        <PrintMenu
+          classes={classes}
+          selected={classId}
+          templates={props.templates}
+          templateDir={props.templateDir}
+          template={props.template}
+          onSelectTemplate={props.onSelectTemplate}
+          onPick={props.onExportPdf}
+        />
         <button type="button" onClick={props.onExport}>
           Als Excel exportieren
         </button>
@@ -449,40 +524,6 @@ export function GradingView(props: Props) {
             </li>
           ))}
         </ul>
-
-        <div className="row">
-          <label htmlFor="grading-template">Druckvorlage</label>
-          <select
-            id="grading-template"
-            value={props.template}
-            onChange={(e) => props.onSelectTemplate(e.target.value)}
-          >
-            <optgroup label="Je Schüler (eine Seite je Schüler)">
-              {props.templates
-                .filter((t) => t.kind === "student")
-                .map((t) => (
-                  <option key={t.file} value={t.file}>
-                    {templateLabel(t)}
-                  </option>
-                ))}
-            </optgroup>
-            <optgroup label="Je Klasse (eine Übersicht)">
-              {props.templates
-                .filter((t) => t.kind === "class")
-                .map((t) => (
-                  <option key={t.file} value={t.file}>
-                    {templateLabel(t)}
-                  </option>
-                ))}
-            </optgroup>
-          </select>
-        </div>
-        {props.templateDir !== "" && (
-          <p className="hint">
-            Eigene Vorlagen (Markdown-Dateien) liegen in {props.templateDir}. Welche Platzhalter es
-            gibt, steht dort in placeholder.md.
-          </p>
-        )}
 
         {props.gradeKey && results.length > 0 && <GradeKeyView gradeKey={props.gradeKey} />}
 
