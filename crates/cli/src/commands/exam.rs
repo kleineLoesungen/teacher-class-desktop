@@ -2,7 +2,7 @@ use anyhow::Result;
 use teacher_class_core::App;
 use teacher_class_core::exam::{self, ExamInput, GradeInput, GroupInput, ItemInput};
 use teacher_class_core::grading::{self, ScoreInput};
-use teacher_class_core::{class, export, student};
+use teacher_class_core::{class, export, export_pdf, student};
 
 use super::confirm::confirm;
 use crate::args::ExamCommand;
@@ -131,6 +131,21 @@ pub fn run(cmd: ExamCommand, app: &App, out: &Out) -> Result<()> {
         ExamCommand::Export { id, out: path } => {
             let id = exam::resolve_id(app.conn(), &id)?;
             export::write_xlsx(app.conn(), id, &path)?;
+            out.done(
+                format!("Geschrieben: {}", path.display()),
+                &serde_json::json!({ "path": path }),
+            );
+            Ok(())
+        }
+
+        ExamCommand::ExportPdf {
+            id,
+            class,
+            out: path,
+        } => {
+            let id = exam::resolve_id(app.conn(), &id)?;
+            let class_id = class::resolve_id(app.conn(), &class)?;
+            export_pdf::write_pdf(app.conn(), id, class_id, &path)?;
             out.done(
                 format!("Geschrieben: {}", path.display()),
                 &serde_json::json!({ "path": path }),

@@ -27,6 +27,8 @@ type Props = {
   onScore: (input: ScoreInput) => void;
   onBack: () => void;
   onExport: () => void;
+  /** Die gewählte Klasse als PDF (eine Seite je Schüler). */
+  onExportPdf: () => void;
 };
 
 type CellDraft = { points: string; note: string };
@@ -211,6 +213,9 @@ export function GradingView(props: Props) {
     <section className="editor" aria-label="Bewertung">
       <header className="editor-head">
         <h1 className="grow">Bewertung: {exam.name}</h1>
+        <button type="button" disabled={classId === null} onClick={props.onExportPdf}>
+          Klasse als PDF drucken
+        </button>
         <button type="button" onClick={props.onExport}>
           Als Excel exportieren
         </button>

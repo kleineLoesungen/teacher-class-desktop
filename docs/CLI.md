@@ -35,7 +35,7 @@ teacher-class exam rm 3f9c01ab --yes
 | `--class KLASSE` | Kennung oder Endstück einer Klasse. Mehrfach möglich, mindestens eine. |
 | `--group "Name: Punkt=Max; Punkt=Max"` | Eine Gruppe mit ihren Punkten. Mehrfach möglich. Punkte ganz oder halb, `2,5` und `2.5` gelten gleich. Eine optionale Beschreibung folgt nach `\|`: `a=4\|Rechenweg angeben` (ohne `;` darin). |
 | `--grade Note=ab` | Eine Note und der Punktwert, ab dem sie gilt. Mehrfach möglich. Die Noten sind frei benennbar. |
-| `--notes` | Zu jedem Prüfkriterium eine Begründung pflegen. Der Excel-Export hat dann eine Bewertungskachel je Schüler statt einer Matrix. |
+| `--notes` | Zu jedem Prüfkriterium eine Begründung pflegen. Sie erscheint im PDF-Ausdruck (`exam export-pdf`), nicht im Excel-Export. |
 
 Das „bis“ jeder Note gibt es nicht als Eingabe; `exam show` zeigt es berechnet
 (eine halbe Punktstufe unter dem „ab“ der nächsten Note, bei der höchsten Note
@@ -87,9 +87,14 @@ b2c9a113  Muster, Max      17.5  1
 ```
 
 `exam export --out DATEI` schreibt die Excel-Datei (Blatt „Bewertung“, je Klasse
-eins; mit `--notes` je Klasse eine Bewertungskachel pro Schüler) und
+eins) und
 überschreibt eine vorhandene. Eingetragene Punkte und Begründungen stehen
-darin. Die Datei muss auf `.xlsx` enden, sonst Rückgabewert 4. Bearbeiten einer Prüfung geht in der
+darin. Die Datei muss auf `.xlsx` enden, sonst Rückgabewert 4. 
+`exam export-pdf PRÜFUNG KLASSE --out DATEI` schreibt das PDF einer Klasse (eine
+Seite je Schüler, mit Begründungen, wenn die Prüfung welche hat). Die Datei muss
+auf `.pdf` enden, sonst Rückgabewert 4; die Klasse muss zur Prüfung gehören.
+
+Bearbeiten einer Prüfung geht in der
 Oberfläche; auf der Kommandozeile legt man sie neu an.
 
 ## Kennungen

@@ -42,13 +42,18 @@ Ausführlich im README („Was die App kann"). Was beim Ändern zählt:
   auf. Summen und Note **berechnet `core`**, auch hier rechnet die Oberfläche
   nicht nach. Ein Punkt hat eine optionale `description`.
 * **Excel-Export** (`crates/core/src/export.rs`) schreibt **Formeln** für alles
-  Gerechnete und die eingetragenen Punkte/Begründungen als Werte: Blatt
-  „Bewertung“ und ein Blatt je Klasse — als Matrix, oder bei `with_notes` als
-  Bewertungskachel je Schüler mit Seitenumbruch davor. Einen „Ausdruck“ mit
-  Schülerauswahl und das Blatt „Listen“ gibt es nicht mehr. Die Matrix
+  Gerechnete und die eingetragenen Punkte als Werte: Blatt „Bewertung“ und ein
+  Blatt je Klasse als Matrix. Begründungen stehen nicht darin. Einen
+  „Ausdruck“ mit Schülerauswahl und das Blatt „Listen“ gibt es nicht. Die Matrix
   steht aufsteigend, weil die Note per `MATCH(…, 1)` gesucht wird. Gerechnet
   haben die Formeln nur Excel oder LibreOffice, nie ein Test — wer den Export
   ändert, öffnet die Datei einmal dort.
+* **PDF-Ausdruck** (`crates/core/src/export_pdf.rs`): ein PDF je Klasse, eine
+  A4-Seite je Schüler, mit Begründungen bei `with_notes`. Von Hand geschrieben,
+  **ohne PDF-Kiste**, mit der eingebauten Schrift Times-Roman (keine Schriftdatei
+  im Projekt, nichts eingebettet). Die Seitenaufteilung berechnet `core` selbst;
+  ein Tabellenprogramm druckt nichts. CLI `exam export-pdf`, Befehl
+  `exam_export_pdf`. Wie die Seiten aussehen, prüft kein Test — einmal ansehen.
 * **Speichern-Dialog:** `tauri-plugin-dialog` (`dialog:allow-save` und
   `dialog:allow-open`) liefert den Pfad, `exam_export` schreibt die Datei. Kein
   `tauri-plugin-fs`.
@@ -447,6 +452,7 @@ Bitte nicht „nachrüsten":
 | `crates/core/tests/exam.rs` | Prüfungen: Halbpunkte, Matrix („bis“ berechnet, niedrigste Note bei 0), Ersetzen als Ganzes |
 | `crates/core/tests/grading.rs` | Bewertung: Halbpunkte, Bereich, Note an der Grenze, Begründung nur mit `with_notes`, Aufräumen beim Ändern der Prüfung |
 | `crates/core/tests/export.rs` | Excel-Datei: Blätter, Reihenfolge, Formeln **als Text** (gerechnet wird nicht) |
+| `crates/core/tests/export_pdf.rs` | PDF: Seite je Schüler, Texte im Inhaltsstrom, Folgeseiten, Pfad- und Klassenprüfung |
 | `crates/core/tests/config.rs` | Einstellungen lesen, schreiben, ablehnen |
 | `crates/core/tests/layering.rs` | Der Schichtwächter — Rust **und** TypeScript, dazu der Plattform-Wächter |
 | `crates/cli/tests/cli.rs` | Ausgabeformat, Rückgabewerte, Schnappschüsse (Klassen, Schüler) |

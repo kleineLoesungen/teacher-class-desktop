@@ -105,12 +105,15 @@ ExamInput  ──exam::create/update──▶  Tabellen exams, exam_classes,
   berechnet `grading::results`; die Oberfläche und der Export zeigen das nur.
   Dasselbe gilt für den Notenschlüssel (`grading::grade_key`: Anzahl je Note,
   Schnitt auf zwei Stellen); im Export rechnen ihn Formeln (`COUNTIF`, `AVERAGE`).
-* **Die Form des Klassenblatts folgt `with_notes`.** Ohne Begründungen eine
-  Matrix (Schüler in Zeilen), mit Begründungen eine Bewertungskachel je Schüler
-  untereinander, vor jeder ein Seitenumbruch — ein Schüler, eine Druckseite,
-  ohne Makro (`.xlsx`). Ein Blatt je Schüler wäre bei 90 Schülern
-  unübersichtlich. Ein Blatt „Ausdruck“ mit Schülerauswahl und eine versteckte
-  Hilfsliste gibt es nicht mehr.
+* **Excel ist die Matrix, das PDF ist der Ausdruck.** Das Klassenblatt in Excel
+  ist immer eine Matrix (Schüler in Zeilen). Gedruckt wird nicht über Excel —
+  Seitenumbrüche und Zeilenhöhen hat dort nie ein Test gerechnet und sie
+  stimmten in der Praxis nicht. Stattdessen schreibt `core::export_pdf` ein PDF
+  je Klasse, eine Seite je Schüler, und bestimmt die Seitenaufteilung selbst.
+  Es ist von Hand geschrieben (keine PDF-Abhängigkeit) und nimmt die
+  eingebaute Schrift Times-Roman, damit weder eine Schriftdatei noch eine
+  Lizenz ins Projekt kommt. Ein Blatt „Ausdruck“ mit Schülerauswahl und eine
+  versteckte Hilfsliste gibt es nicht.
 * **Der Speichern-Dialog gehört zur Oberfläche.** `tauri-plugin-dialog` liefert
   den Pfad, `exam_export` schreibt die Datei und verlangt die Endung `.xlsx`.
   Dazu steht `dialog:allow-save` in `capabilities/default.json`. Dasselbe gilt

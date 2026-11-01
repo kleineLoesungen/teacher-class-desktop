@@ -204,8 +204,8 @@ pub enum ExamCommand {
         )]
         grade: Vec<teacher_class_core::exam::GradeInput>,
 
-        /// Zu jedem Punkt eine Begründung pflegen. Der Excel-Export hat dann
-        /// eine Bewertungskachel je Schüler statt einer Matrix.
+        /// Zu jedem Punkt eine Begründung pflegen. Sie erscheint im
+        /// PDF-Ausdruck (`exam export-pdf`), nicht im Excel-Export.
         #[arg(long)]
         notes: bool,
     },
@@ -285,6 +285,21 @@ pub enum ExamCommand {
         id: String,
 
         /// Zieldatei, muss auf .xlsx enden.
+        #[arg(long, value_name = "DATEI")]
+        out: PathBuf,
+    },
+
+    /// Eine Klasse einer Prüfung als PDF ausdrucken (eine Seite je Schüler).
+    ///
+    /// Beispiel:  exam export-pdf 3f9a2b1c 7d41e0aa --out 7a.pdf
+    ExportPdf {
+        /// Kennung der Prüfung oder ein eindeutiges Ende davon.
+        id: String,
+
+        /// Kennung der Klasse oder ein eindeutiges Ende davon.
+        class: String,
+
+        /// Zieldatei, muss auf .pdf enden.
         #[arg(long, value_name = "DATEI")]
         out: PathBuf,
     },

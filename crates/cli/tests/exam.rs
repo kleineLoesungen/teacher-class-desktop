@@ -195,6 +195,35 @@ fn export_schreibt_eine_xlsx_datei() {
     assert_eq!(out.code, 4, "{}", out.stderr);
 }
 
+#[test]
+fn export_pdf_schreibt_ein_pdf_je_klasse() {
+    let ctx = Ctx::new();
+    let class = ctx.seed_class();
+    let id = ctx.seed_exam(&class);
+    let target = ctx.dir.path().join("klasse.pdf");
+    ctx.run(&[
+        "exam",
+        "export-pdf",
+        &id,
+        &class,
+        "--out",
+        target.to_str().unwrap(),
+    ])
+    .ok();
+    assert_eq!(&std::fs::read(&target).unwrap()[..5], b"%PDF-");
+
+    let wrong = ctx.dir.path().join("klasse.xlsx");
+    let out = ctx.run(&[
+        "exam",
+        "export-pdf",
+        &id,
+        &class,
+        "--out",
+        wrong.to_str().unwrap(),
+    ]);
+    assert_eq!(out.code, 4, "{}", out.stderr);
+}
+
 /// Prüfung mit Beschreibung und Begründungen; gibt (Prüfung, Max) zurück.
 fn seed_graded(ctx: &Ctx, class: &str) -> (String, String) {
     let exam = Ctx::id_of(

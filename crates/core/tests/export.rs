@@ -134,7 +134,7 @@ fn die_bewertungsmatrix_hat_den_notenschluessel_je_klasse_und_den_schnitt() {
 }
 
 #[test]
-fn mit_begruendungen_zaehlt_der_notenschluessel_die_notenliste_neben_den_kacheln() {
+fn mit_begruendungen_zaehlt_der_notenschluessel_die_noten_spalte_der_matrix() {
     let conn = db::open_in_memory().unwrap();
     let a = class::create(&conn, ClassInput::new("7a", 2025)).unwrap();
     student::add_many(&conn, a.id, "Muster, Max\nBeispiel, Eva").unwrap();
@@ -145,13 +145,9 @@ fn mit_begruendungen_zaehlt_der_notenschluessel_die_notenliste_neben_den_kacheln
     let mut x = Xlsx::open(export::build(&conn, e.id).unwrap());
     let grading_sheet = x.text("xl/worksheets/sheet1.xml");
     assert!(
-        grading_sheet.contains("COUNTIF('7a (2025)'!$H$2:$H$3,$A$"),
+        grading_sheet.contains("COUNTIF('7a (2025)'!$H$4:$H$5,$A$"),
         "{grading_sheet}"
     );
-    // Die Liste ist Verweis auf die Note jeder Kachel, nicht eine zweite Rechnung.
-    let tiles = x.text("xl/worksheets/sheet2.xml");
-    assert!(tiles.contains("<c r=\"H2\""), "{tiles}");
-    assert!(tiles.contains("<f>C"), "{tiles}");
 }
 
 #[test]
@@ -209,61 +205,6 @@ fn eingetragene_punkte_stehen_im_klassenblatt() {
 }
 
 #[test]
-fn mit_begruendungen_gibt_es_eine_kachel_je_schueler_mit_seitenumbruch() {
-    let conn = db::open_in_memory().unwrap();
-    let a = class::create(&conn, ClassInput::new("7a", 2025)).unwrap();
-    let s = student::add_many(&conn, a.id, "Muster, Max\nBeispiel, Eva").unwrap();
-    let mut input = beispiel(vec![a.id]);
-    input.with_notes = true;
-    input.groups[0].items[0].description = "Rechenweg angeben".into();
-    let e = exam::create(&conn, input).unwrap();
-    grading::set(
-        &conn,
-        e.id,
-        ScoreInput {
-            student_id: s[0].id,
-            group: 0,
-            item: 0,
-            points: Some(3.0),
-            note: "Vorzeichenfehler".into(),
-        },
-    )
-    .unwrap();
-
-    let mut x = Xlsx::open(export::build(&conn, e.id).unwrap());
-    let wb = x.text("xl/workbook.xml");
-    assert!(wb.contains("name=\"7a (2025)\""), "{wb}");
-    let sheet = x.text("xl/worksheets/sheet2.xml");
-    // Keine Matrix mehr, sondern Kacheln: ein Umbruch vor der zweiten.
-    assert_eq!(sheet.matches("<brk ").count(), 1, "{sheet}");
-    // Beide Schüler untereinander, in der Reihenfolge der Liste.
-    let strings = x.text("xl/sharedStrings.xml");
-    assert!(strings.contains("Beispiel, Eva"), "{strings}");
-    assert!(strings.contains("Muster, Max"), "{strings}");
-    assert!(strings.contains("Vorzeichenfehler"), "{strings}");
-    assert!(strings.contains("Rechenweg angeben"), "{strings}");
-    // Summen und Note bleiben Formeln auf die Bewertung.
-    assert!(sheet.contains("INDEX(Bewertung!$A$"), "{sheet}");
-    assert!(
-        sheet.contains("<v>3</v>"),
-        "Punkte stehen als Zahl: {sheet}"
-    );
-}
-
-#[test]
-fn eine_klasse_ohne_schueler_ergibt_auch_mit_begruendungen_ein_blatt() {
-    let conn = db::open_in_memory().unwrap();
-    let a = class::create(&conn, ClassInput::new("7a", 2025)).unwrap();
-    let mut input = beispiel(vec![a.id]);
-    input.with_notes = true;
-    let e = exam::create(&conn, input).unwrap();
-
-    let mut x = Xlsx::open(export::build(&conn, e.id).unwrap());
-    let strings = x.text("xl/sharedStrings.xml");
-    assert!(strings.contains("Keine Schüler"), "{strings}");
-}
-
-#[test]
 fn speichern_verlangt_xlsx_und_schreibt_die_datei() {
     let conn = db::open_in_memory().unwrap();
     let a = class::create(&conn, ClassInput::new("7a", 2025)).unwrap();
@@ -287,38 +228,17 @@ fn eine_unbekannte_pruefung_ist_nicht_gefunden() {
 }
 
 #[test]
-fn lange_begruendungen_verkleinern_den_druck_und_setzen_den_druckbereich() {
+fn auch_mit_begruendungen_gibt_es_im_excel_die_matrix() {
     let conn = db::open_in_memory().unwrap();
     let a = class::create(&conn, ClassInput::new("7a", 2025)).unwrap();
-    let s = student::add_many(&conn, a.id, "Muster, Max\nBeispiel, Eva").unwrap();
+    student::add_many(&conn, a.id, "Muster, Max\nBeispiel, Eva").unwrap();
     let mut input = beispiel(vec![a.id]);
     input.with_notes = true;
     let e = exam::create(&conn, input).unwrap();
-    // Sehr lange Begründung: Die Kachel wird höher als eine Seite.
-    let lang = "Rechenweg fehlt vollständig und die Einheit ist falsch. ".repeat(35);
-    grading::set(
-        &conn,
-        e.id,
-        ScoreInput {
-            student_id: s[0].id,
-            group: 0,
-            item: 0,
-            points: Some(1.0),
-            note: lang,
-        },
-    )
-    .unwrap();
 
     let mut x = Xlsx::open(export::build(&conn, e.id).unwrap());
     let sheet = x.text("xl/worksheets/sheet2.xml");
-    assert_eq!(sheet.matches("<brk ").count(), 1, "{sheet}");
-    let scale = sheet
-        .split("scale=\"")
-        .nth(1)
-        .and_then(|r| r.split('"').next())
-        .and_then(|n| n.parse::<u32>().ok())
-        .expect("pageSetup scale");
-    assert!((40..85).contains(&scale), "Maßstab {scale}: {sheet}");
-    let wb = x.text("xl/workbook.xml");
-    assert!(wb.contains("_xlnm.Print_Area"), "{wb}");
+    // Keine Kacheln, keine Seitenumbrüche: dieselbe Matrix wie ohne Begründungen.
+    assert_eq!(sheet.matches("<brk ").count(), 0, "{sheet}");
+    assert!(sheet.contains("<f>SUM(B4:C4)</f>"), "{sheet}");
 }

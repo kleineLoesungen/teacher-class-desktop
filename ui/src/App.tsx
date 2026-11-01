@@ -386,6 +386,25 @@ export function App() {
     }
   }
 
+  /** Die Klasse, die in der Bewertung gewählt ist, als PDF. Die Prüfung ist
+   *  hier schon gespeichert, denn die Bewertung öffnet erst danach. */
+  async function exportClassPdf() {
+    if (examSelection.kind !== "exam" || grading === null) return;
+    const exam = exams.find((e) => e.id === examSelection.id);
+    const cls = classes.find((c) => c.id === grading.classId);
+    try {
+      const name = [exam?.name, cls ? classLabel(cls) : null].filter(Boolean).join(" ");
+      const path = await api.pickPdfPath(`${name}.pdf`);
+      if (path === null) return;
+      await api.exams.exportPdf(examSelection.id, grading.classId, path);
+      setBanner(null);
+      setNotice(`Gespeichert: ${path}`);
+    } catch (raw) {
+      setNotice(null);
+      fail(raw);
+    }
+  }
+
   async function switchView(next: View) {
     if (next === view) return;
     if (!(view === "classes" ? await leaveCurrent() : await leaveCurrentExam())) return;
@@ -543,7 +562,7 @@ export function App() {
           examSelection.kind === "none" ? (
             <EmptyState
               title={exams.length > 0 ? "Keine Prüfung ausgewählt" : "Noch keine Prüfungen"}
-              text="Eine Prüfung hat ein Schema aus Gruppen und Punkten und eine Bewertungsmatrix. Bewertet wird in der App oder in der Excel-Datei; mit Begründungen gibt es im Export eine Bewertungskachel je Schüler."
+              text="Eine Prüfung hat ein Schema aus Gruppen und Punkten und eine Bewertungsmatrix. Bewertet wird in der App oder in der Excel-Datei; jede Klasse lässt sich als PDF drucken, eine Seite je Schüler."
               action="Neue Prüfung"
               onCreate={() => void createNewExam()}
             />
@@ -567,6 +586,7 @@ export function App() {
                 setFieldError(null);
               }}
               onExport={() => void exportExam()}
+              onExportPdf={() => void exportClassPdf()}
             />
           ) : (
             <ExamEditor
