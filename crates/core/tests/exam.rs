@@ -347,3 +347,27 @@ fn die_vorschau_laesst_doppelte_ab_werte_offen() {
         vec![None, None, Some(4.5)]
     );
 }
+
+#[test]
+fn eine_pruefung_laesst_sich_archivieren_und_zurueckholen() {
+    let conn = db::open_in_memory().unwrap();
+    let k = klasse(&conn, "7a");
+    let e = exam::create(&conn, beispiel(vec![k])).unwrap();
+    assert!(!e.archived);
+
+    assert!(exam::set_archived(&conn, e.id, true).unwrap().archived);
+    // Ändern hebt die Archivierung nicht auf.
+    assert!(
+        exam::update(&conn, e.id, beispiel(vec![k]))
+            .unwrap()
+            .archived
+    );
+    assert!(!exam::set_archived(&conn, e.id, false).unwrap().archived);
+}
+
+#[test]
+fn eine_unbekannte_pruefung_laesst_sich_nicht_archivieren() {
+    let conn = db::open_in_memory().unwrap();
+    let err = exam::set_archived(&conn, Uuid::now_v7(), true).unwrap_err();
+    assert!(matches!(err, Error::NotFound));
+}

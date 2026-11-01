@@ -19,6 +19,9 @@ type Props = {
   onChange: (draft: ClassInput) => void;
   onSave: () => void;
   onDelete: () => void;
+  /** Ob die Klasse archiviert ist (bestimmt die Beschriftung des Knopfs). */
+  archived: boolean;
+  onArchive: () => void;
   onStudentTextChange: (text: string) => void;
   onAddStudents: () => void;
   onDeleteStudent: (student: Student) => void;
@@ -64,9 +67,14 @@ export function ClassEditor(props: Props) {
         </div>
 
         {!isNew && (
-          <button type="button" className="ghost" onClick={props.onDelete}>
-            Klasse löschen
-          </button>
+          <>
+            <button type="button" className="ghost" onClick={props.onArchive}>
+              {props.archived ? "Aus dem Archiv holen" : "Archivieren"}
+            </button>
+            <button type="button" className="ghost" onClick={props.onDelete}>
+              Klasse löschen
+            </button>
+          </>
         )}
         <button
           type="button"

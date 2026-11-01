@@ -121,6 +121,18 @@ pub enum ClassCommand {
         year: Option<i32>,
     },
 
+    /// Eine Klasse archivieren (ausblenden, nicht löschen).
+    Archive {
+        /// Kennung oder ein eindeutiges Ende davon.
+        id: String,
+    },
+
+    /// Eine archivierte Klasse zurückholen.
+    Unarchive {
+        /// Kennung oder ein eindeutiges Ende davon.
+        id: String,
+    },
+
     /// Eine Klasse samt ihren Schülern löschen.
     #[command(alias = "delete")]
     Rm {
@@ -264,6 +276,18 @@ pub enum ExamCommand {
 
     /// Schema und Bewertungsmatrix einer Prüfung anzeigen.
     Show {
+        /// Kennung oder ein eindeutiges Ende davon.
+        id: String,
+    },
+
+    /// Eine Prüfung archivieren (ausblenden, nicht löschen).
+    Archive {
+        /// Kennung oder ein eindeutiges Ende davon.
+        id: String,
+    },
+
+    /// Eine archivierte Prüfung zurückholen.
+    Unarchive {
         /// Kennung oder ein eindeutiges Ende davon.
         id: String,
     },

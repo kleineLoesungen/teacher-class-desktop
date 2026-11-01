@@ -71,6 +71,8 @@ pub struct Exam {
     pub max_points: f64,
     /// Ob zu jedem Prüfkriterium eine Begründung gepflegt wird.
     pub with_notes: bool,
+    /// Archivierte Prüfungen blendet die Oberfläche aus; gelöscht sind sie nicht.
+    pub archived: bool,
     #[serde(with = "crate::timestamp::serde_rfc3339")]
     #[ts(type = "string")]
     pub created_at: OffsetDateTime,
@@ -369,11 +371,11 @@ pub fn list(conn: &Connection) -> Result<Vec<Exam>> {
 }
 
 pub fn get(conn: &Connection, id: Uuid) -> Result<Exam> {
-    let (name, created_at, with_notes): (String, String, bool) = conn
+    let (name, created_at, with_notes, archived): (String, String, bool, bool) = conn
         .query_row(
-            "SELECT name, created_at, with_notes FROM exams WHERE id = ?1",
+            "SELECT name, created_at, with_notes, archived FROM exams WHERE id = ?1",
             [id.to_string()],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
         )
         .optional()?
         .ok_or(Error::NotFound)?;
@@ -450,6 +452,7 @@ pub fn get(conn: &Connection, id: Uuid) -> Result<Exam> {
         grades,
         max_points: from_half(total),
         with_notes,
+        archived,
         created_at: timestamp::from_text(&created_at)?,
     })
 }
@@ -497,6 +500,18 @@ pub fn update(conn: &Connection, id: Uuid, input: ExamInput) -> Result<Exam> {
     // Bereits eingetragene Bewertungen bleiben, soweit sie noch passen.
     crate::grading::prune(&tx, id)?;
     tx.commit()?;
+    get(conn, id)
+}
+
+/// Archiviert die Prüfung (`true`) oder holt sie zurück (`false`).
+pub fn set_archived(conn: &Connection, id: Uuid, archived: bool) -> Result<Exam> {
+    let changed = conn.execute(
+        "UPDATE exams SET archived = ?2 WHERE id = ?1",
+        rusqlite::params![id.to_string(), archived],
+    )?;
+    if changed == 0 {
+        return Err(Error::NotFound);
+    }
     get(conn, id)
 }
 

@@ -54,6 +54,7 @@ describe("Prüfungsentwurf", () => {
       grades: [{ name: "1", from_points: 0, to_points: 2.5 }],
       max_points: 2.5,
       with_notes: true,
+      archived: false,
       created_at: "2026-09-15T06:39:51Z",
     };
     const draft = draftFromExam(exam);

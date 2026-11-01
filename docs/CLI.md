@@ -8,6 +8,8 @@ Beide arbeiten auf derselben Datenbank.
 teacher-class class add 7a 2025
 teacher-class class list
 teacher-class class edit 8a551a8d --name 7b
+teacher-class class archive 8a551a8d           # ausblenden, nicht löschen
+teacher-class class unarchive 8a551a8d         # zurückholen
 teacher-class class rm 8a551a8d --yes          # löscht auch die Schüler
 
 # Schüler: eine Zeile "Nachname, Vorname" je Schüler, alle oder keiner
@@ -23,8 +25,12 @@ teacher-class exam add "Klassenarbeit 1" --class 8a551a8d \
 teacher-class exam list
 teacher-class exam show 3f9c01ab
 teacher-class exam export 3f9c01ab --out Klassenarbeit.xlsx
+teacher-class exam archive 3f9c01ab            # wie bei Klassen; unarchive holt zurück
 teacher-class exam rm 3f9c01ab --yes
 ```
+
+Die Listen (`class list`, `exam list`) zeigen auch archivierte Einträge; `--json` trägt das Feld
+`archived`. Ausgeblendet wird nur in der Oberfläche.
 
 ## Prüfungen
 

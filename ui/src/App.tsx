@@ -230,6 +230,16 @@ export function App() {
     open({ kind: "new" }, emptyDraft());
   }
 
+  async function archiveClass(archived: boolean) {
+    if (selection.kind !== "class") return;
+    try {
+      await api.classes.archive(selection.id, archived);
+      await reload();
+    } catch (raw) {
+      fail(raw);
+    }
+  }
+
   async function removeClass() {
     setDialog(null);
     if (selection.kind !== "class") return;
@@ -355,6 +365,16 @@ export function App() {
   async function createNewExam() {
     if (!(await leaveCurrentExam())) return;
     openExam({ kind: "new" }, emptyExamDraft());
+  }
+
+  async function archiveExam(archived: boolean) {
+    if (examSelection.kind !== "exam") return;
+    try {
+      await api.exams.archive(examSelection.id, archived);
+      await reloadExams();
+    } catch (raw) {
+      fail(raw);
+    }
   }
 
   async function removeExam() {
@@ -601,6 +621,8 @@ export function App() {
               onSave={() => void saveExam()}
               onCancel={cancelExam}
               onDelete={() => setDialog("delete-exam")}
+              archived={gradingExam?.archived ?? false}
+              onArchive={() => void archiveExam(!gradingExam?.archived)}
               onExport={() => void exportExam()}
               onGrade={() => void openGrading()}
             />
@@ -624,6 +646,8 @@ export function App() {
             onChange={setDraft}
             onSave={() => void save()}
             onDelete={() => setDialog("delete-class")}
+            archived={selected?.archived ?? false}
+            onArchive={() => void archiveClass(!selected?.archived)}
             onStudentTextChange={setStudentText}
             onAddStudents={() => void addStudents()}
             onDeleteStudent={(student) => setDialog({ student })}

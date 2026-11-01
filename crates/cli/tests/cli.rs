@@ -284,6 +284,25 @@ fn edit_laesst_nicht_genannte_felder_stehen() {
 }
 
 #[test]
+fn archivieren_blendet_aus_und_zurueckholen_macht_es_rueckgaengig() {
+    let ctx = Ctx::new();
+    let id = ctx.seed();
+    let archived = |ctx: &Ctx| -> bool {
+        let out = ctx.run(&["class", "list", "--json"]).ok().stdout;
+        let list: serde_json::Value = serde_json::from_str(&out).unwrap();
+        list.as_array()
+            .unwrap()
+            .iter()
+            .any(|c| c["archived"] == true)
+    };
+    assert!(!archived(&ctx));
+    ctx.run(&["class", "archive", &id]).ok();
+    assert!(archived(&ctx));
+    ctx.run(&["class", "unarchive", &id]).ok();
+    assert!(!archived(&ctx));
+}
+
+#[test]
 fn eine_klasse_zu_loeschen_nimmt_die_schueler_mit() {
     let ctx = Ctx::new();
     let id = ctx.seed();

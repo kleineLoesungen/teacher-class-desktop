@@ -27,6 +27,11 @@ Kommandozeile (`teacher-class`).
   Textfeld, eine Zeile je Schüler. Gespeichert wird alles oder nichts; ein
   Fehler nennt die Zeilennummer.
 * Einen Klassenwechsel gibt es nicht, einen Import aus Dateien noch nicht.
+* **Archiv:** Klassen und Prüfungen lassen sich **archivieren**. Sie
+  verschwinden aus der Liste in den eingeklappten Bereich „Archiv“ und lassen
+  sich von dort zurückholen; nichts geht verloren. Archivierte Klassen werden
+  bei neuen Prüfungen nicht mehr zur Wahl angeboten. In der Kommandozeile:
+  `class archive|unarchive`, `exam archive|unarchive`.
 
 ### Prüfungen
 

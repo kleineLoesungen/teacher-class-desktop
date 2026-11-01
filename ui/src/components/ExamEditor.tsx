@@ -25,6 +25,9 @@ type Props = {
   /** Neue Prüfung abbrechen oder Änderungen an einer vorhandenen verwerfen. */
   onCancel: () => void;
   onDelete: () => void;
+  /** Ob die Prüfung archiviert ist (bestimmt die Beschriftung des Knopfs). */
+  archived: boolean;
+  onArchive: () => void;
   onExport: () => void;
   onGrade: () => void;
 };
@@ -43,7 +46,9 @@ function Messages({ id, messages }: { id: string; messages: string[] }) {
 }
 
 export function ExamEditor(props: Props) {
-  const { draft, preview, classes, isNew, dirty, saving, fieldMessages, onChange } = props;
+  // Archivierte Klassen stehen nur zur Wahl, wenn die Prüfung sie schon hat.
+  const classes = props.classes.filter((c) => !c.archived || props.draft.class_ids.includes(c.id));
+  const { draft, preview, isNew, dirty, saving, fieldMessages, onChange } = props;
   const dash = "–";
 
   const nameError = fieldMessages("name")[0];
@@ -74,6 +79,9 @@ export function ExamEditor(props: Props) {
         </div>
         {!isNew && (
           <>
+            <button type="button" className="ghost" onClick={props.onArchive}>
+              {props.archived ? "Aus dem Archiv holen" : "Archivieren"}
+            </button>
             <button type="button" className="ghost" onClick={props.onDelete}>
               Prüfung löschen
             </button>
