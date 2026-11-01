@@ -9,6 +9,11 @@
 //!   Oberfläche rechnet nicht nach. Die Note bleibt leer, solange für den
 //!   Schüler kein einziger Punkt eingetragen ist (wie im Excel-Export).
 //!
+//! * Zusätzlich gibt es je Schüler einen **Abschluss-Satz** ([`set_remark`]),
+//!   unabhängig von `with_notes`.
+//! * [`suggest`] schlägt beim Tippen Texte vor, die bei anderen Schülern
+//!   derselben Prüfung schon stehen.
+//!
 //! Wird die Prüfung geändert, bleiben die Einträge, soweit sie noch passen
 //! ([`prune`]).
 
@@ -55,6 +60,8 @@ pub struct StudentResult {
     pub total: f64,
     /// Note aus der Bewertungsmatrix; `None`, solange nichts eingetragen ist.
     pub grade: Option<String>,
+    /// Abschluss-Satz, leer = keiner.
+    pub remark: String,
 }
 
 // --- Eingabe ---------------------------------------------------------------
@@ -72,6 +79,39 @@ pub struct ScoreInput {
     #[serde(default)]
     pub note: String,
 }
+
+/// Der Abschluss-Satz eines Schülers, ungeprüft. Leer löscht ihn.
+#[derive(Debug, Clone, Default, Deserialize, TS)]
+pub struct RemarkInput {
+    pub student_id: Uuid,
+    #[serde(default)]
+    pub text: String,
+}
+
+/// Wofür ein Vorschlag gedacht ist.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+pub enum SuggestKind {
+    /// Begründung zu einem Prüfkriterium.
+    Note,
+    /// Abschluss-Satz.
+    Remark,
+}
+
+/// Anfrage nach Textvorschlägen.
+#[derive(Debug, Clone, Deserialize, TS)]
+pub struct SuggestInput {
+    pub kind: SuggestKind,
+    /// Das bisher Getippte; Vorschläge enthalten jedes Wort daraus.
+    #[serde(default)]
+    pub query: String,
+    /// Dieser Schüler wird nicht berücksichtigt (sein eigener Text).
+    #[serde(default)]
+    pub exclude_student_id: Option<Uuid>,
+}
+
+/// Höchstzahl der Vorschläge.
+pub const SUGGEST_MAX: usize = 8;
 
 // --- Lesen -----------------------------------------------------------------
 
@@ -101,7 +141,25 @@ fn load(conn: &Connection, exam_id: Uuid) -> Result<HashMap<Key, Stored>> {
     Ok(map)
 }
 
-fn compute(exam: &Exam, student: Student, stored: &HashMap<Key, Stored>) -> StudentResult {
+fn load_remarks(conn: &Connection, exam_id: Uuid) -> Result<HashMap<String, String>> {
+    let mut stmt = conn.prepare("SELECT student_id, text FROM exam_remarks WHERE exam_id = ?1")?;
+    let rows = stmt.query_map([exam_id.to_string()], |r| {
+        Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
+    })?;
+    let mut map = HashMap::new();
+    for row in rows {
+        let (student, text) = row?;
+        map.insert(student, text);
+    }
+    Ok(map)
+}
+
+fn compute(
+    exam: &Exam,
+    student: Student,
+    stored: &HashMap<Key, Stored>,
+    remarks: &HashMap<String, String>,
+) -> StudentResult {
     let sid = student.id.to_string();
     let mut total: i64 = 0;
     let mut any = false;
@@ -141,6 +199,7 @@ fn compute(exam: &Exam, student: Student, stored: &HashMap<Key, Stored>) -> Stud
         })
         .flatten();
     StudentResult {
+        remark: remarks.get(&sid).cloned().unwrap_or_default(),
         student,
         groups,
         total,
@@ -156,9 +215,10 @@ pub fn results(conn: &Connection, exam_id: Uuid, class_id: Uuid) -> Result<Vec<S
         return Err(Error::NotFound);
     }
     let stored = load(conn, exam_id)?;
+    let remarks = load_remarks(conn, exam_id)?;
     Ok(student::list(conn, class_id)?
         .into_iter()
-        .map(|s| compute(&exam, s, &stored))
+        .map(|s| compute(&exam, s, &stored, &remarks))
         .collect())
 }
 
@@ -232,7 +292,83 @@ pub fn set(conn: &Connection, exam_id: Uuid, input: ScoreInput) -> Result<Studen
         )?;
     }
     let stored = load(conn, exam_id)?;
-    Ok(compute(&exam, student, &stored))
+    let remarks = load_remarks(conn, exam_id)?;
+    Ok(compute(&exam, student, &stored, &remarks))
+}
+
+/// Setzt den Abschluss-Satz eines Schülers und gibt dessen Bewertung zurück.
+/// Ein leerer Text löscht ihn.
+pub fn set_remark(conn: &Connection, exam_id: Uuid, input: RemarkInput) -> Result<StudentResult> {
+    let exam = exam::get(conn, exam_id)?;
+    let student = student::get(conn, input.student_id)?;
+    if !exam.class_ids.contains(&student.class_id) {
+        return Err(Error::NotFound);
+    }
+    let text = input.text.trim().to_string();
+    let mut v = Validator::new();
+    v.require(
+        text.chars().count() <= NOTE_MAX,
+        "remark",
+        format!("darf höchstens {NOTE_MAX} Zeichen lang sein"),
+    );
+    v.finish()?;
+
+    let sid = student.id.to_string();
+    if text.is_empty() {
+        conn.execute(
+            "DELETE FROM exam_remarks WHERE exam_id = ?1 AND student_id = ?2",
+            params![exam_id.to_string(), sid],
+        )?;
+    } else {
+        conn.execute(
+            "INSERT INTO exam_remarks (exam_id, student_id, text) VALUES (?1, ?2, ?3) \
+             ON CONFLICT (exam_id, student_id) DO UPDATE SET text = excluded.text",
+            params![exam_id.to_string(), sid, text],
+        )?;
+    }
+    let stored = load(conn, exam_id)?;
+    let remarks = load_remarks(conn, exam_id)?;
+    Ok(compute(&exam, student, &stored, &remarks))
+}
+
+// --- Vorschläge ------------------------------------------------------------
+
+/// Texte, die bei anderen Schülern derselben Prüfung schon stehen und alle
+/// Wörter der Eingabe enthalten (ohne Beachtung der Groß-/Kleinschreibung).
+/// Gleiche Texte erscheinen einmal, die häufigsten zuerst, dann alphabetisch.
+/// Ein Text, der genau so schon getippt ist, wird nicht vorgeschlagen. Ohne
+/// Eingabe kommen die häufigsten Texte.
+pub fn suggest(conn: &Connection, exam_id: Uuid, input: SuggestInput) -> Result<Vec<String>> {
+    exam::get(conn, exam_id)?;
+    let sql = match input.kind {
+        SuggestKind::Note => {
+            "SELECT note, student_id FROM exam_scores WHERE exam_id = ?1 AND note <> ''"
+        }
+        SuggestKind::Remark => "SELECT text, student_id FROM exam_remarks WHERE exam_id = ?1",
+    };
+    let excluded = input.exclude_student_id.map(|u| u.to_string());
+    let mut stmt = conn.prepare(sql)?;
+    let rows = stmt.query_map([exam_id.to_string()], |r| {
+        Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
+    })?;
+
+    let typed = input.query.trim().to_lowercase();
+    let words: Vec<&str> = typed.split_whitespace().collect();
+    let mut counts: HashMap<String, usize> = HashMap::new();
+    for row in rows {
+        let (text, sid) = row?;
+        if excluded.as_deref() == Some(sid.as_str()) {
+            continue;
+        }
+        let lower = text.to_lowercase();
+        if lower == typed || !words.iter().all(|w| lower.contains(w)) {
+            continue;
+        }
+        *counts.entry(text).or_default() += 1;
+    }
+    let mut list: Vec<(String, usize)> = counts.into_iter().collect();
+    list.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    Ok(list.into_iter().take(SUGGEST_MAX).map(|(t, _)| t).collect())
 }
 
 // --- Notenschlüssel --------------------------------------------------------

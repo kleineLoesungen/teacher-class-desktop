@@ -331,3 +331,123 @@ fn der_notenschluessel_gehoert_zu_einer_klasse_der_pruefung() {
     let err = grading::grade_key(&a.conn, a.exam, andere.id).unwrap_err();
     assert!(matches!(err, Error::NotFound));
 }
+
+// --- Abschluss-Satz und Vorschläge ---
+
+fn satz(student_id: Uuid, text: &str) -> grading::RemarkInput {
+    grading::RemarkInput {
+        student_id,
+        text: text.into(),
+    }
+}
+
+fn frage(kind: grading::SuggestKind, query: &str, ausser: Option<Uuid>) -> grading::SuggestInput {
+    grading::SuggestInput {
+        kind,
+        query: query.into(),
+        exclude_student_id: ausser,
+    }
+}
+
+#[test]
+fn der_abschluss_satz_wird_gespeichert_getrimmt_und_geloescht() {
+    let a = aufbau(false);
+    let r = grading::set_remark(&a.conn, a.exam, satz(a.max, "  Tolle Leistung!  ")).unwrap();
+    assert_eq!(r.remark, "Tolle Leistung!");
+    let all = grading::results(&a.conn, a.exam, a.class).unwrap();
+    let max = all.iter().find(|r| r.student.id == a.max).unwrap();
+    let eva = all.iter().find(|r| r.student.id == a.eva).unwrap();
+    assert_eq!(max.remark, "Tolle Leistung!");
+    assert_eq!(eva.remark, "");
+
+    let r = grading::set_remark(&a.conn, a.exam, satz(a.max, "   ")).unwrap();
+    assert_eq!(r.remark, "");
+}
+
+#[test]
+fn ein_zu_langer_abschluss_satz_wird_am_feld_abgelehnt() {
+    let a = aufbau(false);
+    let err = grading::set_remark(&a.conn, a.exam, satz(a.max, &"x".repeat(2001))).unwrap_err();
+    assert_eq!(felder(&err), vec!["remark"]);
+}
+
+#[test]
+fn ein_schueler_fremder_klasse_bekommt_keinen_abschluss_satz() {
+    let a = aufbau(false);
+    let other = class::create(&a.conn, ClassInput::new("8b", 2025)).unwrap();
+    let s = student::add_many(&a.conn, other.id, "Fremd, Fred").unwrap();
+    let err = grading::set_remark(&a.conn, a.exam, satz(s[0].id, "Hallo")).unwrap_err();
+    assert!(matches!(err, Error::NotFound));
+}
+
+#[test]
+fn vorschlaege_enthalten_alle_worte_und_zaehlen_gleiche_texte_einmal() {
+    use grading::SuggestKind::Note;
+    let a = aufbau(true);
+    grading::set(
+        &a.conn,
+        a.exam,
+        eintrag(a.max, 0, 0, Some(1.0), "Rechenweg fehlt"),
+    )
+    .unwrap();
+    grading::set(
+        &a.conn,
+        a.exam,
+        eintrag(a.eva, 0, 0, Some(1.0), "Rechenweg fehlt"),
+    )
+    .unwrap();
+    grading::set(
+        &a.conn,
+        a.exam,
+        eintrag(a.eva, 0, 1, Some(1.0), "Einheit fehlt"),
+    )
+    .unwrap();
+
+    // Häufigster Text zuerst, gleiche Texte einmal.
+    let alle = grading::suggest(&a.conn, a.exam, frage(Note, "", None)).unwrap();
+    assert_eq!(alle, vec!["Rechenweg fehlt", "Einheit fehlt"]);
+
+    // Einzelne Worte, ohne Beachtung der Schreibung, in beliebiger Reihenfolge.
+    let treffer = grading::suggest(&a.conn, a.exam, frage(Note, "FEHLT rechen", None)).unwrap();
+    assert_eq!(treffer, vec!["Rechenweg fehlt"]);
+    let keine = grading::suggest(&a.conn, a.exam, frage(Note, "Skizze", None)).unwrap();
+    assert!(keine.is_empty());
+
+    // Der eigene Text des Schülers zählt nicht.
+    let ohne_eva = grading::suggest(&a.conn, a.exam, frage(Note, "fehlt", Some(a.eva))).unwrap();
+    assert_eq!(ohne_eva, vec!["Rechenweg fehlt"]);
+
+    // Was schon genau so dasteht, wird nicht noch einmal vorgeschlagen.
+    let gleich = grading::suggest(&a.conn, a.exam, frage(Note, "einheit fehlt", None)).unwrap();
+    assert!(gleich.is_empty());
+}
+
+#[test]
+fn vorschlaege_fuer_den_abschluss_satz_kommen_nur_aus_abschluss_saetzen() {
+    use grading::SuggestKind::Remark;
+    let a = aufbau(true);
+    grading::set(
+        &a.conn,
+        a.exam,
+        eintrag(a.max, 0, 0, Some(1.0), "Weiter so beim Rechnen"),
+    )
+    .unwrap();
+    grading::set_remark(&a.conn, a.exam, satz(a.max, "Tolle Leistung! Weiter so")).unwrap();
+    let v = grading::suggest(&a.conn, a.exam, frage(Remark, "weiter", Some(a.eva))).unwrap();
+    assert_eq!(v, vec!["Tolle Leistung! Weiter so"]);
+}
+
+#[test]
+fn vorschlaege_stammen_nur_aus_derselben_pruefung() {
+    use grading::SuggestKind::Note;
+    let a = aufbau(true);
+    let zweite = exam::create(&a.conn, beispiel(vec![a.class], true)).unwrap();
+    grading::set(
+        &a.conn,
+        zweite.id,
+        eintrag(a.max, 0, 0, Some(1.0), "Nur hier"),
+    )
+    .unwrap();
+    let v = grading::suggest(&a.conn, a.exam, frage(Note, "hier", None)).unwrap();
+    assert!(v.is_empty());
+}

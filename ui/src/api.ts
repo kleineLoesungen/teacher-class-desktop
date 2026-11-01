@@ -29,10 +29,12 @@ import type {
   FieldError,
   GradeKey,
   Preview,
+  RemarkInput,
   ScoreInput,
   Student,
   StudentInput,
   StudentResult,
+  SuggestInput,
 } from "./bindings";
 
 /** Ein abgelehnter Befehl. Dieselbe Form wie `error` im JSON der CLI. */
@@ -125,6 +127,10 @@ export const api = {
       call<GradeKey>("exam_grade_key", { id, class: classId }),
     /** Trägt Punkte und Begründung ein; liefert die neu berechnete Bewertung. */
     score: (id: string, input: ScoreInput) => call<StudentResult>("exam_score", { id, input }),
+    /** Setzt den Abschluss-Satz eines Schülers (leer löscht ihn). */
+    remark: (id: string, input: RemarkInput) => call<StudentResult>("exam_remark", { id, input }),
+    /** Texte anderer Schüler derselben Prüfung, die zur Eingabe passen. */
+    suggest: (id: string, input: SuggestInput) => call<string[]>("exam_suggest", { id, input }),
   },
 
   /**

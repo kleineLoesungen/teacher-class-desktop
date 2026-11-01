@@ -392,6 +392,20 @@ fn write_student(lay: &mut Layout, exam: &Exam, class_label: &str, res: &Student
     lay.row(&totals, sum);
     lay.row(&grade_row, sum);
 
+    // Abschluss-Satz, zeilenweise umbrochen unter der Tabelle.
+    if !res.remark.is_empty() {
+        let lines = wrap(&res.remark, CONTENT_W, false);
+        if lay.y - BOTTOM < (lines.len() as f64 + 3.0) * LEADING + 4.0 * PAD {
+            lay.continue_page();
+        }
+        lay.y -= 14.0;
+        lay.line("Abschluss", 12.0, true);
+        lay.y -= 2.0;
+        for l in &lines {
+            lay.line(l, 11.0, false);
+        }
+    }
+
     // Bewertungsmatrix zur Einordnung.
     if lay.y - BOTTOM < 5.0 * LEADING + 6.0 * PAD {
         lay.continue_page();

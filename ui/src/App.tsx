@@ -19,9 +19,11 @@ import type {
   Exam,
   GradeKey,
   Preview,
+  RemarkInput,
   ScoreInput,
   Student,
   StudentResult,
+  SuggestInput,
 } from "./bindings";
 import { ClassEditor } from "./components/ClassEditor";
 import { ClassList } from "./components/ClassList";
@@ -355,6 +357,27 @@ export function App() {
     }
   }
 
+  async function remarkStudent(input: RemarkInput) {
+    if (examSelection.kind !== "exam") return;
+    try {
+      const updated = await api.exams.remark(examSelection.id, input);
+      setResults((all) => all.map((r) => (r.student.id === updated.student.id ? updated : r)));
+      setFieldError(null);
+    } catch (raw) {
+      fail(raw);
+    }
+  }
+
+  /** Vorschläge sind eine Hilfe: ein Fehler soll das Tippen nicht stören. */
+  async function suggestTexts(input: SuggestInput): Promise<string[]> {
+    if (examSelection.kind !== "exam") return [];
+    try {
+      return await api.exams.suggest(examSelection.id, input);
+    } catch {
+      return [];
+    }
+  }
+
   async function selectExam(id: string) {
     if (examSelection.kind === "exam" && examSelection.id === id) return;
     if (!(await leaveCurrentExam())) return;
@@ -601,6 +624,8 @@ export function App() {
                 setGrading({ ...grading, studentId: id });
               }}
               onScore={(input) => void scoreStudent(input)}
+              onRemark={(input) => void remarkStudent(input)}
+              onSuggest={suggestTexts}
               onBack={() => {
                 setGrading(null);
                 setFieldError(null);

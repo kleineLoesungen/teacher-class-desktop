@@ -16,7 +16,8 @@ use teacher_class_core::exam::{
     Exam, ExamInput, Grade, GradeInput, Group, GroupInput, Item, ItemInput, Preview,
 };
 use teacher_class_core::grading::{
-    GradeCount, GradeKey, GroupResult, Score, ScoreInput, StudentResult,
+    GradeCount, GradeKey, GroupResult, RemarkInput, Score, ScoreInput, StudentResult, SuggestInput,
+    SuggestKind,
 };
 use teacher_class_core::student::{Student, StudentInput};
 use teacher_class_core::{Config, ErrorCode, FieldError, Theme};
@@ -58,6 +59,9 @@ fn generate() -> String {
         decl::<Preview>(&cfg),
         decl::<Score>(&cfg),
         decl::<ScoreInput>(&cfg),
+        decl::<RemarkInput>(&cfg),
+        decl::<SuggestInput>(&cfg),
+        decl::<SuggestKind>(&cfg),
         decl::<Student>(&cfg),
         decl::<StudentInput>(&cfg),
         decl::<StudentResult>(&cfg),

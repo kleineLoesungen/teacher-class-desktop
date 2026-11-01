@@ -250,6 +250,41 @@ pub enum ExamCommand {
         note: String,
     },
 
+    /// Den Abschluss-Satz eines Schülers setzen, z. B. „Tolle Leistung! Weiter so“.
+    ///
+    /// Ohne Text wird er gelöscht. Gilt für jede Prüfung, auch ohne `--notes`.
+    ///
+    /// Beispiel:  exam remark 3f9a2b1c 7d41e0aa "Tolle Leistung! Weiter so"
+    Remark {
+        /// Kennung der Prüfung oder ein eindeutiges Ende davon.
+        id: String,
+
+        /// Kennung des Schülers oder ein eindeutiges Ende davon.
+        student: String,
+
+        /// Der Satz. Leer = löschen.
+        #[arg(default_value = "")]
+        text: String,
+    },
+
+    /// Textvorschläge aus den Begründungen (oder Abschluss-Sätzen) der Prüfung.
+    ///
+    /// Zeigt Texte, die alle gegebenen Wörter enthalten, die häufigsten zuerst.
+    ///
+    /// Beispiel:  exam suggest 3f9a2b1c rechenweg
+    Suggest {
+        /// Kennung der Prüfung oder ein eindeutiges Ende davon.
+        id: String,
+
+        /// Wörter, die im Text vorkommen sollen. Ohne Angabe: die häufigsten.
+        #[arg(default_value = "")]
+        query: String,
+
+        /// Abschluss-Sätze statt Begründungen durchsuchen.
+        #[arg(long)]
+        remark: bool,
+    },
+
     /// Den Notenschlüssel einer Klasse zeigen: Anzahl je Note und Durchschnitt.
     Key {
         /// Kennung der Prüfung oder ein eindeutiges Ende davon.

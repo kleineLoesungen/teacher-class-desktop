@@ -53,7 +53,13 @@ Eine Prüfung gilt für eine oder mehrere Klassen und besteht aus:
 In der Prüfung öffnet **„Bewerten“** die Bewertung einer Klasse: Schüler
 wählen, je Prüfkriterium die erreichten Punkte eintragen (ganz oder halb, `2,5`)
 und — wenn die Prüfung Begründungen vorsieht — eine Begründung oder einen
-Hinweis. Gespeichert wird, sobald ein Feld verlassen wird. Gruppensummen,
+Hinweis. Gespeichert wird, sobald ein Feld verlassen wird. Unter den Kriterien steht ein
+**Abschluss-Satz** („Tolle Leistung! Weiter so“) neben der Note, in jeder
+Prüfung, auch ohne Begründungen. Beim Tippen in einer Begründung oder im
+Abschluss-Satz erscheinen **Vorschläge**: Texte anderer Schüler derselben
+Prüfung, die alle getippten Wörter enthalten, die häufigsten zuerst; ein Klick
+übernimmt den Text. Der Abschluss-Satz steht im PDF-Ausdruck, nicht im
+Excel-Export. In der Kommandozeile: `exam remark`, `exam suggest`. Gruppensummen,
 Gesamtpunkte und die Note berechnet die Fachlogik; „nicht eingetragen“ ist
 etwas anderes als 0, und solange nichts eingetragen ist, gibt es keine Note.
 

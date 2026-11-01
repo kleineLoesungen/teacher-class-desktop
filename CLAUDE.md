@@ -40,7 +40,11 @@ Ausführlich im README („Was die App kann"). Was beim Ändern zählt:
   je Schüler und Prüfkriterium. Das Prüfkriterium ist über seine **Stelle**
   (Gruppe, Punkt) bezeichnet; `exam::update` räumt danach mit `grading::prune`
   auf. Summen und Note **berechnet `core`**, auch hier rechnet die Oberfläche
-  nicht nach. Ein Punkt hat eine optionale `description`.
+  nicht nach. Ein Punkt hat eine optionale `description`. Dazu je Schüler ein
+  **Abschluss-Satz** (`grading::set_remark`, Tabelle `exam_remarks`, auch ohne
+  `with_notes`), und `grading::suggest` liefert Textvorschläge aus den Texten
+  anderer Schüler derselben Prüfung — gesucht wird in `core`, nicht in der
+  Oberfläche.
 * **Excel-Export** (`crates/core/src/export.rs`) schreibt **Formeln** für alles
   Gerechnete und die eingetragenen Punkte als Werte: Blatt „Bewertung“ und ein
   Blatt je Klasse als Matrix. Begründungen stehen nicht darin. Einen

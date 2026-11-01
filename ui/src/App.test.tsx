@@ -21,6 +21,7 @@ import type {
   Config,
   Exam,
   ExamInput,
+  RemarkInput,
   ScoreInput,
   Student,
   StudentResult,
@@ -50,6 +51,8 @@ let classes: Class[];
 let students: Student[];
 let exams: Exam[];
 let results: StudentResult[];
+/** Was die Attrappe auf `exam_suggest` antwortet (die Auswahl trifft Rust). */
+let suggestions: string[];
 /** Was der Speichern-Dialog liefert; `null` = abgebrochen. */
 let savePath: string | null;
 /** Was der Öffnen-Dialog liefert; `null` = abgebrochen. */
@@ -192,6 +195,17 @@ function backend(cmd: string, args: Record<string, unknown> = {}): unknown {
       results = results.map((r) => (r.student.id === updated.student.id ? updated : r));
       return updated;
     }
+    case "exam_remark": {
+      const input = args.input as RemarkInput;
+      const updated: StudentResult = {
+        ...(results.find((r) => r.student.id === input.student_id) as StudentResult),
+        remark: input.text,
+      };
+      results = results.map((r) => (r.student.id === updated.student.id ? updated : r));
+      return updated;
+    }
+    case "exam_suggest":
+      return suggestions;
     case "plugin:dialog|save":
       return savePath;
     case "plugin:dialog|open":
@@ -212,6 +226,7 @@ beforeEach(() => {
   students = [];
   exams = [];
   results = [];
+  suggestions = [];
   savePath = "/tmp/Klassenarbeit.xlsx";
   openPath = "/stick/klassen.sqlite3";
   dbMissing = false;
@@ -514,6 +529,7 @@ describe("Oberfläche", () => {
         groups: [{ scores: [{ points: null, note: "" }], points: 0 }],
         total: 0,
         grade: null,
+        remark: "",
       };
     }
 
@@ -776,6 +792,62 @@ describe("Oberfläche", () => {
         points: 2,
         note: "Vorzeichenfehler",
       });
+    });
+
+    it("speichert den Abschluss-Satz beim Verlassen des Feldes", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      exams = [savedExam()];
+      results = [maxResult()];
+      render(<App />);
+
+      await openExams(user);
+      await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
+      await user.click(screen.getByRole("button", { name: "Bewerten" }));
+      await user.click(await screen.findByRole("button", { name: /Muster, Max/ }));
+
+      await user.type(screen.getByRole("textbox", { name: "Abschluss-Satz" }), "Weiter so!");
+      expect(commands("exam_remark")).toHaveLength(0);
+      await user.tab();
+
+      await waitFor(() => expect(commands("exam_remark")).toHaveLength(1));
+      expect(commands("exam_remark")[0]?.args).toEqual({
+        id: "e1",
+        input: { student_id: "s1", text: "Weiter so!" },
+      });
+    });
+
+    it("bietet Vorschläge aus Rust an und übernimmt den gewählten Text", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      exams = [{ ...savedExam(), with_notes: true }];
+      results = [maxResult()];
+      suggestions = ["Rechenweg fehlt", "Einheit fehlt"];
+      render(<App />);
+
+      await openExams(user);
+      await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
+      await user.click(screen.getByRole("button", { name: "Bewerten" }));
+      await user.click(await screen.findByRole("button", { name: /Muster, Max/ }));
+
+      await user.type(
+        screen.getByRole("textbox", { name: "Gruppe 1 Punkt 1 Begründung" }),
+        "fehlt",
+      );
+      expect(commands("exam_suggest").at(-1)?.args).toEqual({
+        id: "e1",
+        input: { kind: "note", query: "fehlt", exclude_student_id: "s1" },
+      });
+
+      await user.click(await screen.findByRole("button", { name: "Einheit fehlt" }));
+      const field = screen.getByRole("textbox", {
+        name: "Gruppe 1 Punkt 1 Begründung",
+      }) as HTMLTextAreaElement;
+      expect(field.value).toBe("Einheit fehlt");
+      await waitFor(() => expect(commands("exam_score")).toHaveLength(1));
+      expect(commands("exam_score")[0]?.args.input).toMatchObject({ note: "Einheit fehlt" });
+      // Nach der Wahl verschwindet die Liste.
+      expect(screen.queryByRole("button", { name: "Rechenweg fehlt" })).toBeNull();
     });
 
     it("zeigt eine abgelehnte Eingabe mit Rusts Meldung", async () => {
