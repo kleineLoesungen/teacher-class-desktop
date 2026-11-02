@@ -67,7 +67,13 @@ weder Gruppensummen noch das „bis“ einer Note nach, sondern zeigt, was Rust
 liefert. Beim Bearbeiten fragt `App.tsx` kurz nach der letzten Eingabe
 `exam_preview` (`exam::preview`): Das rechnet den *ungespeicherten* Entwurf
 durch, prüft und schreibt nichts, und lässt Ungültiges als leer (`None`) offen.
-Gespeichert werden muss dafür nicht.
+Gespeichert werden muss dafür nicht. Ebenso fragt sie bei einer gespeicherten
+Prüfung `exam_draft_keys` (`grading::draft_keys`): Das ordnet die schon
+eingetragenen Punkte den Noten des *Entwurfs* zu und liefert je Klasse den
+Notenschlüssel — die Verteilung unter der Bewertungsmatrix. Gezählt werden nur
+Punkte, die es im Entwurf noch gibt (wie nach `grading::prune`); die Klassen
+sind die der gespeicherten Prüfung. Nur die App zeigt das, die CLI hat keinen
+Entwurf.
 
 ## Prüfungen und Excel-Export
 

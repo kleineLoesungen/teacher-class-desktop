@@ -19,7 +19,7 @@ use tauri::State;
 use teacher_class_core::class::{self, Class, ClassInput};
 use teacher_class_core::exam::{self, Exam, ExamInput, Preview};
 use teacher_class_core::grading::{
-    self, GradeKey, RemarkInput, ScoreInput, StudentResult, SuggestInput,
+    self, ClassGradeKey, GradeKey, RemarkInput, ScoreInput, StudentResult, SuggestInput,
 };
 use teacher_class_core::student::{self, Student, StudentInput};
 use teacher_class_core::template::TemplateList;
@@ -237,6 +237,18 @@ pub async fn exam_grade_key(
     class: Uuid,
 ) -> ApiResult<GradeKey> {
     state.with(|app| grading::grade_key(app.conn(), id, class))
+}
+
+/// Der Notenschlüssel jeder Klasse der Prüfung `id`, wie er mit dem
+/// ungespeicherten Entwurf `input` aussähe — Vorschau für die Bewertungsmatrix.
+/// Schreibt nichts, prüft den Entwurf nicht.
+#[tauri::command]
+pub async fn exam_draft_keys(
+    state: State<'_, AppState>,
+    id: Uuid,
+    input: ExamInput,
+) -> ApiResult<Vec<ClassGradeKey>> {
+    state.with(|app| grading::draft_keys(app.conn(), id, &input))
 }
 
 // --- Einstellungen ---------------------------------------------------------

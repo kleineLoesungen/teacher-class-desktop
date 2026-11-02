@@ -86,6 +86,7 @@ pub fn configure<R: Runtime>(builder: tauri::Builder<R>, state: AppState) -> tau
             commands::template_list,
             commands::exam_results,
             commands::exam_grade_key,
+            commands::exam_draft_keys,
             commands::exam_score,
             commands::exam_remark,
             commands::exam_suggest,

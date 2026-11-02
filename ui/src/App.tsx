@@ -14,6 +14,7 @@ import { ApiError, api } from "./api";
 import type {
   AppInfo,
   Class,
+  ClassGradeKey,
   ClassInput,
   Config,
   Exam,
@@ -71,6 +72,8 @@ export function App() {
   // Die von Rust berechneten Werte des *Entwurfs* (Summen, „bis“), nicht des
   // gespeicherten Stands. Wird beim Tippen nachgezogen.
   const [examPreview, setExamPreview] = useState<Preview | null>(null);
+  // Notenverteilung je Klasse für den Entwurf der Bewertungsmatrix.
+  const [draftKeys, setDraftKeys] = useState<ClassGradeKey[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   // Bewertung: ist sie offen, ersetzt sie den Prüfungseditor.
   const [grading, setGrading] = useState<{ classId: string; studentId: string | null } | null>(
@@ -121,6 +124,34 @@ export function App() {
       window.clearTimeout(timer);
     };
   }, [examDraft, examSelection.kind]);
+
+  // Notenverteilung je Klasse mit dem Entwurf der Matrix, ebenfalls von Rust
+  // gerechnet. Nur für eine gespeicherte Prüfung (nur die hat Punkte); kommt
+  // die Bewertung wieder zu, wird neu gefragt, weil sich Punkte geändert haben.
+  const examId = examSelection.kind === "exam" ? examSelection.id : null;
+  const gradingClosed = grading === null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: gradingClosed stößt nur die Abfrage neu an
+  useEffect(() => {
+    if (examId === null) {
+      setDraftKeys([]);
+      return;
+    }
+    let current = true;
+    const timer = window.setTimeout(() => {
+      api.exams.draftKeys(examId, toExamInput(examDraft)).then(
+        (result) => {
+          if (current) setDraftKeys(result ?? []);
+        },
+        () => {
+          if (current) setDraftKeys([]);
+        },
+      );
+    }, 150);
+    return () => {
+      current = false;
+      window.clearTimeout(timer);
+    };
+  }, [examDraft, examId, gradingClosed]);
 
   /** Ein fehlgeschlagener Befehl: ans Feld oder nach oben. */
   const fail = useCallback((raw: unknown) => {
@@ -658,6 +689,7 @@ export function App() {
             <ExamEditor
               draft={examDraft}
               preview={examPreview}
+              classKeys={draftKeys}
               classes={classes}
               isNew={examSelection.kind === "new"}
               dirty={examDirty}

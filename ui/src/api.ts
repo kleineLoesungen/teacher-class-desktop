@@ -21,6 +21,7 @@ import type {
   ApiError as ApiErrorData,
   AppInfo,
   Class,
+  ClassGradeKey,
   ClassInput,
   Config,
   ErrorCode,
@@ -130,6 +131,9 @@ export const api = {
     /** Der Notenschlüssel der Klasse `classId`: Anzahl je Note und Durchschnitt. */
     gradeKey: (id: string, classId: string) =>
       call<GradeKey>("exam_grade_key", { id, class: classId }),
+    /** Notenschlüssel je Klasse der Prüfung, wie er mit dem ungespeicherten Entwurf aussähe. */
+    draftKeys: (id: string, input: ExamInput) =>
+      call<ClassGradeKey[]>("exam_draft_keys", { id, input }),
     /** Trägt Punkte und Begründung ein; liefert die neu berechnete Bewertung. */
     score: (id: string, input: ScoreInput) => call<StudentResult>("exam_score", { id, input }),
     /** Setzt den Abschluss-Satz eines Schülers (leer löscht ihn). */

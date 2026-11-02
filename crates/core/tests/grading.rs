@@ -332,6 +332,48 @@ fn der_notenschluessel_gehoert_zu_einer_klasse_der_pruefung() {
     assert!(matches!(err, Error::NotFound));
 }
 
+#[test]
+fn der_entwurf_zeigt_den_notenschluessel_mit_geaenderter_matrix_ohne_zu_speichern() {
+    let a = aufbau(false);
+    // Max: 17,5 Punkte, Eva: 10 Punkte.
+    grading::set(&a.conn, a.exam, eintrag(a.max, 0, 0, Some(4.0), "")).unwrap();
+    grading::set(&a.conn, a.exam, eintrag(a.max, 1, 0, Some(13.5), "")).unwrap();
+    grading::set(&a.conn, a.exam, eintrag(a.eva, 1, 0, Some(10.0), "")).unwrap();
+
+    // Entwurf: „1“ erst ab 18, „3“ ab 11 → Max bekommt 3, Eva 6.
+    let mut entwurf = beispiel(vec![a.class], false);
+    entwurf.grades = vec![grade("1", 18.0), grade("3", 11.0), grade("6", 0.0)];
+    let keys = grading::draft_keys(&a.conn, a.exam, &entwurf).unwrap();
+    assert_eq!(keys.len(), 1);
+    assert_eq!(keys[0].class_id, a.class);
+    let counts: Vec<(&str, u32)> = keys[0]
+        .key
+        .counts
+        .iter()
+        .map(|c| (c.grade.as_str(), c.count))
+        .collect();
+    assert_eq!(counts, vec![("6", 1), ("3", 1), ("1", 0)]);
+    assert_eq!(keys[0].key.average, Some(4.5));
+
+    // Gespeichert ist nichts: der echte Notenschlüssel bleibt wie er war.
+    let echt = grading::grade_key(&a.conn, a.exam, a.class).unwrap();
+    assert_eq!(echt.average, Some(2.0));
+}
+
+#[test]
+fn der_entwurf_zaehlt_nur_punkte_die_es_im_entwurf_noch_gibt() {
+    let a = aufbau(false);
+    grading::set(&a.conn, a.exam, eintrag(a.max, 0, 0, Some(4.0), "")).unwrap();
+    // Entwurf ohne Gruppe 2 und mit nur 3 Punkten für Aufgabe 1a: Max hat 3.
+    let mut entwurf = beispiel(vec![a.class], false);
+    entwurf.groups.truncate(1);
+    entwurf.groups[0].items[0].max_points = 3.0;
+    let keys = grading::draft_keys(&a.conn, a.exam, &entwurf).unwrap();
+    // Die 4 Punkte übersteigen den neuen Höchstwert: niemand hat eine Note.
+    assert_eq!(keys[0].key.graded, 0);
+    assert_eq!(keys[0].key.average, None);
+}
+
 // --- Abschluss-Satz und Vorschläge ---
 
 fn satz(student_id: Uuid, text: &str) -> grading::RemarkInput {

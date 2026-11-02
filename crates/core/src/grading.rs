@@ -395,17 +395,24 @@ pub struct GradeKey {
 
 /// Der Notenschlüssel aus bereits berechneten Bewertungen.
 pub fn grade_key_of(exam: &Exam, results: &[StudentResult]) -> GradeKey {
-    let counts: Vec<GradeCount> = exam
-        .grades
+    let names: Vec<&str> = exam.grades.iter().map(|g| g.name.as_str()).collect();
+    key_of(&names, results.iter().map(|r| r.grade.as_deref()))
+}
+
+/// Zählt die vergebenen Noten (`names` in Reihenfolge der Matrix) und mittelt sie.
+fn key_of<'a>(names: &[&str], given: impl Iterator<Item = Option<&'a str>>) -> GradeKey {
+    let mut counts: Vec<GradeCount> = names
         .iter()
-        .map(|g| GradeCount {
-            grade: g.name.clone(),
-            count: results
-                .iter()
-                .filter(|r| r.grade.as_deref() == Some(g.name.as_str()))
-                .count() as u32,
+        .map(|n| GradeCount {
+            grade: (*n).to_string(),
+            count: 0,
         })
         .collect();
+    for grade in given.flatten() {
+        if let Some(c) = counts.iter_mut().find(|c| c.grade == grade) {
+            c.count += 1;
+        }
+    }
     let graded: u32 = counts.iter().map(|c| c.count).sum();
     let mut sum = 0.0;
     let mut numeric = true;
@@ -430,6 +437,74 @@ pub fn grade_key(conn: &Connection, exam_id: Uuid, class_id: Uuid) -> Result<Gra
     let exam = exam::get(conn, exam_id)?;
     let results = results(conn, exam_id, class_id)?;
     Ok(grade_key_of(&exam, &results))
+}
+
+/// Der Notenschlüssel einer Klasse für den *ungespeicherten* Entwurf.
+#[derive(Debug, Clone, PartialEq, Serialize, TS)]
+pub struct ClassGradeKey {
+    pub class_id: Uuid,
+    pub key: GradeKey,
+}
+
+/// Wie sähe der Notenschlüssel jeder Klasse der gespeicherten Prüfung `exam_id`
+/// aus, wenn der Entwurf `input` gälte? Die eingetragenen Punkte bleiben
+/// unverändert; gezählt werden nur Punkte, die es im Entwurf noch gibt und die
+/// dessen Höchstpunktzahl nicht übersteigen (wie nach [`prune`]). Ungültige
+/// oder doppelte „ab“ der Entwurfsmatrix werden übergangen. Schreibt nichts.
+pub fn draft_keys(
+    conn: &Connection,
+    exam_id: Uuid,
+    input: &exam::ExamInput,
+) -> Result<Vec<ClassGradeKey>> {
+    let saved = exam::get(conn, exam_id)?;
+    let stored = load(conn, exam_id)?;
+
+    // Gültige Matrix des Entwurfs, aufsteigend nach „ab“.
+    let mut grades: Vec<(i64, &str)> = Vec::new();
+    for g in &input.grades {
+        if let Some(from) = to_half(g.from_points).filter(|h| *h >= 0)
+            && grades.iter().all(|(f, _)| *f != from)
+        {
+            grades.push((from, g.name.trim()));
+        }
+    }
+    grades.sort_by_key(|(from, _)| *from);
+    let names: Vec<&str> = grades.iter().map(|(_, n)| *n).collect();
+
+    let mut keys = Vec::new();
+    for class_id in saved.class_ids {
+        let mut assigned: Vec<Option<&str>> = Vec::new();
+        for s in student::list(conn, class_id)? {
+            let sid = s.id.to_string();
+            let mut total: i64 = 0;
+            let mut any = false;
+            for (gi, group) in input.groups.iter().enumerate() {
+                for (ii, item) in group.items.iter().enumerate() {
+                    let half = stored.get(&(sid.clone(), gi, ii)).and_then(|(h, _)| *h);
+                    if let Some(h) = half
+                        && h <= to_half(item.max_points).unwrap_or(-1)
+                    {
+                        total += h;
+                        any = true;
+                    }
+                }
+            }
+            assigned.push(if any {
+                grades
+                    .iter()
+                    .rev()
+                    .find(|(from, _)| *from <= total)
+                    .map(|(_, n)| *n)
+            } else {
+                None
+            });
+        }
+        keys.push(ClassGradeKey {
+            class_id,
+            key: key_of(&names, assigned.into_iter()),
+        });
+    }
+    Ok(keys)
 }
 
 /// Räumt nach einer Änderung der Prüfung auf: Einträge zu Punkten, die es nicht

@@ -6,8 +6,8 @@
 // als Vorschau (`preview`) zum Entwurf und ziehen beim Tippen nach, ohne dass
 // gespeichert werden muss. Fehlt ein Wert (noch nicht gerechnet), steht ein Strich.
 
-import type { Class, Preview } from "../bindings";
-import { type ExamDraft, emptyItemDraft, formatPoints } from "../lib/exam";
+import type { Class, ClassGradeKey, Preview } from "../bindings";
+import { type ExamDraft, emptyItemDraft, formatAverage, formatPoints } from "../lib/exam";
 import { classLabel } from "../lib/format";
 import { FieldMessage } from "./FieldMessage";
 
@@ -15,6 +15,8 @@ type Props = {
   draft: ExamDraft;
   /** Von Rust berechnete Werte des Entwurfs; `null`, solange keine da sind. */
   preview: Preview | null;
+  /** Von Rust gezählte Notenverteilung je Klasse mit dem Entwurf der Matrix. */
+  classKeys: ClassGradeKey[];
   classes: Class[];
   isNew: boolean;
   dirty: boolean;
@@ -50,6 +52,12 @@ export function ExamEditor(props: Props) {
   const classes = props.classes.filter((c) => !c.archived || props.draft.class_ids.includes(c.id));
   const { draft, preview, isNew, dirty, saving, fieldMessages, onChange } = props;
   const dash = "–";
+
+  // Nur Klassen, in denen schon jemand eine Note hätte. Gezählt hat Rust.
+  const distribution = props.classKeys.flatMap((key) => {
+    const cls = props.classes.find((c) => c.id === key.class_id);
+    return cls && key.key.graded > 0 ? [{ cls, key: key.key }] : [];
+  });
 
   const nameError = fieldMessages("name")[0];
   const setGroup = (gi: number, group: ExamDraft["groups"][number]) =>
@@ -334,6 +342,20 @@ export function ExamEditor(props: Props) {
           </button>
         </div>
         <Messages id="grades-error" messages={fieldMessages("grades")} />
+        {distribution.length > 0 && (
+          <section className="grade-spread muted" aria-label="Notenverteilung der Klassen">
+            {distribution.map(({ cls, key }) => (
+              <p key={cls.id}>
+                {classLabel(cls)}:{" "}
+                {key.counts
+                  .filter((c) => c.count > 0)
+                  .map((c) => `${c.grade} × ${c.count}`)
+                  .join(" · ")}
+                {key.average !== null && ` · Schnitt ${formatAverage(key.average)}`}
+              </p>
+            ))}
+          </section>
+        )}
 
         {!isNew && (
           <p className="muted hint">
