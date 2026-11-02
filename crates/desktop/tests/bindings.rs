@@ -16,8 +16,8 @@ use teacher_class_core::exam::{
     Exam, ExamInput, Grade, GradeInput, Group, GroupInput, Item, ItemInput, Preview,
 };
 use teacher_class_core::grading::{
-    GradeCount, GradeKey, GroupResult, RemarkInput, Score, ScoreInput, StudentResult, SuggestInput,
-    SuggestKind,
+    ClassGradeKey, GradeCount, GradeKey, GroupResult, RemarkInput, Score, ScoreInput,
+    StudentResult, SuggestInput, SuggestKind,
 };
 use teacher_class_core::student::{Student, StudentInput};
 use teacher_class_core::template::{Kind as TemplateKind, TemplateInfo, TemplateList};
@@ -68,6 +68,7 @@ fn generate() -> String {
         decl::<StudentResult>(&cfg),
         decl::<GradeCount>(&cfg),
         decl::<GradeKey>(&cfg),
+        decl::<ClassGradeKey>(&cfg),
         decl::<TemplateInfo>(&cfg),
         decl::<TemplateKind>(&cfg),
         decl::<TemplateList>(&cfg),

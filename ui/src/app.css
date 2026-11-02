@@ -592,6 +592,17 @@ input[type="color"] {
   padding: 2px var(--space-2) 2px 0;
 }
 
+/* Notenverteilung unter der Matrix: dezent, nur zum Mitschauen beim Ändern. */
+.grade-spread {
+  font-size: 0.85em;
+  font-variant-numeric: tabular-nums;
+  margin: var(--space-2) 0;
+}
+
+.grade-spread p {
+  margin: 0;
+}
+
 /* --- Markdown ------------------------------------------------------------- */
 
 .markdown {

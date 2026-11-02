@@ -251,6 +251,11 @@ graded: number,
 average: number | null, };
 
 /**
+ * Der Notenschlüssel einer Klasse für den *ungespeicherten* Entwurf.
+ */
+export type ClassGradeKey = { class_id: string, key: GradeKey, };
+
+/**
  * Eine Vorlage zur Auswahl im Druckdialog.
  */
 export type TemplateInfo = { 

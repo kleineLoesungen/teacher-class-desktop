@@ -98,6 +98,10 @@ Klasse eine Spalte **Anzahl** (wie oft jede Note vorkam) und darunter der
 Klassenblatts. In der App zeigt die Bewertung nach Wahl der Klasse einen
 einklappbaren **Notenschlüssel** als Tabelle (Spalten Note und Anzahl, darunter
 „Schnitt 2,60“). Die Klasse wählt man über die Knöpfe über der Schülerliste.
+Unter der **Bewertungsmatrix** der Prüfung steht dezent die Notenverteilung je
+Klasse mit Schnitt („7a (2025): 1 × 3 · 3 × 5 · Schnitt 2,60“). Sie rechnet
+schon mit den noch nicht gespeicherten „ab“-Werten und zieht beim Tippen nach —
+so sieht man sofort, was eine geänderte Grenze für die Noten bedeutet.
 
 ### PDF-Ausdruck
 

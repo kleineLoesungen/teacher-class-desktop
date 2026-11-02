@@ -211,6 +211,22 @@ function backend(cmd: string, args: Record<string, unknown> = {}): unknown {
         graded: 4,
         average: 2.6,
       };
+    case "exam_draft_keys":
+      // Feste Werte, damit die Anzeige geprüft wird; gezählt hat Rust.
+      return [
+        {
+          class_id: "a",
+          key: {
+            counts: [
+              { grade: "4", count: 3 },
+              { grade: "2", count: 0 },
+              { grade: "1", count: 1 },
+            ],
+            graded: 4,
+            average: 2.6,
+          },
+        },
+      ];
     case "exam_score": {
       // Keine Regeln, keine Rechnung: Rust hat Summe und Note errechnet — hier
       // stehen feste Werte, damit die Anzeige geprüft wird.
@@ -844,6 +860,21 @@ describe("Oberfläche", () => {
       await waitFor(() => expect(commands("exam_preview").length).toBeGreaterThan(before));
       const last = commands("exam_preview").at(-1)?.args.input as ExamInput;
       expect(last.groups[0]?.items[0]?.max_points).toBe(2.5);
+      expect(commands("exam_update")).toHaveLength(0);
+    });
+
+    it("zeigt unter der Bewertungsmatrix die Notenverteilung der Klasse aus Rust", async () => {
+      const user = userEvent.setup();
+      classes = [cls("a", { name: "7a", year: 2025 })];
+      exams = [savedExam()];
+      render(<App />);
+
+      await openExams(user);
+      await user.click(await screen.findByRole("button", { name: /Klassenarbeit/ }));
+
+      const spread = await screen.findByLabelText("Notenverteilung der Klassen");
+      expect(spread.textContent).toBe("7a (2025): 4 × 3 · 1 × 1 · Schnitt 2,60");
+      expect(commands("exam_draft_keys")[0]?.args).toMatchObject({ id: "e1" });
       expect(commands("exam_update")).toHaveLength(0);
     });
 
